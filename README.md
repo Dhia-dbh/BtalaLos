@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="LICENSE">GNU AGPLv3 only</a> · <a href="NOTICE.md">Attribution</a> · <a href="docs/application-preparation.md">Application preparation</a> · <a href="docs/codex-cli.md">Codex bridge</a>
+  <a href="https://github.com/Dhia-dbh/BtalaLos">Source</a> · <a href="LICENSE">GNU AGPLv3 only</a> · <a href="NOTICE.md">Attribution</a> · <a href="docs/application-preparation.md">Application preparation</a> · <a href="docs/codex-cli.md">Codex bridge</a>
 </p>
 
 ## Origin and acknowledgments
