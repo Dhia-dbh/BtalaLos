@@ -12,6 +12,7 @@ import {
 import { preparationLibrary, loadProject } from "@/lib/preparation/data";
 import {
   bundleSchema,
+  documentModeSchema,
   cliOptionsSchema,
   projectSchema,
   type Step,
@@ -85,7 +86,11 @@ export const GET = route<RouteContext<"/api/preparation/[action]">>(
           { status: 404 },
         );
       const { profiles, project } = await preparationLibrary();
-      const currentProject = (application.preparations[0]?.snapshot as { project?: { provider: string; model: string; effort: string } } | undefined)?.project;
+      const currentProject = (
+        application.preparations[0]?.snapshot as
+          | { project?: { provider: string; model: string; effort: string } }
+          | undefined
+      )?.project;
       return NextResponse.json({
         ...application,
         profiles,
@@ -179,7 +184,16 @@ export const POST = route<RouteContext<"/api/preparation/[action]">>(
       if (Number(request.headers.get("content-length")) > 1024 * 1024)
         throw new RangeError("Request exceeds 1 MiB.");
       const input = await request.json();
-      if (action === "config") {
+      if (action === "document-mode") {
+        const { documentMode } = z
+          .object({ documentMode: documentModeSchema })
+          .parse(input);
+        await prisma.setting.upsert({
+          where: { key: "applicationDocumentMode" },
+          create: { key: "applicationDocumentMode", value: documentMode },
+          update: { value: documentMode },
+        });
+      } else if (action === "config") {
         const project = projectSchema.parse(input);
         await workerOperation(`config-${Date.now()}`, {
           kind: "inspect",
@@ -190,6 +204,24 @@ export const POST = route<RouteContext<"/api/preparation/[action]">>(
           create: { key: "latexProject", value: JSON.stringify(project) },
           update: { value: JSON.stringify(project) },
         });
+      } else if (action === "directories") {
+        const data = z
+          .object({ directory: z.string().min(1).optional() })
+          .parse(input);
+        return NextResponse.json(
+          await workerOperation(`directories-${Date.now()}`, {
+            kind: "directories",
+            ...data,
+          }),
+        );
+      } else if (action === "repository") {
+        const data = z.object({ repository: z.string().min(1) }).parse(input);
+        return NextResponse.json(
+          await workerOperation(`repository-${Date.now()}`, {
+            kind: "repository",
+            ...data,
+          }),
+        );
       } else if (action === "capabilities") {
         const { provider } = z
           .object({ provider: z.enum(["codex", "claude"]) })

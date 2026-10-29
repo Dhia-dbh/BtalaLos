@@ -7,6 +7,7 @@ import { createTestClient, resetDatabase } from "@/test/db";
 import { getSession } from "@/lib/auth/session";
 import { workerOperation } from "@/lib/preparation/worker";
 import { EMPTY_PROJECT } from "@/lib/preparation/types";
+import { loadDocumentMode } from "@/lib/preparation/data";
 import { saveBytes } from "@/lib/preparation/storage";
 import { GET, POST } from "./route";
 
@@ -85,6 +86,41 @@ it("requires an owner session and refuses cross-site mutations", async () => {
   vi.mocked(getSession).mockResolvedValueOnce(null);
   expect((await request("config", project)).status).toBe(401);
   expect(workerOperation).not.toHaveBeenCalled();
+});
+it("persists the document mode and rejects unknown modes", async () => {
+  expect(await loadDocumentMode()).toBe("NATIVE");
+  expect(
+    (await request("document-mode", { documentMode: "LATEX" })).status,
+  ).toBe(200);
+  expect(await loadDocumentMode()).toBe("LATEX");
+  expect(
+    (await request("document-mode", { documentMode: "OTHER" })).status,
+  ).toBe(422);
+  expect(await loadDocumentMode()).toBe("LATEX");
+  expect(
+    (await request("document-mode", { documentMode: "NATIVE" })).status,
+  ).toBe(200);
+  expect(await loadDocumentMode()).toBe("NATIVE");
+  expect(workerOperation).not.toHaveBeenCalled();
+});
+it("routes folder browsing and source discovery to the authenticated worker", async () => {
+  expect(
+    (await request("directories", { directory: "/some/folder" })).status,
+  ).toBe(200);
+  expect(workerOperation).toHaveBeenLastCalledWith(expect.any(String), {
+    kind: "directories",
+    directory: "/some/folder",
+  });
+  expect(
+    (await request("repository", { repository: "/another/repository" })).status,
+  ).toBe(200);
+  expect(workerOperation).toHaveBeenLastCalledWith(expect.any(String), {
+    kind: "repository",
+    repository: "/another/repository",
+  });
+  expect((await request("repository", { repository: "" })).status).toBe(422);
+  vi.mocked(getSession).mockResolvedValueOnce(null);
+  expect((await request("directories", {})).status).toBe(401);
 });
 it("validates project paths through the worker and stores the selected CLI settings", async () => {
   expect((await request("config", project)).status).toBe(200);

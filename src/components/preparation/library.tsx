@@ -5,12 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/toast";
 import { type BundleItem, type Project } from "@/lib/preparation/types";
 import { preparationRequest } from "./client";
 
-type LibraryData = {
+export type LibraryData = {
   project: Project;
   profiles: { id: string; name: string; version: number; items: unknown }[];
   documents: {
@@ -19,10 +18,14 @@ type LibraryData = {
     versions: { id: string; version: number; pages: number }[];
   }[];
 };
-export function PreparationLibrary({ initial }: { initial: LibraryData }) {
+export function PreparationLibrary({
+  initial,
+  inSettings = false,
+}: {
+  initial: LibraryData;
+  inSettings?: boolean;
+}) {
   const [data, setData] = useState(initial);
-  const [project, setProject] = useState(initial.project);
-  const [files, setFiles] = useState(initial.project.editablePaths.join("\n"));
   const [busy, setBusy] = useState(false);
   const [profileId, setProfileId] = useState("");
   const [name, setName] = useState("");
@@ -30,9 +33,6 @@ export function PreparationLibrary({ initial }: { initial: LibraryData }) {
     { role: "cv" },
     { role: "letter" },
   ]);
-  const [models, setModels] = useState<
-    { id: string; display_name: string; reasoning_efforts: string[] }[]
-  >([]);
   const refresh = async () => {
     const response = await fetch("/api/preparation/library");
     if (!response.ok) throw new Error("Could not refresh the library.");
@@ -53,10 +53,12 @@ export function PreparationLibrary({ initial }: { initial: LibraryData }) {
   };
   const selected = data.profiles.find((profile) => profile.id === profileId);
   return (
-    <div className="flex max-w-5xl flex-col gap-7 px-6 pb-16 sm:px-10">
+    <div
+      className={`flex max-w-5xl flex-col gap-7 ${inSettings ? "" : "px-6 pb-16 sm:px-10"}`}
+    >
       <p className="max-w-prose text-sm text-muted">
-        Build application packages from your native documents or your LaTeX
-        project.{" "}
+        Choose the PDFs and their order for each job profile. The generated CV
+        and cover letter are combined with your supporting documents.{" "}
         <Link href="/new/latex" className="underline">
           Create a LaTeX application
         </Link>
@@ -155,7 +157,7 @@ export function PreparationLibrary({ initial }: { initial: LibraryData }) {
         </ul>
       </Card>
       <Card className="flex flex-col gap-4">
-        <h2 className="font-serif text-section">Application profiles</h2>
+        <h2 className="font-serif text-section">Job profiles</h2>
         <Select
           label="Edit a profile"
           value={profileId}
@@ -300,177 +302,9 @@ export function PreparationLibrary({ initial }: { initial: LibraryData }) {
           )}
         </div>
       </Card>
-      <Card className="flex flex-col gap-5">
-        <h2 className="font-serif text-section">LaTeX project</h2>
-        <p className="text-sm text-muted">
-          Use a committed base revision. Each application gets a separate branch
-          and worktree. The host worker must allow this repository.
-        </p>
-        <div className="grid gap-4 sm:grid-cols-2">
-          {(
-            [
-              ["repository", "Git repository"],
-              ["baseRef", "Base reference"],
-              ["cvPath", "CV entrypoint (.tex)"],
-              ["letterPath", "Cover-letter entrypoint (.tex)"],
-              ["fileName", "Merged PDF filename"],
-            ] as const
-          ).map(([key, label]) => (
-            <Input
-              key={key}
-              label={label}
-              value={project[key]}
-              onChange={(event) =>
-                setProject({ ...project, [key]: event.target.value })
-              }
-            />
-          ))}
-          <Select
-            label="LaTeX engine"
-            value={project.engine}
-            onChange={(event) =>
-              setProject({
-                ...project,
-                engine: event.target.value as Project["engine"],
-              })
-            }
-          >
-            {["pdflatex", "xelatex", "lualatex"].map((engine) => (
-              <option key={engine}>{engine}</option>
-            ))}
-          </Select>
-        </div>
-        <Textarea
-          label="Editable source files"
-          hint="One repository-relative .tex path per line. Include both entrypoints."
-          rows={4}
-          value={files}
-          onChange={(event) => setFiles(event.target.value)}
-        />
-        <div className="grid items-end gap-4 sm:grid-cols-2">
-          <Select
-            label="Coding CLI"
-            value={project.provider}
-            onChange={(event) => {
-              setProject({
-                ...project,
-                provider: event.target.value as Project["provider"],
-                model: "",
-              });
-              setModels([]);
-            }}
-          >
-            <option value="codex">Codex</option>
-            <option value="claude">Claude Code</option>
-          </Select>
-          <Button
-            variant="secondary"
-            disabled={busy}
-            onClick={() =>
-              void work(async () => {
-                const result = await preparationRequest<{
-                  models: typeof models;
-                }>("capabilities", { provider: project.provider });
-                setModels(result.models);
-              })
-            }
-          >
-            Test CLI and load models
-          </Button>
-          {models.length ? (
-            <Select
-              label="Model"
-              value={project.model}
-              onChange={(event) =>
-                setProject({ ...project, model: event.target.value })
-              }
-            >
-              <option value="">Select model</option>
-              {models.map((model) => (
-                <option key={model.id} value={model.id}>
-                  {model.display_name}
-                </option>
-              ))}
-            </Select>
-          ) : (
-            <Input
-              label="Model"
-              value={project.model}
-              onChange={(event) =>
-                setProject({ ...project, model: event.target.value })
-              }
-            />
-          )}
-          <Select
-            label="Thinking effort"
-            value={project.effort}
-            onChange={(event) =>
-              setProject({
-                ...project,
-                effort: event.target.value as Project["effort"],
-              })
-            }
-          >
-            {(
-              models.find((model) => model.id === project.model)
-                ?.reasoning_efforts ?? [
-                "minimal",
-                "low",
-                "medium",
-                "high",
-                "xhigh",
-                "max",
-              ]
-            ).map((effort) => (
-              <option key={effort}>{effort}</option>
-            ))}
-          </Select>
-        </div>
-        <fieldset className="flex flex-col gap-2">
-          <legend className="mb-2 text-sm font-medium">
-            Applicant context
-          </legend>
-          <p className="mb-2 text-sm text-muted">
-            Only selected documents are used as additional applicant evidence.
-          </p>
-          {data.documents.map((document) => (
-            <label className="flex gap-2 text-sm" key={document.id}>
-              <input
-                type="checkbox"
-                checked={project.contextDocumentIds.includes(document.id)}
-                onChange={(event) =>
-                  setProject({
-                    ...project,
-                    contextDocumentIds: event.target.checked
-                      ? [...project.contextDocumentIds, document.id]
-                      : project.contextDocumentIds.filter(
-                          (id) => id !== document.id,
-                        ),
-                  })
-                }
-              />
-              {document.name}
-            </label>
-          ))}
-        </fieldset>
-        <Button
-          className="self-start"
-          disabled={busy}
-          onClick={() =>
-            void work(() =>
-              preparationRequest("config", {
-                ...project,
-                editablePaths: files
-                  .split("\n")
-                  .map((value) => value.trim())
-                  .filter(Boolean),
-              }),
-            )
-          }
-        >
-          Validate and save project
-        </Button>
-      </Card>
+      <Link href="/settings?section=latex" className="text-sm underline">
+        Configure your LaTeX project and default document mode in Settings
+      </Link>
     </div>
   );
 }

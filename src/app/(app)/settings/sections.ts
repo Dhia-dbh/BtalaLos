@@ -4,6 +4,8 @@ export const SETTINGS_SECTIONS = [
   { id: "jobs", label: "Job search" },
   { id: "agent", label: "Job agent" },
   { id: "documents", label: "Documents" },
+  { id: "latex", label: "LaTeX project" },
+  { id: "profiles", label: "Job profiles and bundles" },
   { id: "google", label: "Google" },
   { id: "claude", label: "Claude connector" },
   { id: "data", label: "Your data" },

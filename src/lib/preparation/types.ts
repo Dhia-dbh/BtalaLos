@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+export const documentModeSchema = z.enum(["NATIVE", "LATEX"]);
+export type DocumentMode = z.infer<typeof documentModeSchema>;
+
 export const projectSchema = z.object({
   repository: z.string().min(1),
   baseRef: z.string().min(1),

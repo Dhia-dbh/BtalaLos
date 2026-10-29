@@ -1,6 +1,7 @@
 import { PageHeader } from "@/components/page-header";
 import { NewLatex } from "@/components/preparation/new-latex";
 import { loadProject } from "@/lib/preparation/data";
+import { projectSchema } from "@/lib/preparation/types";
 import { prisma } from "@/lib/prisma";
 import { postingText } from "@/lib/job-search/search";
 import { getStartup, startupPostingText } from "@/lib/startups/store";
@@ -9,6 +10,7 @@ export default async function NewLatexPage({
   searchParams,
 }: PageProps<"/new/latex">) {
   const { posting, startup } = await searchParams;
+  const project = await loadProject();
   const profiles = await prisma.applicationProfile.findMany({
     select: { id: true, name: true },
     orderBy: { name: "asc" },
@@ -27,7 +29,8 @@ export default async function NewLatexPage({
       />
       <NewLatex
         profiles={profiles}
-        initialCli={await loadProject()}
+        initialCli={project}
+        configured={projectSchema.safeParse(project).success}
         initialPosting={
           source
             ? postingText(source)

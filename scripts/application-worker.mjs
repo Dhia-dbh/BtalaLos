@@ -17,7 +17,7 @@ export async function createWorker(config) {
     config.token?.length >= 32,
     "Set a private worker token of at least 32 characters.",
   );
-  config.repository = await realpath(config.repository);
+  if (config.repository) config.repository = await realpath(config.repository);
   const operations = await privateDirectory(path.join(config.data, "receipts"));
   const controllers = new Map();
   const accepted = new Map();

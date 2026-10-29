@@ -25,3 +25,15 @@ Light and dark screenshots were inspected. At 390 px width, the existing expande
 Temporary validation artifacts are available in `/tmp/dossier-preparation-{dark,light,mobile}.png`, `/tmp/dossier-preparation-{cv,letter,merged}.pdf`, and `/tmp/dossier-preparation-{cv,letter}.png`. They contain public test fixtures.
 
 The feature has not been deployed. The production migration, private host worker, authenticated CLI access, project configuration, and desktop folder opening require the setup described in [Application preparation](application-preparation.md). No host service was installed or enabled during validation.
+
+## Settings and PyMuPDF follow-up
+
+The follow-up exposes the project configuration and ordered job profiles in Settings. A saved LaTeX preference now controls the new-application page and first-run guidance. PDF merging uses the pinned PyMuPDF dependency through the host worker.
+
+Validation passed: 60 targeted UI/backend tests, 5 worker tests, and 4 browser checks including authentication setup. ESLint, TypeScript, and the production build passed. The browser scenario verified persistence after reload, the explicit native-mode override, CV/academic-records/letter order, retained PDF links, and both LaTeX and native packages. Light and dark settings screenshots were inspected. Tests used disposable databases and fixture CLIs; the running development database was not changed. The development container uses the edited checkout; no production image or host worker service was deployed.
+
+## Repository picker follow-up
+
+The fixed host repository allowlist was removed. An authenticated folder dialog now browses the worker computer. Selecting a Git repository loads its regular `.tex` files recursively into the CV, cover-letter, and editable-source selectors. The run snapshot supplies the repository for worktree creation; existing worktrees are checked against their Git common directory before reuse.
+
+Validation passed: 20 targeted UI/API/workflow tests, 6 worker tests, and 2 browser checks including authentication setup. ESLint and the production build with TypeScript checks passed. The browser fixture started the worker with a different initial repository, selected the intended project through the dialog, saved and reloaded source selections, and completed LaTeX compilation and PDF bundling. Repository-picker and settings screenshots were inspected. The installed host worker was restarted, and authenticated directory browsing was verified from the running Dossier container. No live AI generation or owner-repository edits were performed.

@@ -1,6 +1,18 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
-import { EMPTY_PROJECT, projectSchema, type Project } from "./types";
+import {
+  documentModeSchema,
+  EMPTY_PROJECT,
+  projectSchema,
+  type Project,
+} from "./types";
+
+export async function loadDocumentMode() {
+  const row = await prisma.setting.findUnique({
+    where: { key: "applicationDocumentMode" },
+  });
+  return row ? documentModeSchema.parse(row.value) : ("NATIVE" as const);
+}
 
 export async function loadProject(): Promise<Project> {
   const row = await prisma.setting.findUnique({

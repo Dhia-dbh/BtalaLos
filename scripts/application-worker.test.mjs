@@ -1,6 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, writeFile, readFile, rm, symlink } from "node:fs/promises";
+import {
+  mkdtemp,
+  writeFile,
+  readFile,
+  rm,
+  symlink,
+  mkdir,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { execute } from "./application-worker/operations.mjs";
@@ -59,6 +66,7 @@ test("isolates Git edits, preserves exact source bytes, compiles and exports imm
   assert.equal(inspected.files["cv.tex"], tex);
   await operation({
     kind: "worktree",
+    repository: repo,
     applicationId: "app1",
     commit: inspected.commit,
   });
@@ -122,7 +130,12 @@ test("isolates Git edits, preserves exact source bytes, compiles and exports imm
 test("rejects traversal, symbolic links, unauthorized replacements and modified PDF bytes", async (t) => {
   const { config, repo, operation } = await fixture(t);
   const commit = await command("git", ["-C", repo, "rev-parse", "HEAD"]);
-  await operation({ kind: "worktree", applicationId: "app1", commit });
+  await operation({
+    kind: "worktree",
+    repository: repo,
+    applicationId: "app1",
+    commit,
+  });
   await symlink(
     "/etc/passwd",
     path.join(config.data, "worktrees", "app1", "unsafe.tex"),
@@ -177,7 +190,12 @@ test("rejects traversal, symbolic links, unauthorized replacements and modified 
 test("rejects source or branch changes before compilation", async (t) => {
   const { config, repo, operation } = await fixture(t);
   const commit = await command("git", ["-C", repo, "rev-parse", "HEAD"]);
-  await operation({ kind: "worktree", applicationId: "app1", commit });
+  await operation({
+    kind: "worktree",
+    repository: repo,
+    applicationId: "app1",
+    commit,
+  });
   const root = path.join(config.data, "worktrees", "app1");
   await writeFile(path.join(root, "cv.tex"), tex + "% manual change");
   await assert.rejects(
@@ -271,5 +289,92 @@ test("authenticates HTTP operations and replays durable successful receipts afte
       })
     ).status,
     422,
+  );
+});
+
+test("discovers nested TeX sources and uses the selected repository rather than the initial folder", async (t) => {
+  const { config, repo, root, operation } = await fixture(t);
+  const other = path.join(root, "other project");
+  await command("git", ["clone", repo, other]);
+  await mkdir(path.join(other, "sections"));
+  await writeFile(
+    path.join(other, "sections", "skills.tex"),
+    "Verified skills",
+  );
+  await writeFile(path.join(other, "notes.txt"), "Not a source");
+  await symlink("/etc/passwd", path.join(other, "unsafe.tex"));
+  const listing = await operation(
+    { kind: "repository", repository: other },
+    "list",
+  );
+  assert.equal(listing.repository, other);
+  assert.deepEqual(listing.files, [
+    "cv.tex",
+    "letter.tex",
+    "sections/skills.tex",
+  ]);
+  const folders = await operation(
+    { kind: "directories", directory: root },
+    "folders",
+  );
+  assert.ok(folders.folders.some((folder) => folder.path === other));
+  assert.equal(folders.isRepository, false);
+  const selected = await operation(
+    { kind: "directories", directory: other },
+    "selected",
+  );
+  assert.equal(selected.isRepository, true);
+  await assert.rejects(
+    operation(
+      { kind: "repository", repository: path.join(other, "sections") },
+      "subfolder",
+    ),
+    /repository root/,
+  );
+  const inspected = await operation(
+    {
+      kind: "inspect",
+      repository: other,
+      baseRef: "HEAD",
+      cvPath: "cv.tex",
+      letterPath: "letter.tex",
+      editablePaths: ["cv.tex", "letter.tex"],
+    },
+    "inspect-other",
+  );
+  await operation(
+    {
+      kind: "worktree",
+      repository: other,
+      applicationId: "other-app",
+      commit: inspected.commit,
+    },
+    "other-worktree",
+  );
+  assert.equal(
+    await command("git", ["-C", repo, "branch", "--list", "dossier-other-app"]),
+    "",
+  );
+  assert.equal(
+    await command("git", [
+      "-C",
+      other,
+      "branch",
+      "--list",
+      "dossier-other-app",
+    ]),
+    "+ dossier-other-app",
+  );
+  await assert.rejects(
+    operation(
+      {
+        kind: "worktree",
+        repository: config.repository,
+        applicationId: "other-app",
+        commit: inspected.commit,
+      },
+      "wrong-repository",
+    ),
+    /belongs to another repository/,
   );
 });

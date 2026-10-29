@@ -7,7 +7,7 @@ export default async function PreparationPage() {
     <>
       <PageHeader
         title="Application preparation"
-        description="Your LaTeX project, supporting PDFs, and ordered application profiles."
+        description="Your supporting PDFs and ordered job profiles. Configure your LaTeX project in Settings."
       />
       <PreparationLibrary initial={await preparationLibrary()} />
     </>

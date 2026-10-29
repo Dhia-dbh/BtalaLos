@@ -1,6 +1,13 @@
-import { readFile, writeFile, lstat } from "node:fs/promises";
+import {
+  readFile,
+  writeFile,
+  lstat,
+  realpath,
+  readdir,
+} from "node:fs/promises";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
+import { homedir } from "node:os";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { checkLogin, loadModelCatalog, runCodex } from "../codex-bridge.mjs";
 import {
   atomic,
@@ -86,11 +93,44 @@ async function filesAt(root, files) {
   }
   return contents;
 }
-function checkProject(config, input) {
+async function repositoryRoot(repository, signal) {
   requireValue(
-    input.repository === config.repository,
-    "Repository differs from the host worker allowlist.",
+    typeof repository === "string" && path.isAbsolute(repository),
+    "Choose an absolute Git repository path on the worker computer.",
   );
+  const root = await realpath(repository);
+  const top = await command(
+    "git",
+    ["-C", root, "rev-parse", "--show-toplevel"],
+    { signal },
+  );
+  requireValue(
+    root === top,
+    "Choose the Git repository root, not a subfolder.",
+  );
+  return root;
+}
+async function checkOrigin(root, repository, signal) {
+  const common = async (directory) =>
+    realpath(
+      await command(
+        "git",
+        [
+          "-C",
+          directory,
+          "rev-parse",
+          "--path-format=absolute",
+          "--git-common-dir",
+        ],
+        { signal },
+      ),
+    );
+  requireValue(
+    (await common(root)) === (await common(repository)),
+    "This application's worktree belongs to another repository. Create a new application for the selected project.",
+  );
+}
+function checkProject(input) {
   requireValue(
     Array.isArray(input.editablePaths) &&
       input.editablePaths.length > 0 &&
@@ -110,17 +150,56 @@ export async function execute(config, input, signal, operationId) {
   );
   if (input.kind === "capabilities")
     return capabilities(config, input.provider, signal);
-  if (input.kind === "inspect") {
-    checkProject(config, input);
-    const repository = await command(
-      "git",
-      ["-C", config.repository, "rev-parse", "--show-toplevel"],
-      { signal },
-    );
+  if (input.kind === "directories") {
+    const requested = input.directory ?? config.repository ?? homedir();
     requireValue(
-      repository === config.repository,
-      "Configure a Git repository root.",
+      typeof requested === "string" && path.isAbsolute(requested),
+      "Choose an absolute folder path.",
     );
+    const directory = await realpath(requested);
+    const entries = await readdir(directory, { withFileTypes: true });
+    const marker = await lstat(path.join(directory, ".git")).catch((error) => {
+      if (error.code === "ENOENT") return null;
+      throw error;
+    });
+    return {
+      directory,
+      parent: path.dirname(directory),
+      isRepository: Boolean(marker && !marker.isSymbolicLink()),
+      folders: entries
+        .filter((entry) => entry.isDirectory() && entry.name !== ".git")
+        .map((entry) => ({
+          name: entry.name,
+          path: path.join(directory, entry.name),
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    };
+  }
+  if (input.kind === "repository") {
+    const repository = await repositoryRoot(input.repository, signal);
+    const files = [];
+    let entries = 0;
+    async function scan(relative) {
+      signal?.throwIfAborted();
+      for (const entry of await readdir(path.join(repository, relative), {
+        withFileTypes: true,
+      })) {
+        requireValue(
+          ++entries <= 20000,
+          "Repository is too large to list its source files.",
+        );
+        if (entry.name === ".git" || entry.isSymbolicLink()) continue;
+        const file = path.join(relative, entry.name);
+        if (entry.isDirectory()) await scan(file);
+        else if (entry.isFile() && file.endsWith(".tex")) files.push(file);
+      }
+    }
+    await scan("");
+    return { repository, files: files.sort() };
+  }
+  if (input.kind === "inspect") {
+    checkProject(input);
+    const repository = await repositoryRoot(input.repository, signal);
     requireValue(
       typeof input.baseRef === "string" && !input.baseRef.startsWith("-"),
       "Invalid base reference.",
@@ -129,7 +208,7 @@ export async function execute(config, input, signal, operationId) {
       "git",
       [
         "-C",
-        config.repository,
+        repository,
         "rev-parse",
         "--verify",
         "--end-of-options",
@@ -139,14 +218,14 @@ export async function execute(config, input, signal, operationId) {
     );
     const files = {};
     for (const relative of input.editablePaths) {
-      await inside(config.repository, relative);
+      await inside(repository, relative);
       requireValue(
         relative.endsWith(".tex"),
         "Editable sources must be .tex files.",
       );
       const mode = await command(
         "git",
-        ["-C", config.repository, "ls-tree", commit, "--", relative],
+        ["-C", repository, "ls-tree", commit, "--", relative],
         { signal },
       );
       requireValue(
@@ -155,7 +234,7 @@ export async function execute(config, input, signal, operationId) {
       );
       files[relative] = await command(
         "git",
-        ["-C", config.repository, "show", `${commit}:${relative}`],
+        ["-C", repository, "show", `${commit}:${relative}`],
         { signal, trim: false },
       );
       requireValue(
@@ -163,7 +242,12 @@ export async function execute(config, input, signal, operationId) {
         "Source exceeds 1 MiB.",
       );
     }
-    if (input.applicationId)
+    if (input.applicationId) {
+      await checkOrigin(
+        await workspace(config, input.applicationId),
+        repository,
+        signal,
+      );
       return {
         commit: await command(
           "git",
@@ -180,9 +264,11 @@ export async function execute(config, input, signal, operationId) {
           input.editablePaths,
         ),
       };
+    }
     return { commit, files };
   }
   if (input.kind === "worktree") {
+    const repository = await repositoryRoot(input.repository, signal);
     requireValue(
       /^[a-f0-9]{40,64}$/.test(input.commit),
       "Invalid source commit.",
@@ -195,19 +281,20 @@ export async function execute(config, input, signal, operationId) {
       if (error.code === "ENOENT") return null;
       throw error;
     });
-    if (info)
+    if (info) {
+      await checkOrigin(location, repository, signal);
       requireValue(
         (await command("git", ["-C", location, "branch", "--show-current"], {
           signal,
         })) === branch,
         "Existing worktree has a different branch.",
       );
-    else
+    } else
       await command(
         "git",
         [
           "-C",
-          config.repository,
+          repository,
           "worktree",
           "add",
           "-b",
@@ -409,7 +496,15 @@ export async function execute(config, input, signal, operationId) {
         text: await command("pdftotext", [sources[0], "-"], { signal }),
       };
     const file = path.join(temporary, "package.pdf");
-    await command("pdfunite", [...sources, file], { signal });
+    await command(
+      process.env.DOSSIER_PYTHON_BIN || "python3",
+      [
+        fileURLToPath(new URL("./merge_pdfs.py", import.meta.url)),
+        file,
+        ...sources,
+      ],
+      { signal },
+    );
     return pdf(file, signal, MAX_PACKAGE);
   }
   if (input.kind === "export" || input.kind === "reveal") {

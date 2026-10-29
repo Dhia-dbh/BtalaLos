@@ -50,6 +50,11 @@ test.beforeAll(async () => {
     ["-interaction=nonstopmode", "-halt-on-error", "records.tex"],
     { cwd: repository },
   );
+  await command("git", [
+    "clone",
+    repository,
+    path.join(root, "initial-repository"),
+  ]);
   const agent = path.resolve("scripts/application-worker/fixtures/agent.mjs");
   worker = spawn(
     process.execPath,
@@ -58,7 +63,7 @@ test.beforeAll(async () => {
       env: {
         ...process.env,
         DOSSIER_WORKER_TOKEN: "dossier-e2e-worker-token-dossier-e2e-worker",
-        DOSSIER_WORKER_REPOSITORY: repository,
+        DOSSIER_WORKER_REPOSITORY: path.join(root, "initial-repository"),
         DOSSIER_WORKER_DATA_DIR: path.join(root, "worker"),
         DOSSIER_WORKER_EXPORT_DIR: path.join(root, "exports"),
         DOSSIER_CODEX_BIN: agent,
@@ -98,7 +103,10 @@ test("prepares a LaTeX application and a native package through the interface", 
   page,
 }) => {
   test.setTimeout(120_000);
-  await page.goto("/preparation");
+  await page.goto("/settings");
+  await page
+    .getByRole("link", { name: "Job profiles and bundles", exact: true })
+    .click();
   await page
     .getByLabel("Document name", { exact: true })
     .fill("Academic records");
@@ -114,18 +122,42 @@ test("prepares a LaTeX application and a native package through the interface", 
   await page
     .getByRole("combobox", { name: "Document 3", exact: true })
     .selectOption({ label: "Academic records" });
+  await page
+    .getByRole("button", { name: "Move document 3 up", exact: true })
+    .click();
   await page.getByRole("button", { name: "Save profile", exact: true }).click();
   await expect(page.getByLabel("Edit a profile").locator("option")).toHaveCount(
     2,
   );
-  await page.getByLabel("Git repository", { exact: true }).fill(repository);
-  await page.getByLabel("CV entrypoint (.tex)", { exact: true }).fill("cv.tex");
+  await page.getByRole("link", { name: "LaTeX project", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Browse repositories", exact: true })
+    .click();
+  await expect(page.getByLabel("Folder path", { exact: true })).toHaveValue(
+    path.join(root, "initial-repository"),
+  );
+  await page.getByLabel("Folder path", { exact: true }).fill(repository);
+  await page.getByRole("button", { name: "Open folder", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Use this repository", exact: true }),
+  ).toBeEnabled();
+  await page.screenshot({
+    path: "/tmp/dossier-repository-picker.png",
+    animations: "disabled",
+  });
+  await page
+    .getByRole("button", { name: "Use this repository", exact: true })
+    .click();
+  await expect(page.getByRole("dialog")).not.toBeVisible();
+  await page
+    .getByLabel("CV entrypoint (.tex)", { exact: true })
+    .selectOption("cv.tex");
   await page
     .getByLabel("Cover-letter entrypoint (.tex)", { exact: true })
-    .fill("letter.tex");
+    .selectOption("letter.tex");
   await page
     .getByLabel("Editable source files", { exact: true })
-    .fill("cv.tex\nletter.tex");
+    .selectOption(["cv.tex", "letter.tex"]);
   await page
     .getByRole("button", { name: "Test CLI and load models", exact: true })
     .click();
@@ -139,8 +171,52 @@ test("prepares a LaTeX application and a native package through the interface", 
     .getByRole("button", { name: "Validate and save project", exact: true })
     .click();
   expect((await saved).status()).toBe(200);
+  const modeSaved = page.waitForResponse((response) =>
+    response.url().endsWith("/api/preparation/document-mode"),
+  );
+  await page
+    .getByLabel("Default document mode", { exact: true })
+    .selectOption("LATEX");
+  expect((await modeSaved).status()).toBe(200);
+  await page.reload();
+  await expect(
+    page.getByLabel("Default document mode", { exact: true }),
+  ).toHaveValue("LATEX");
+  await page.waitForLoadState("networkidle");
+  await expect(
+    page.getByLabel("CV entrypoint (.tex)", { exact: true }).locator("option"),
+  ).toHaveCount(4);
+  await expect(
+    page.getByLabel("Editable source files", { exact: true }),
+  ).toHaveValues(["cv.tex", "letter.tex"]);
+  await expect(page.getByLabel("Git repository", { exact: true })).toHaveValue(
+    repository,
+  );
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+  await page.emulateMedia({ colorScheme: "light" });
+  await page.screenshot({
+    path: "/tmp/dossier-project-settings-light.png",
+    fullPage: true,
+    animations: "disabled",
+  });
+  await page.emulateMedia({ colorScheme: "dark" });
+  await page.screenshot({
+    path: "/tmp/dossier-project-settings-dark.png",
+    fullPage: true,
+    animations: "disabled",
+  });
+  await page.emulateMedia({ colorScheme: "light" });
   await page.goto("/new");
-  await page.getByLabel("Document mode", { exact: true }).selectOption("LATEX");
+  await expect(page).toHaveURL(/\/new\/latex/);
+  await page
+    .getByLabel("Document mode", { exact: true })
+    .selectOption("NATIVE");
+  await expect(page).toHaveURL(/\/new\?mode=NATIVE/);
+  await expect(page.getByLabel("Document mode", { exact: true })).toHaveValue(
+    "NATIVE",
+  );
+  await page.goto("/new");
   await expect(page).toHaveURL(/\/new\/latex/);
   await page
     .getByLabel("Job posting", { exact: true })
@@ -202,9 +278,9 @@ test("prepares a LaTeX application and a native package through the interface", 
     );
   }
   const text = await command("pdftotext", [path.join(root, "merged.pdf"), "-"]);
-  expect(text.indexOf("CV:")).toBeLessThan(text.indexOf("Letter:"));
-  expect(text.indexOf("Letter:")).toBeLessThan(
-    text.indexOf("Academic records"),
+  expect(text.indexOf("CV:")).toBeLessThan(text.indexOf("Academic records"));
+  expect(text.indexOf("Academic records")).toBeLessThan(
+    text.indexOf("Letter:"),
   );
   expect(
     await command("pdfinfo", ["-url", path.join(root, "merged.pdf")]),

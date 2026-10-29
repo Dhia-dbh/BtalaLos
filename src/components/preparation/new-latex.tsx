@@ -16,11 +16,13 @@ export function NewLatex({
   initialPosting = "",
   initialUrl = "",
   initialCli = EMPTY_PROJECT,
+  configured,
 }: {
   profiles: { id: string; name: string }[];
   initialPosting?: string;
   initialUrl?: string;
   initialCli?: CliOptions;
+  configured: boolean;
 }) {
   const router = useRouter();
   const [cli, setCli] = useState<CliOptions>(initialCli);
@@ -55,12 +57,22 @@ export function NewLatex({
       <Select
         label="Document mode"
         value="LATEX"
-        onChange={() => router.push("/new")}
+        onChange={() => {
+          const query = new URLSearchParams(window.location.search);
+          query.set("mode", "NATIVE");
+          router.push(`/new?${query}`);
+        }}
       >
         <option value="NATIVE">Dossier documents</option>
         <option value="LATEX">LaTeX project</option>
       </Select>
       <Card className="flex flex-col gap-4">
+        {!configured && (
+          <p role="status" className="text-sm text-muted">
+            Configure and save your existing LaTeX project in Settings before
+            preparing an application.
+          </p>
+        )}
         <Textarea
           label="Job posting"
           rows={13}
@@ -100,11 +112,17 @@ export function NewLatex({
           letter, merged PDF, and an editable email draft.
         </p>
         <div className="flex flex-wrap items-center gap-4">
-          <Button type="submit" disabled={busy || !profiles.length}>
+          <Button
+            type="submit"
+            disabled={busy || !profiles.length || !configured}
+          >
             {busy ? "Starting preparation…" : "Prepare application"}
           </Button>
-          <Link href="/preparation" className="text-sm underline">
-            Configure project and profiles
+          <Link href="/settings?section=latex" className="text-sm underline">
+            Configure LaTeX project
+          </Link>
+          <Link href="/settings?section=profiles" className="text-sm underline">
+            Manage job profiles and PDF bundles
           </Link>
         </div>
       </Card>

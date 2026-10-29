@@ -471,6 +471,7 @@ async function runPreparation(
       await step("Create Git worktree", () =>
         operation("worktree", {
           kind: "worktree",
+          repository: snapshot.project.repository,
           applicationId,
           commit: snapshot.commit,
         }),

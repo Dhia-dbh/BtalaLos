@@ -4,22 +4,31 @@ This branch adds Git-based LaTeX preparation alongside Dossier's native document
 
 ## Host worker
 
-Dossier stays in Docker. A separate private Node.js worker runs on the Linux computer holding the LaTeX Git repository and the authenticated coding CLIs. It uses Git, `latexmk`, the chosen TeX engine, `pdfinfo`, `pdftotext`, `pdfunite`, and optionally `gdbus` for the folder button. Install the TeX packages and fonts your project requires. Codex and Claude Code must be installed and signed in with subscription accounts under the worker's user. Node 22 or later runs the host worker; Dossier itself requires Node 24.
+Dossier stays in Docker. A separate private Node.js worker runs on the Linux computer holding the LaTeX Git repository and the authenticated coding CLIs. It uses Git, `latexmk`, the chosen TeX engine, `pdfinfo`, `pdftotext`, Python with PyMuPDF, and optionally `gdbus` for the folder button. Install the TeX packages and fonts your project requires. Codex and Claude Code must be installed and signed in with subscription accounts under the worker's user. Node 22 or later runs the host worker; Dossier itself requires Node 24.
+
+Install the worker's Python dependency in a dedicated environment:
+
+```sh
+python3 -m venv "$HOME/.local/share/dossier-worker-python"
+"$HOME/.local/share/dossier-worker-python/bin/pip" install -r scripts/application-worker/requirements.txt
+```
 
 Create `~/.config/dossier-application-worker.env` with mode 600:
 
 ```dotenv
 DOSSIER_WORKER_TOKEN=REPLACE_WITH_A_RANDOM_TOKEN_OF_AT_LEAST_32_CHARACTERS
-DOSSIER_WORKER_REPOSITORY=/absolute/path/to/your/latex-repository
+# Optional starting folder for the repository picker:
+DOSSIER_WORKER_REPOSITORY=/absolute/path/to/start-browsing
 DOSSIER_WORKER_DATA_DIR=/absolute/path/to/private/dossier-worker-data
 DOSSIER_WORKER_EXPORT_DIR=/absolute/path/to/application-folders
 DOSSIER_WORKER_SCRIPT=/absolute/path/to/dossier/scripts/application-worker.mjs
 DOSSIER_CODEX_BIN=/absolute/path/to/codex
 DOSSIER_CLAUDE_BIN=/absolute/path/to/claude
+DOSSIER_PYTHON_BIN=/home/YOUR_USER/.local/share/dossier-worker-python/bin/python
 PATH=/directory/containing/node:/usr/local/bin:/usr/bin:/bin
 ```
 
-Generate the token with `openssl rand -hex 32`. The repository must be a Git repository root. The worker accepts only that repository, validates relative paths, and rejects symbolic links. Choose private data and export directories separate from the repository and from Job Application Automation's managed worktrees.
+Generate the token with `openssl rand -hex 32`. The repository is selected in Settings through an authenticated folder picker. `DOSSIER_WORKER_REPOSITORY` only sets its initial folder; it is not an allowlist. It may be omitted. The worker validates each selected Git repository root and rejects symbolic links in editable source paths. Choose private data and export directories separate from the repository and from Job Application Automation's managed worktrees.
 
 Run in the foreground:
 
@@ -51,13 +60,15 @@ Build the Dossier image from this branch. Apply Prisma migrations through the us
 
 ## Configure and use
 
-1. Open **Preparation** in the sidebar. Upload supporting PDFs and create named application profiles. Each profile contains exactly one CV and one cover letter, plus the selected supporting documents in the chosen order. Use the up/down controls to change that order.
-2. Configure the Git repository, committed base reference, CV and letter entrypoints, editable `.tex` paths, TeX engine, and final filename. Select the CLI, load its models, and choose a supported thinking effort. Select applicant-context PDFs explicitly. Save the project after validation.
-3. In **New application**, choose **LaTeX project**, select a profile and the CLI/model for this run, paste the posting, and start preparation. The posting is saved before preparation starts. Native applications can select a package profile while retaining the existing analysis/editor flow.
+1. Open **Settings → Job profiles and bundles** (also available under **Preparation**). Upload supporting PDFs and create named job profiles, such as PhD. Each profile contains exactly one CV and one cover letter, plus the selected supporting documents in the chosen order. Use the up/down controls to change that order.
+2. Open **Settings → LaTeX project**. Select **Existing LaTeX project** as the default document mode. Click **Browse repositories** to open a folder picker for the worker computer. Open a Git repository root and click **Use this repository**. Select the CV and letter entrypoints and allowed editable files from the `.tex` lists, including nested folders. The picker reads the repository in place; it does not upload or copy it. Set the committed base reference, TeX engine, and final filename. Select the CLI, load its models, and choose a supported thinking effort. Select applicant-context PDFs explicitly. Save the project after validation.
+3. **New application** now opens the LaTeX flow by default. Select a profile and the CLI/model for this run, paste the posting, and start preparation. The posting is saved before preparation starts. Native applications can select a package profile while retaining the existing analysis/editor flow.
 4. Preparation automatically analyzes the posting, creates a `dossier-<application-id>` branch and isolated worktree, tailors authorized source files, compiles both PDFs, merges the package, exports it, and writes a local email draft. The original checkout is not switched or edited. Generated source changes remain in the worktree; no Git commit is created automatically.
 5. Each LaTeX PDF must have exactly one page. Up to two additional content-shortening rounds are allowed. Continued overflow stops preparation before package publication and drafting. Native documents retain Dossier's existing length settings.
 6. Review PDFs, saved sources, diffs, and compiler logs. Use revision instructions for a fresh AI preparation. Direct worktree edits are read when starting a fresh revision; unexpected changes during a run stop the affected step.
 7. Edit or copy the recipient, subject, and body. Download the merged PDF or use the folder button. Gmail sending uses the reviewed package and requires explicit confirmation. Drafting never marks the application as sent.
+
+PyMuPDF combines the selected PDFs in profile order, preserving links and annotations. The worker invokes the Python executable selected by `DOSSIER_PYTHON_BIN` (default `python3`); there is no alternate merge engine.
 
 The final filename starts as `BenHamouda_Dhia.pdf` and is configurable. The worker writes the current file plus `-v1`, `-v2`, and later archives under a branch-named folder for LaTeX applications, or `native-<application-id>` for native applications. Folder opening always occurs on the Linux host, including when browsing remotely. A desktop-session error does not prevent PDF download.
 
@@ -67,7 +78,7 @@ Replacing a supporting document creates a new version and retains its profile se
 
 **Regenerate merged PDF** uses the previous package's CV and cover-letter PDFs with the current profile and supporting-document versions. It does not run AI or LaTeX. **Build document package** renders the current native documents. **Prepare with AI** starts a fresh LaTeX revision.
 
-Preparation runs keep stage timestamps, durations, errors, attempts, and the exact LaTeX generation requests. Changing the CLI for one preparation does not change the project default. Retry reuses completed stages and the original snapshot. A fresh preparation uses current configuration and sources. Restarts mark unfinished runs as failed; they do not automatically replay work. The previous successful package remains downloadable after a later failure. For missing worktrees or conflicting Git branches, restore or reconcile host Git state before retrying.
+Preparation runs keep stage timestamps, durations, errors, attempts, and the exact LaTeX generation requests. Changing the CLI for one preparation does not change the project default. Retry reuses completed stages and the original snapshot. A fresh preparation uses current configuration and sources. Each run retains its repository choice. An application's existing worktree cannot be reused with another repository; create a new application when switching projects. Restarts mark unfinished runs as failed; they do not automatically replay work. The previous successful package remains downloadable after a later failure. For missing worktrees or conflicting Git branches, restore or reconcile host Git state before retrying.
 
 ## Backup and restore
 
