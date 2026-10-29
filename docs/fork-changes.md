@@ -1,10 +1,10 @@
 # BtalaLos fork change review
 
-Reviewed on **29 October 2026**, against committed source through `31e34ed` and the accompanying documentation changes. This is a source and history review, not a new runtime validation of the application.
+Reviewed on **29 October 2026**, against application code through `31e34ed`, documentation commits `aad94e8` and `c65eb56`, and the accompanying review changes. This is a source and history review, not a new runtime validation of the application.
 
 ## Baseline and commits
 
-The last upstream commit before the fork is **Dossier 1.9.2**, `5446f4cb117b0e4b4bbf26c6156c97406b0a4ff2`, by Alien. The fork retains that history. Between this baseline and `31e34ed`, the diff contains **125 changed files, 8,400 insertions, and 141 deletions**, before this documentation update.
+The last upstream commit before the fork is **Dossier 1.9.2**, `5446f4cb117b0e4b4bbf26c6156c97406b0a4ff2`, by Alien. The fork retains that history. The application diff (`5446f4c..31e34ed`) contains **125 changed files, 8,400 insertions, and 141 deletions**, before the documentation changes.
 
 | Commit | Date | Contribution |
 | --- | --- | --- |
@@ -14,6 +14,8 @@ The last upstream commit before the fork is **Dossier 1.9.2**, `5446f4cb117b0e4b
 | `36358eb` | 2026-10-29 | BtalaLos display name, brand mark, and replacement icons |
 | `6e45d95`, `d18f47b` | 2026-10-29 | Merge the workflow and branding work into the main history |
 | `31e34ed` | 2026-10-29 | Set the package version to 1.10.0 |
+| `aad94e8` | 2026-10-29 | README introducing BtalaLos, crediting Dossier, and documenting fork features and setup |
+| `c65eb56` | 2026-10-29 | Project licensing notice, preserved AGPLv3 text, attribution notice, and fork review |
 
 The substantive fork commits above are attributed to Dhia Ben Hamouda in Git. The version number identifies this fork; it is not evidence of an upstream Dossier release.
 
@@ -73,7 +75,6 @@ The documentation now identifies BtalaLos and its Dossier origin. Remaining upst
 
 | Location | Current behavior | Publication action |
 | --- | --- | --- |
-| Git `origin` | Points to `AienTech/dossier` | Configure the fork's own push destination; retain upstream separately if desired |
 | `src/lib/releases.ts` | Source/sidebar links and update checks point to Dossier | Point fork source and updates to the actual BtalaLos repository and releases; keep a separate upstream credit |
 | `compose.production.yml` | Defaults to `ghcr.io/aientech/dossier:latest` | Use a fork image; README instructions explicitly build and select `btalalos:local` |
 | `package.json` | Package name remains `dossier.aien.me` | Review the package identity separately from the already updated UI name |
@@ -81,4 +82,4 @@ The documentation now identifies BtalaLos and its Dossier origin. Remaining upst
 | `PRIVACY.md`, `SECURITY.md`, Settings, and other links | Upstream policies, wiki, and contact details remain | Publish fork-specific policies and support routes that cover the host services and saved artifacts |
 | `.github/workflows/release.yml` and `site/` | Inherited release titles and website branding | Review before publishing releases or enabling the website workflow |
 
-The new public repository URL was not supplied, so no fork URL or registry image has been invented. These documentation changes do not modify the runtime source link. Before offering a hosted modified version to users, ensure the interface prominently offers the corresponding source of the version actually running, as required by [AGPLv3 section 13](../LICENSE). A link only to the original Dossier repository does not provide the fork's source.
+Git `origin` now points to [Dhia-dbh/BtalaLos](https://github.com/Dhia-dbh/BtalaLos), and the README links to this fork's source. No published fork image is assumed; the setup builds locally. These documentation changes do not modify the runtime source link. Before offering a hosted modified version to users, ensure the interface prominently offers the corresponding source of the version actually running, as required by [AGPLv3 section 13](../LICENSE). A link only to the original Dossier repository does not provide the fork's source.

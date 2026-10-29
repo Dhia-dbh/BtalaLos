@@ -15,6 +15,8 @@ The original project supplies the application manager, native document editors a
 
 Copyright (C) 2026 Dhia Ben Hamouda, for modifications authored by Dhia Ben Hamouda.
 
+Fork repository: <https://github.com/Dhia-dbh/BtalaLos>.
+
 The fork commits dated **29 October 2026** introduce:
 
 - A private host HTTP bridge to the authenticated Codex CLI, with model and thinking-effort settings.
