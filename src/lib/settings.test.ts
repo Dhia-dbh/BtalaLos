@@ -1,3 +1,5 @@
+import { DEFAULT_GENERATION_PROMPTS } from "@/lib/generation-prompts";
+
 import { describe, expect, it } from "vitest";
 
 import { DateFormat } from "@/generated/prisma/enums";
@@ -28,6 +30,7 @@ describe("document dates", () => {
 describe("stored settings", () => {
   it("reads an empty table as the prototype's defaults", () => {
     expect(settingsFromRows([])).toEqual({
+      ...DEFAULT_GENERATION_PROMPTS,
       provider: null,
       baseUrl: null,
       model: null,

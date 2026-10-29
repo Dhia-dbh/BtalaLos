@@ -191,7 +191,20 @@ async function finished(id: string) {
 describe("application preparation integration", () => {
   it("prepares isolated one-page LaTeX documents, ordered PDFs, source diffs and an unsent email", async () => {
     const { application } = await createApplication();
+    await db.fact.create({ data: { text: "Studied graph algorithms at university.", sort: 0 } });
+    await db.setting.createMany({ data: [
+      { key: "latexCvPrompt", value: "CV_CUSTOM: emphasise relevant coursework." },
+      { key: "latexLetterPrompt", value: "LETTER_CUSTOM: use a concrete project example." },
+      { key: "latexEmailPrompt", value: "EMAIL_CUSTOM: write a brief attachment note." },
+    ] });
     const run = await finished(await queuePreparation(application.id));
+    const requests = (run.steps as { name: string; request?: { prompt: string } }[]);
+    const documentPrompt = requests.find((step) => step.name === "Tailor CV and letter: generate")?.request?.prompt;
+    const emailPrompt = requests.find((step) => step.name === "Draft application email")?.request?.prompt;
+    expect(documentPrompt).toContain("CV_CUSTOM");
+    expect(documentPrompt).toContain("LETTER_CUSTOM");
+    expect(emailPrompt).toContain("EMAIL_CUSTOM");
+    for (const prompt of [documentPrompt, emailPrompt]) expect(prompt).toContain("Studied graph algorithms at university.");
     expect(run.error).toBeNull();
     expect(run.status).toBe("READY");
     const pack = await latestPackage(application.id);

@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { DEFAULT_GENERATION_PROMPTS } from "@/lib/generation-prompts";
+
 import type { Tone } from "@/generated/prisma/enums";
 import { SIGN_OFF_UNIT, unitsSchema, type Extracted, type Match, type Unit } from "@/lib/application-data";
 import type { ProfileData } from "@/lib/profile";
@@ -11,7 +13,6 @@ import { guardSources, guardUnits } from "../fact-guard";
 import {
   applicationFacts,
   candidateFacts,
-  COVER_LETTER_APPROACH,
   CREATIVITY,
   jobForPrompt,
   languageRule,
@@ -31,16 +32,6 @@ const answerSchema = z.object({
   paragraphs: z.array(z.object({ label: z.string(), text: z.string() })),
   signOff: z.string(),
 });
-
-const INSTRUCTIONS = `You write a candidate's cover letter for one job, as JSON.
-
-- recipient: the address block, one line per line: who it's for (the company's hiring team, or the contact person the posting names, at the company), then the place if the job has one. Usual for a letter in its language, e.g. "Ledgerly · Hiring team\\nAmsterdam".
-- greeting: the salutation before the first paragraph, usual for a letter in its language, with its punctuation: the contact person by name when the posting names one, else the hiring team, e.g. "Dear Ledgerly team,".
-- paragraphs: 3–4 paragraphs, about 200–300 words together. Open with why this role and this company, then the problem the job is there to solve and where the candidate has solved it before, and close by inviting a conversation, with where the candidate is based if it matters for the job. No greeting, sign-off or name in them: those are separate.
-- label: a short English name for each paragraph's purpose, e.g. "Why this role", "The challenge", "Where I've solved it", "Closing".
-- Where the job asks for something the profile doesn't have ("gap"), don't claim it. If it matters, say so honestly in a sentence and show how the candidate would close the gap.
-- signOff: the closing line before the name, matching the tone, with its punctuation (e.g. "Warm regards,").
-- The sender's name, contact details and the date are added from the profile; don't write them.`;
 
 export type CoverLetterInput = {
   profile: ProfileData;
@@ -62,8 +53,7 @@ export type CoverLetterInput = {
 export const writeCoverLetter: Task<CoverLetterInput, Unit[]> = async (provider, { profile, extracted, match, tone, facts, posting }, options) => {
   const answer = await provider.complete({
     system: system(
-      INSTRUCTIONS,
-      COVER_LETTER_APPROACH,
+      options.prompts?.letterPrompt ?? DEFAULT_GENERATION_PROMPTS.letterPrompt,
       `Tone: ${TONES[tone].label}. ${TONES[tone].description}`,
       truthfulness(options.strict),
       candidateFacts(profile, facts),

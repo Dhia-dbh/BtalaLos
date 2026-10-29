@@ -15,7 +15,7 @@ export function FactsSection({ profile, update }: { profile: ProfileData; update
       applicationId={null}
       facts={profile.facts}
       setFacts={(change) => update((current) => ({ ...current, facts: change(current.facts) }))}
-      placeholder="e.g. I'm moving from teaching into UX research. Or: I have an EU work permit and can start in March."
+      placeholder="e.g. My university course covered graph algorithms and complexity. For a personal project, I built a Python tool to analyse battery measurements. Include dates, links or certification details where useful."
     />
   );
 }

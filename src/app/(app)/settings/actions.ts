@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { GENERATION_PROMPT_KEYS, MAX_PROMPT_LENGTH } from "@/lib/generation-prompts";
+
 import { AiProvider, Creativity, DateFormat, JobStatus, PaperSize, Tone } from "@/generated/prisma/enums";
 import { action, ActionError } from "@/lib/action";
 import { AiError, createProvider } from "@/lib/ai";
@@ -29,6 +31,17 @@ import { applySecretChange, JOB_SOURCE_KEY } from "@/lib/secrets";
 import { seedBuiltIns } from "../../../../prisma/seed/built-ins";
 import { isJobRetention } from "@/lib/settings";
 import { loadSettings, saveSettings } from "@/lib/settings-data";
+
+export const saveGenerationPrompt = action(
+  z.object({
+    key: z.enum(GENERATION_PROMPT_KEYS),
+    text: z.string().trim().min(1, "Enter a prompt or restore the default.").max(MAX_PROMPT_LENGTH),
+  }),
+  async ({ key, text }) => {
+    await saveSettings({ [key]: text });
+    return null;
+  },
+);
 
 // Settings → AI provider (E6-3). Every field saves on its own, so a test
 // or a model list always reflects what's saved.
