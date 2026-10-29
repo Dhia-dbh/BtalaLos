@@ -1,3 +1,20 @@
+BtalaLos - project licensing notice
+
+BtalaLos is a modified version of Dossier, created by Alien / AienTech
+and its contributors: https://github.com/AienTech/dossier
+Copyright in the original work remains with its respective rights holders.
+
+Copyright (C) 2026 Dhia Ben Hamouda, for modifications authored by
+Dhia Ben Hamouda. Fork modifications are dated 29 October 2026.
+See NOTICE.md for attribution and a summary of the modifications.
+
+The covered application is licensed under the GNU Affero General Public
+License, version 3 only (SPDX-License-Identifier: AGPL-3.0-only).
+Third-party materials retain their applicable licenses and notices.
+This project notice does not add restrictions to the license below.
+
+The full, unmodified GNU AGPLv3 license text follows.
+
                     GNU AFFERO GENERAL PUBLIC LICENSE
                        Version 3, 19 November 2007
 
