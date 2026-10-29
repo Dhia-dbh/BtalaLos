@@ -129,8 +129,8 @@ export const checkInbox = action(z.object({}), async (_, { toast }) => {
 });
 
 /** "Send with Gmail" on the Email tab, after the confirmation. */
-export const sendWithGmail = action(z.object({ id: z.string().min(1) }), async ({ id }, { toast }) => {
-  const sent = await google(() => sendApplicationEmail(id));
+export const sendWithGmail = action(z.object({ id: z.string().min(1), reviewed: z.object({ packageId: z.string(), email: z.object({ to: z.string(), subject: z.string(), body: z.string() }) }).optional() }), async ({ id, reviewed }, { toast }) => {
+  const sent = await google(() => sendApplicationEmail(id, reviewed));
   refreshEverything();
   toast(sent.eventId ? `Sent. ${statusInfo(ApplicationStatus.SENT).toast}` : "Sent. I'll watch for replies.");
   return { eventId: sent.eventId };

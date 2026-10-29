@@ -10,6 +10,7 @@ import { z } from "zod";
 import { DocumentKind } from "@/generated/prisma/enums";
 import { env } from "@/lib/env";
 import { resolveFileName } from "@/lib/file-name";
+import { storedApplicationPdf } from "@/lib/preparation/pdfs";
 import { renderPdf } from "@/lib/pdf/render";
 import { prisma } from "@/lib/prisma";
 import { loadProfileName } from "@/lib/profile-data";
@@ -64,7 +65,8 @@ const PRINTED = [DocumentKind.RESUME, DocumentKind.COVER_LETTER];
 
 /** The tailored documents there are to zip. */
 export async function countTailoredDocuments(): Promise<number> {
-  return prisma.document.count({ where: { kind: { in: PRINTED } } });
+  const [native, latex] = await Promise.all([prisma.document.count({ where: { kind: { in: PRINTED } } }), prisma.application.count({ where: { documentMode: "LATEX", artifacts: { some: { role: "package" } } } })]);
+  return native + latex;
 }
 
 /**
@@ -87,36 +89,37 @@ export const zipPdfsJob = defineJob({
     await removeOldZips(now.getTime());
     const [applications, name, settings] = await Promise.all([
       prisma.application.findMany({
-        where: { documents: { some: { kind: { in: PRINTED } } } },
+        where: { OR: [{ documents: { some: { kind: { in: PRINTED } } } }, { documentMode: "LATEX", artifacts: { some: { role: "package" } } }] },
         orderBy: { createdAt: "asc" },
-        select: { id: true, company: true, role: true, documents: { where: { kind: { in: PRINTED } }, select: { kind: true }, orderBy: { kind: "asc" } } },
+        select: { id: true, company: true, role: true, documentMode: true, documents: { where: { kind: { in: PRINTED } }, select: { kind: true }, orderBy: { kind: "asc" } } },
       }),
       loadProfileName(),
       loadSettings(),
     ]);
-    const documents = applications.flatMap((application) => application.documents.map(({ kind }) => ({ application, kind })));
+    const documents = applications.flatMap((application) => application.documentMode === "LATEX" ? [{ application, kind: DocumentKind.RESUME }] : application.documents.map(({ kind }) => ({ application, kind })));
 
     let done = 0;
     await step(`Rendering ${documents.length} documents`);
     const rendered = await Promise.all(
       documents.map(async ({ application, kind }) => {
         signal.throwIfAborted();
-        const pdf = await renderPdf(`/print/${kind === DocumentKind.RESUME ? "resume" : "letter"}/${application.id}`);
+        const saved = application.documentMode === "LATEX" ? await storedApplicationPdf(application.id, "package") : null;
+        const pdf = saved ? saved.pdf : await renderPdf(`/print/${kind === DocumentKind.RESUME ? "resume" : "letter"}/${application.id}`);
         done += 1;
         await step(`Rendered ${done} of ${documents.length}`);
-        return { application, kind, pdf };
+        return { application, kind, pdf, storedName: saved?.fileName };
       }),
     );
 
     await step("Zipping");
     const files: Zippable = {};
     const taken = new Map<string, Set<string>>();
-    for (const { application, kind, pdf } of rendered) {
+    for (const { application, kind, pdf, storedName } of rendered) {
       const folder = folderName(application.company);
       const names = taken.get(folder.toLocaleLowerCase()) ?? new Set<string>();
       taken.set(folder.toLocaleLowerCase(), names);
       const fileName = unique(
-        resolveFileName(settings.fileNamePattern, { name, company: application.company, role: application.role, doc: kind, date: now }),
+        storedName ? folderName(storedName) : resolveFileName(settings.fileNamePattern, { name, company: application.company, role: application.role, doc: kind, date: now }),
         names,
       );
       // PDFs are compressed already: store them as they are.

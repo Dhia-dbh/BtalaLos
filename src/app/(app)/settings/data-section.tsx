@@ -50,7 +50,7 @@ async function send(file: File, preview: boolean): Promise<{ ok: true; data: Rec
   try {
     const response = await fetch(`/api/import${preview ? "?preview=1" : ""}`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": file.name.endsWith(".zip") ? "application/zip" : "application/json" },
       body: file,
     });
     const body = (await response.json().catch(() => null)) as Record<string, unknown> | null;
@@ -218,7 +218,7 @@ export function DataSection({
               <input
                 ref={fileInput}
                 type="file"
-                accept="application/json,.json"
+                accept="application/json,application/zip,.json,.zip"
                 className="sr-only"
                 tabIndex={-1}
                 aria-hidden="true"
@@ -343,7 +343,7 @@ function DangerZone() {
         </h3>
         <p className="text-control text-muted">
           Removes your profile, all applications and documents, your settings and the backups from this server. This can&apos;t be
-          undone, so export first if you might want it back.
+          undone, so export first if you might want it back. Host Git branches, worktrees, exported folders and worker receipts are retained.
         </p>
       </div>
       {confirming ? (

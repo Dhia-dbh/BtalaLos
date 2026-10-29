@@ -86,6 +86,45 @@ describe("OllamaProvider", () => {
 });
 
 describe("OpenAICompatibleProvider", () => {
+  it("sends the saved thinking effort even when a task requests lower effort", async () => {
+    const requests = stubFetch(() => openaiChat("OK"));
+    const provider = new OpenAICompatibleProvider("OPENAI", "http://host.docker.internal:8787/v1", "local", "codex-test", 60_000, "ultra");
+    await provider.complete({ ...ask, effort: "low" });
+    expect(requests[0].body).toMatchObject({ model: "codex-test", reasoning_effort: "ultra" });
+  });
+
+  it("reads Codex model names and reasoning capabilities", async () => {
+    stubFetch(() => json({ object: "list", data: [{ id: "codex-test", owned_by: "codex", display_name: "Codex Test", reasoning_efforts: ["low", "medium", "ultra"], default_reasoning_effort: "low" }] }));
+    const provider = new OpenAICompatibleProvider("OPENAI", "http://host.docker.internal:8787/v1", "local", null, 60_000);
+    expect(await provider.listModelOptions()).toEqual([{ id: "codex-test", name: "Codex Test", thinkingEfforts: ["low", "medium", "ultra"], defaultThinkingEffort: "low" }]);
+  });
+
+  it("reports an unsupported selected effort without retrying with a different one", async () => {
+    const requests = stubFetch(() => json({ error: { code: "codex_effort", message: "Unsupported reasoning_effort" } }, { status: 400 }));
+    const provider = new OpenAICompatibleProvider("OPENAI", "http://host.docker.internal:8787/v1", "local", "codex-test", 60_000, "ultra");
+    expect(await failure(provider.complete(ask))).toMatchObject({ kind: "config", message: expect.stringContaining("thinking effort supported") });
+    expect(requests).toHaveLength(1);
+  });
+  it.each([
+    ["codex_bridge_auth", 401, "auth", "local access token"],
+    ["codex_auth_required", 503, "config", "codex login"],
+    ["codex_unavailable", 503, "config", "DOSSIER_CODEX_BIN"],
+    ["codex_quota", 429, "rate-limited", "Codex usage limit"],
+    ["codex_busy", 429, "busy", "three requests"],
+    ["codex_timeout", 504, "timeout", "too long"],
+    ["codex_model", 404, "model", "codex-test"],
+    ["codex_context", 413, "too-long", "more text"],
+    ["codex_output", 502, "invalid-output", "expected shape"],
+    ["codex_failed", 502, "provider", "host service logs"],
+  ])("maps bridge error %s without exposing its raw message", async (code, status, kind, message) => {
+    const requests = stubFetch(() => json({ error: { code, message: "private request or credential" } }, { status: Number(status) }));
+    const provider = new OpenAICompatibleProvider("OPENAI", "http://host.docker.internal:8787/v1", "local-token", "codex-test", 60_000);
+    const error = await failure(provider.complete(ask));
+    expect(error).toMatchObject({ kind, message: expect.stringContaining(String(message)) });
+    expect(error.message).not.toContain("private request or credential");
+    expect(requests).toHaveLength(1);
+  });
+
   it("chats through /chat/completions with a key and temperature", async () => {
     const requests = stubFetch(() => openaiChat("Hello!"));
     const provider = new OpenAICompatibleProvider("OPENAI", "https://api.example.com/v1", "sk-test", "gpt-x", 60_000);

@@ -18,6 +18,11 @@ import { refineSuggestions } from "@/lib/refine-suggestions";
 import { loadThemes } from "@/lib/theme-data";
 import { userTimeZone } from "@/lib/time-zone";
 
+import { LatexApplication } from "@/components/preparation/latex-application";
+import { NotesTab } from "./notes-tab";
+import { ConversationTab } from "./conversation-tab";
+import { checksum } from "@/lib/preparation/worker";
+import { latestPackage } from "@/lib/preparation/service";
 import { ApplicationView } from "./application-view";
 import { metaLine } from "./meta";
 import { tabFrom } from "./tabs";
@@ -53,6 +58,18 @@ export default async function ApplicationPage({ params, searchParams }: PageProp
       loadThemes(),
     ]);
 
+  if (application.documentMode === "LATEX") return <LatexApplication
+    application={{ id, title: application.title, status: application.status, archived: application.archivedAt !== null, nextInterviewAt: application.nextInterviewAt }}
+    meta={metaLine(application)} timeZone={timeZone}
+    gmail={google.status === "connected" ? google.canSend ? { from: google.email } : { from: null, reason: "no-permission" } : google.status === "not-configured" ? undefined : { from: null, reason: "not-connected" }}
+    initialTab={tab === "notes" || tab === "conversation" ? tab : "preparation"}
+    notes={<NotesTab applicationId={id} activity={activityTimeline({ notes: application.notes, events: application.events, createdAt: application.createdAt })} />}
+    conversation={<ConversationTab emails={emails} aiReady={aiReady} timeZone={timeZone} reading={google.status === "connected" && google.canRead && settings.gmailRead} composeLocation="Preparation and email" />}
+    showConversation={emails.length > 0 || (google.status === "connected" && google.canRead && settings.gmailRead)}
+  />;
+  const packageFile = application.packageProfileId ? await latestPackage(id) : null;
+  const packageHashes = (packageFile?.manifest as { nativeHashes?: Record<string, string> } | undefined)?.nativeHashes;
+  const packageStale = Boolean(packageHashes && application.documents.some((document) => document.kind !== "EMAIL" && packageHashes[document.kind] !== checksum(JSON.stringify(document.units))));
   const match = readJson(matchSchema, application.match);
   const messages = application.messages
     .map((message, index) => ({
@@ -111,7 +128,7 @@ export default async function ApplicationPage({ params, searchParams }: PageProp
       baseThemeId={settings.baseThemeId}
       email={email}
       writingEmail={emailJobs.at(-1)?.id ?? null}
-      attachments={{ resume: resume ? fileName("RESUME") : null, letter: letter ? fileName("COVER_LETTER") : null }}
+      attachments={application.packageProfileId ? { resume: null, letter: null, stale: packageStale, profileRequired: true, ...(packageFile ? { package: { id: packageFile.id, fileName: (packageFile.manifest as { fileName: string }).fileName } } : {}) } : { resume: resume ? fileName("RESUME") : null, letter: letter ? fileName("COVER_LETTER") : null }}
       gmail={
         google.status === "not-configured" && emails.length === 0
           ? undefined

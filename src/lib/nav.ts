@@ -21,6 +21,7 @@ export const NAV: { label?: string; items: NavItem[] }[] = [
     items: [
       { href: "/profile", label: "Profile", icon: UserRound },
       { href: "/resume", label: "Base resume", icon: FileText },
+      { href: "/preparation", label: "Preparation", icon: FileText },
     ],
   },
   {

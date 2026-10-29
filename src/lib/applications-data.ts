@@ -16,6 +16,8 @@ export type ApplicationRow = {
   mode: string;
   status: ApplicationStatus;
   archived: boolean;
+  preparation?: string | null;
+  packageId?: string | null;
   /** "Apply by" on draft cards, e.g. "3 Oct 2026". */
   deadline: string | null;
   match: { hit: number; total: number } | null;
@@ -44,6 +46,8 @@ export async function loadApplicationRows({ archived, sort }: { archived: boolea
       match: true,
       sentAt: true,
       updatedAt: true,
+      preparations: { orderBy: { createdAt: "desc" }, take: 1, select: { status: true } },
+      artifacts: { where: { role: "package" }, orderBy: { version: "desc" }, take: 1, select: { id: true } },
     },
   });
   const rows = applications.map((application) => {
@@ -55,6 +59,8 @@ export async function loadApplicationRows({ archived, sort }: { archived: boolea
       location: application.location.trim(),
       mode: application.mode.trim(),
       status: application.status,
+      preparation: application.preparations[0]?.status ?? null,
+      packageId: application.artifacts[0]?.id ?? null,
       archived: application.archivedAt !== null,
       deadline: application.deadline ? formatCalendarDate(application.deadline) : null,
       match: match.success && match.data.items.length > 0 ? matchScore(match.data) : null,

@@ -17,13 +17,13 @@ export type { AIProvider, ChatMessage, CompletionRequest, JsonCompletionRequest 
 
 /** A provider for `config`. A saved key that can't be read stops hosted providers with a clear message. */
 export function createProvider(config: AiConfig): AIProvider {
-  const { provider, baseUrl, model, apiKey, apiKeyProblem, timeoutMs } = config;
+  const { provider, baseUrl, model, apiKey, apiKeyProblem, timeoutMs, thinkingEffort } = config;
   if (apiKeyProblem && providerOption(provider).apiKey) throw AiError.config(apiKeyProblem);
   switch (provider) {
     case AiProvider.LOCAL:
       return new LocalProvider(baseUrl, model, timeoutMs);
     case AiProvider.OPENAI:
-      return new OpenAICompatibleProvider("OPENAI", baseUrl, apiKey, model, timeoutMs);
+      return new OpenAICompatibleProvider("OPENAI", baseUrl, apiKey, model, timeoutMs, thinkingEffort);
     case AiProvider.ANTHROPIC:
       return new AnthropicProvider(baseUrl, apiKey, model, timeoutMs);
     case AiProvider.MISTRAL:

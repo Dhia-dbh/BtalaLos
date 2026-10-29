@@ -3,6 +3,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import { DocumentKind } from "@/generated/prisma/enums";
 import { resolveFileName } from "@/lib/file-name";
 import { holdPdf, pdfDownload } from "@/lib/pdf/downloads";
+import { storedApplicationPdf } from "@/lib/preparation/pdfs";
 import { renderPdf } from "@/lib/pdf/render";
 import { prisma } from "@/lib/prisma";
 import { loadProfileName } from "@/lib/profile-data";
@@ -58,10 +59,14 @@ async function renderRequested(request: NextRequest): Promise<{ pdf: Uint8Array;
   const application = APPLICATION_ID.test(id)
     ? await prisma.application.findUnique({
         where: { id },
-        select: { company: true, role: true, documents: { where: { kind: TAILORED[doc] }, select: { id: true } } },
+        select: { company: true, role: true, documentMode: true, documents: { where: { kind: TAILORED[doc] }, select: { id: true } } },
       })
     : null;
   if (!application) return notFound("That application no longer exists.");
+  if (application.documentMode === "LATEX") {
+    const saved = await storedApplicationPdf(id!, doc === "resume" ? "cv" : "letter");
+    return { pdf: saved.pdf, fileName: resolveFileName(settings.fileNamePattern, { name, company: application.company, role: application.role, doc: TAILORED[doc], date }) };
+  }
   if (application.documents.length === 0) {
     return notFound(doc === "resume" ? "This application has no tailored resume." : "This application has no cover letter.");
   }

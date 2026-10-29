@@ -27,6 +27,7 @@ export default async function NewApplicationPage({ searchParams }: PageProps<"/n
   ]);
   return (
     <NewApplication
+      profiles={await prisma.applicationProfile.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } })}
       aiReady={aiReady}
       writeInClaude={writeInClaude}
       defaultTone={settings.defaultTone}

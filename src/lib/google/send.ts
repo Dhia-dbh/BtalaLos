@@ -4,6 +4,8 @@ import { ApplicationStatus, DocumentKind, EmailDirection } from "@/generated/pri
 import { unitsSchema } from "@/lib/application-data";
 import { emailAddresses, emailParts } from "@/lib/application-email";
 import { resolveFileName } from "@/lib/file-name";
+import { latestPackage } from "@/lib/preparation/service";
+import { verifiedBytes } from "@/lib/preparation/storage";
 import { renderPdf } from "@/lib/pdf/render";
 import { prisma } from "@/lib/prisma";
 import { loadProfileName } from "@/lib/profile-data";
@@ -37,7 +39,7 @@ export type SentApplication = { threadId: string; eventId: string | null; attach
  * tailored resume and cover letter attached, keeps the thread to watch for
  * replies, and moves a draft to Sent.
  */
-export async function sendApplicationEmail(applicationId: string): Promise<SentApplication> {
+export async function sendApplicationEmail(applicationId: string, reviewed?: { packageId: string; email: { to: string; subject: string; body: string } }): Promise<SentApplication> {
   const account = await loadGoogleAccount();
   if (!account) throw new GoogleError("not-connected", "Connect your Google account in Settings → Google first.");
   const application = await prisma.application.findUnique({ where: { id: applicationId }, include: { documents: { select: { kind: true, units: true } } } });
@@ -51,7 +53,11 @@ export async function sendApplicationEmail(applicationId: string): Promise<SentA
 
   const [name, settings] = await Promise.all([loadProfileName(), loadSettings()]);
   const attachments: Attachment[] = [];
-  for (const { kind, path } of PRINTED) {
+  if (application.packageProfileId) {
+    const pack = await latestPackage(applicationId);
+    if (!pack || !reviewed || reviewed.packageId !== pack.id || (reviewed.email.to !== to || reviewed.email.subject !== subject || reviewed.email.body !== body)) throw new GoogleError("unavailable", "The package or email changed. Refresh and review the current version before sending.");
+    attachments.push({ fileName: (pack.manifest as { fileName: string }).fileName, contentType: "application/pdf", data: await verifiedBytes(pack) });
+  } else for (const { kind, path } of PRINTED) {
     if (!application.documents.some((document) => document.kind === kind)) continue;
     attachments.push({
       fileName: resolveFileName(settings.fileNamePattern, { name, company: application.company, role: application.role, doc: kind, date: new Date() }),

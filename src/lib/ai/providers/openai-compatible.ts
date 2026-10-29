@@ -6,6 +6,7 @@ import type { ReasoningEffort } from "openai/resources/shared";
 
 import { BaseProvider, withJsonSchema, type ChatAnswer, type ChatCall } from "../provider";
 import { keyGuardedFetch } from "./guarded-fetch";
+import { THINKING_EFFORTS, type ModelOption, type ThinkingEffort } from "../model-options";
 
 /** How to ask for JSON, strongest first (E6-4). */
 const JSON_MODES = ["schema", "object", "prompt"] as const;
@@ -42,6 +43,7 @@ export class OpenAICompatibleProvider extends BaseProvider {
     apiKey: string | null,
     model: string | null,
     timeoutMs: number,
+    private readonly thinkingEffort?: ThinkingEffort | null,
   ) {
     super(model, timeoutMs);
     // Local servers often need no key, but the SDK insists on one.
@@ -64,6 +66,7 @@ export class OpenAICompatibleProvider extends BaseProvider {
       try {
         return await this.send(call, known);
       } catch (error) {
+        if (error instanceof OpenAI.APIError && error.code === "codex_effort") throw error;
         const message = error instanceof OpenAI.BadRequestError || error instanceof OpenAI.UnprocessableEntityError ? error.message : "";
         const jsonRefused = call.json !== undefined && /response_format|json_schema|json_object|structured/i.test(message);
         const adapted: Quirks = {
@@ -89,7 +92,8 @@ export class OpenAICompatibleProvider extends BaseProvider {
   /** The `reasoning_effort` to send for `call`, if any; none by default, as servers differ in what they take. */
   protected reasoningEffort(call: ChatCall): ReasoningEffort | undefined {
     void call;
-    return undefined;
+    // The Codex bridge also accepts "ultra", beyond this SDK's API effort union.
+    return this.thinkingEffort ? this.thinkingEffort as ReasoningEffort : undefined;
   }
 
   private async send(call: ChatCall, { noTemperature, maxCompletionTokens, noEffort, json }: Quirks): Promise<ChatAnswer> {
@@ -121,8 +125,24 @@ export class OpenAICompatibleProvider extends BaseProvider {
   }
 
   protected async fetchModels(signal: AbortSignal): Promise<string[]> {
-    const ids: string[] = [];
-    for await (const model of this.client.models.list({ signal })) ids.push(model.id);
-    return ids.sort();
+    return (await this.listModelOptions(signal)).map((model) => model.id);
+  }
+
+  listModelOptions(signal?: AbortSignal): Promise<ModelOption[]> {
+    return this.guard(this.model ?? "", signal, async (combined) => {
+      const models: ModelOption[] = [];
+      for await (const model of this.client.models.list({ signal: combined })) {
+        const details = model as typeof model & { display_name?: string; reasoning_efforts?: unknown; default_reasoning_effort?: unknown };
+        const efforts = model.owned_by === "codex" && Array.isArray(details.reasoning_efforts)
+          ? details.reasoning_efforts.filter((value): value is ThinkingEffort => THINKING_EFFORTS.includes(value)) : [];
+        models.push({
+          id: model.id,
+          name: details.display_name ?? model.id,
+          thinkingEfforts: efforts,
+          defaultThinkingEffort: efforts.includes(details.default_reasoning_effort as ThinkingEffort) ? details.default_reasoning_effort as ThinkingEffort : null,
+        });
+      }
+      return models.sort((a, b) => a.id.localeCompare(b.id));
+    });
   }
 }

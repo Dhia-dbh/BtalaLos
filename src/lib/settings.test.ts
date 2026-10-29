@@ -31,6 +31,7 @@ describe("stored settings", () => {
       provider: null,
       baseUrl: null,
       model: null,
+      thinkingEffort: null,
       apiKeyEnc: null,
       creativity: "BALANCED",
       strict: true,
@@ -104,6 +105,7 @@ describe("stored settings", () => {
   it("reads back what it stores", () => {
     const saved = {
       provider: "OPENAI",
+      thinkingEffort: "xhigh",
       strict: false,
       paper: "LETTER",
       customLanguages: ["Farsi", "Hebrew"],

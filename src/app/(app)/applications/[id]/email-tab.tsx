@@ -1,5 +1,6 @@
 "use client";
 
+import { PackageFolderButton } from "@/components/preparation/folder-button";
 import type { CSSProperties, ReactNode } from "react";
 
 import type { UnitRenderer } from "@/components/documents/document-page";
@@ -15,7 +16,7 @@ import { SendWithGmail, type GmailSender } from "./send-with-gmail";
 import { aboutWords } from "./tabs";
 
 /** The PDFs to attach, by their file names; null when the application doesn't have one. */
-export type Attachments = { resume: string | null; letter: string | null };
+export type Attachments = { resume: string | null; letter: string | null; package?: { id: string; fileName: string }; stale?: boolean; profileRequired?: boolean };
 
 /**
  * The Email tab: the email to send the application with, to whoever the
@@ -107,10 +108,12 @@ export function EmailTab({
           {renderUnit({ id: "body", className: "text-field leading-[1.6] break-words whitespace-pre-wrap", children: body })}
         </div>
 
-        {(attachments.resume || attachments.letter) && (
+        {(attachments.resume || attachments.letter || attachments.package) && (
           <div className="flex flex-col gap-2.5 border-t border-line px-7 pt-4 pb-5">
             <h3 className="text-meta text-muted">Attach</h3>
+            {attachments.stale && <p className="text-sm text-warning">The resume or cover letter changed after this package was built. Build the document package again from Preparation to include those changes.</p>}
             <ul className="flex flex-col gap-2">
+              {attachments.package && <li className="flex items-center justify-between gap-3 rounded-control border border-line-card bg-input p-3"><span className="truncate text-control">{attachments.package.fileName}</span><PackageFolderButton applicationId={applicationId} /><a className={buttonClassName("secondary", "sm")} href={`/api/artifacts/${attachments.package.id}`}>Download</a></li>}
               {attachments.resume && (
                 <Attachment name={attachments.resume} href={`/api/pdf?doc=resume&application=${applicationId}`} what="tailored resume" />
               )}
@@ -123,13 +126,15 @@ export function EmailTab({
       </article>
 
       <div className="flex w-full max-w-[680px] flex-wrap items-center gap-3">
-        {gmail && (
+        {gmail && (!attachments.profileRequired || attachments.package) && (
           <SendWithGmail
             applicationId={applicationId}
             sender={gmail.sender}
             to={to}
+            body={body}
+            packageId={attachments.package?.id}
             subject={subject}
-            attachments={[attachments.resume, attachments.letter].filter((name): name is string => name !== null)}
+            attachments={[attachments.package?.fileName ?? null, attachments.resume, attachments.letter].filter((name): name is string => name !== null)}
             sentBefore={gmail.sentBefore}
           />
         )}

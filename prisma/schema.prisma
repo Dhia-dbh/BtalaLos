@@ -388,24 +388,24 @@ enum FunnelStage {
 }
 
 model Application {
-  id                  String            @id @default(cuid())
+  id                  String                @id @default(cuid())
   /// Whether the user made it, or the job agent prepared it (E16).
-  origin              ApplicationOrigin @default(MANUAL)
+  origin              ApplicationOrigin     @default(MANUAL)
   /// The agent's score for the posting, when the agent prepared it.
   agentScore          Int?
   /// An agent draft not approved yet: only the Agent screen shows it (#195).
-  awaitingReview      Boolean           @default(false)
-  title               String            @default("")
-  company             String            @default("")
-  role                String            @default("")
-  location            String            @default("")
+  awaitingReview      Boolean               @default(false)
+  title               String                @default("")
+  company             String                @default("")
+  role                String                @default("")
+  location            String                @default("")
   /// Work mode as written in the posting, e.g. "Hybrid · 3 days in office".
-  mode                String            @default("")
-  salary              String            @default("")
-  deadline            DateTime?         @db.Date
+  mode                String                @default("")
+  salary              String                @default("")
+  deadline            DateTime?             @db.Date
   /// Saved, not fetched (NEW-1).
-  postingUrl          String            @default("")
-  postingText         String            @default("")
+  postingUrl          String                @default("")
+  postingText         String                @default("")
   /// What the AI read from the posting (extractedSchema).
   extracted           Json?
   /// The prompt version that wrote `extracted`, e.g. "extract-posting@1" (E6-5).
@@ -414,18 +414,18 @@ model Application {
   match               Json?
   /// The prompt version that wrote `match`.
   matchedWith         String?
-  status              ApplicationStatus @default(DRAFT)
+  status              ApplicationStatus     @default(DRAFT)
   /// The furthest stage ever reached; null while never sent. Only the status module changes it.
   furthestStage       FunnelStage?
   sentAt              DateTime?
   /// When the next interview is, while the application is in Interview (E9-9); shown on the dashboard.
   nextInterviewAt     DateTime?
-  tone                Tone              @default(WARM)
+  tone                Tone                  @default(WARM)
   /// The language the documents were written in, e.g. "English".
-  language            String            @default("")
+  language            String                @default("")
   /// The tailored resume follows its theme's layout, sidebar included; off
   /// means a single column (APP-4, decided in E5-1 #42).
-  followThemeLayout   Boolean           @default(false)
+  followThemeLayout   Boolean               @default(false)
   /// Whether the tailored resume shows the profile photo; null follows the
   /// profile's "Show on resumes" (#224).
   showPhoto           Boolean?
@@ -452,11 +452,85 @@ model Application {
   facts               Fact[]
   /// Its background jobs, deleted with it (their inputs and results hold the posting and the documents).
   jobs                Job[]
-  createdAt           DateTime          @default(now())
-  updatedAt           DateTime          @updatedAt
+  documentMode        DocumentMode          @default(NATIVE)
+  packageProfileId    String?
+  packageProfile      ApplicationProfile?   @relation(fields: [packageProfileId], references: [id], onDelete: SetNull)
+  preparations        PreparationRun[]
+  artifacts           ApplicationArtifact[]
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
 
   @@index([status])
   @@index([updatedAt])
+}
+
+enum DocumentMode {
+  NATIVE
+  LATEX
+}
+
+model ApplicationProfile {
+  id           String        @id @default(cuid())
+  name         String        @unique
+  version      Int           @default(1)
+  items        Json
+  applications Application[]
+  updatedAt    DateTime      @updatedAt
+}
+
+model SupportingDocument {
+  id        String                      @id @default(cuid())
+  name      String
+  deletedAt DateTime?
+  versions  SupportingDocumentVersion[]
+}
+
+model SupportingDocumentVersion {
+  id         String             @id @default(cuid())
+  documentId String
+  document   SupportingDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  version    Int
+  path       String
+  checksum   String
+  pages      Int
+  createdAt  DateTime           @default(now())
+
+  @@unique([documentId, version])
+}
+
+model PreparationRun {
+  id            String                @id @default(cuid())
+  applicationId String
+  application   Application           @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  kind          String
+  status        String                @default("QUEUED")
+  activeKey     String?               @unique
+  snapshot      Json
+  steps         Json                  @default("[]")
+  error         String?
+  jobId         String?
+  createdAt     DateTime              @default(now())
+  finishedAt    DateTime?
+  artifacts     ApplicationArtifact[]
+
+  @@index([applicationId, createdAt])
+}
+
+model ApplicationArtifact {
+  id            String         @id @default(cuid())
+  applicationId String
+  application   Application    @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  runId         String
+  run           PreparationRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  role          String
+  version       Int
+  path          String
+  checksum      String
+  pages         Int?
+  manifest      Json
+  createdAt     DateTime       @default(now())
+
+  @@unique([applicationId, role, version])
 }
 
 /// One status change. Keeps the application's furthestStage and sentAt from

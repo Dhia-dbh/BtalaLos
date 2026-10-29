@@ -135,6 +135,8 @@ Failed sign-ins are rate-limited in Postgres: after 5 failures within a minute f
 
 ## AI provider
 
+The optional [Codex CLI bridge](docs/codex-cli.md) runs on the host to reuse its ChatGPT login. This is an exception to the container-only development commands: run `node scripts/codex-bridge.mjs` and `node --test scripts/codex-bridge.test.mjs` on the host. The application itself still runs in Docker.
+
 Dossier reads job postings and writes drafts with the model you choose in Settings → AI provider: a local model through Ollama or llama.cpp, LM Studio, any OpenAI-compatible server, Anthropic or Mistral. Until you save a choice there, the `DOSSIER_AI_*` variables decide (see `.env.example`). API keys are stored encrypted with a key derived from `DOSSIER_SECRET`, and never sent back to the browser.
 
 Long AI tasks run as background jobs (`src/lib/jobs`): the page follows their named steps as they happen and picks them up again after a reload. A job's input and result hold personal data, so they don't last: a job that works on an application names it (`startJob(…, { applicationId })`) and is deleted with it, and finished jobs are deleted once they're older than **Keep task data for** in Settings → Your data (`src/lib/jobs/retention.ts`). Keep nothing in a job that has to outlast that; Undo on a toast and a page reattaching after a reload are fine. The prompts live in `src/lib/ai/tasks`; in strict mode ("Never invent experience", on by default) a fact guard flags names and numbers that aren't in the profile or the posting.

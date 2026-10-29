@@ -14,6 +14,11 @@ const noEnv = {} as Parameters<typeof resolveAiConfig>[1];
 const nothingSaved = { provider: null, baseUrl: null, model: null, apiKeyEnc: null };
 
 describe("resolveAiConfig", () => {
+  it("loads a saved thinking effort for the OpenAI-compatible provider", () => {
+    const saved = { ...nothingSaved, provider: "OPENAI" as const, thinkingEffort: "xhigh" as const };
+    expect(resolveAiConfig(saved, noEnv).thinkingEffort).toBe("xhigh");
+    expect(resolveAiConfig({ ...saved, provider: "LOCAL" }, noEnv).thinkingEffort).toBeUndefined();
+  });
   it("defaults to a local model on the standard Ollama address", () => {
     expect(resolveAiConfig(null, noEnv)).toEqual({
       provider: "LOCAL",

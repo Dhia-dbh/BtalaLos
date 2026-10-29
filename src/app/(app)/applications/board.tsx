@@ -13,6 +13,7 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/core";
 import Link from "next/link";
+import { PackageFolderButton } from "@/components/preparation/folder-button";
 import { useRef, useState, type ReactNode } from "react";
 
 import { StatusDot } from "@/components/ui/status-dot";
@@ -180,6 +181,8 @@ function CardFace({ row, lifted = false, onOpen }: { row: ApplicationRow; lifted
         {row.role}
       </Link>
       {place && <p className="text-label text-muted">{place}</p>}
+      {row.packageId && <PackageFolderButton applicationId={row.id} />}
+      {row.preparation && <p className="text-meta text-muted">Preparation: {row.preparation.toLowerCase()}</p>}
       {row.status === "DRAFT" && row.deadline && (
         <p className="flex">
           <span className="rounded-[6px] bg-warning-surface px-2 py-[3px] text-xs text-warning">Apply by {row.deadline}</span>

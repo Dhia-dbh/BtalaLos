@@ -108,7 +108,7 @@ function postingLink(value: string): string {
 }
 
 /** A write-documents job's key once an application was made from it: "application:<id>". */
-const CLAIMED = "application:";
+
 
 /**
  * Creates the application from the finished documents job (E7-6): the Draft
@@ -119,6 +119,7 @@ const CLAIMED = "application:";
 export const createApplication = action(
   z.object({
     writeJobId: z.string().min(1),
+    profileId: z.string().min(1).optional(),
     details: detailsSchema,
     postingUrl: z.string().max(2000),
     /** The Find jobs posting it was started from (E14-8). */
@@ -126,17 +127,17 @@ export const createApplication = action(
     /** The startup it was started from on Startups (#222). */
     startupId: z.string().min(1).max(100).nullish(),
   }),
-  async ({ writeJobId, details, postingUrl, postingId, startupId }) => {
+  async ({ writeJobId, profileId, details, postingUrl, postingId, startupId }) => {
     const job = await prisma.job.findUnique({ where: { id: writeJobId } });
     if (!job || job.type !== writeDocumentsJob.type || job.status !== JobStatus.DONE) {
       throw new ActionError("Those documents aren't ready. Try creating the application again.");
     }
-    if (job.key?.startsWith(CLAIMED)) return job.key.slice(CLAIMED.length);
+
 
     const input = writeDocumentsJob.input.parse(job.input);
     const documents = writeDocumentsJob.result.parse(job.result);
     const reading = await finishedReading(input.readJobId);
-    return createApplicationFromDocuments({
+    const id = await createApplicationFromDocuments({
       reading: { posting: reading.input.posting, ...reading.result },
       documents,
       match: input.match,
@@ -146,5 +147,11 @@ export const createApplication = action(
       note: input.note,
       claim: { kind: "manual", writeJobId, readJobId: input.readJobId, postingId: postingId ?? null, startupId: startupId ?? null },
     });
+    if (profileId && !(await prisma.preparationRun.count({ where: { applicationId: id } }))) {
+      await prisma.application.update({ where: { id }, data: { packageProfileId: profileId } });
+      try { const { queuePreparation } = await import("@/lib/preparation/service"); await queuePreparation(id); }
+      catch (error) { await prisma.preparationRun.create({ data: { applicationId: id, kind: "prepare", status: "FAILED", snapshot: {}, error: error instanceof Error ? error.message : "Unable to start package preparation." } }); }
+    }
+    return id;
   },
 );

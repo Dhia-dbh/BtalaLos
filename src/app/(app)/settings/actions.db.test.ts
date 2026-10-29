@@ -56,6 +56,15 @@ beforeEach(async () => {
 afterAll(() => prisma().$disconnect());
 
 describe("saveAiProvider", () => {
+  it("persists thinking effort changes without clearing the provider's encrypted key", async () => {
+    await saveAiProvider({ provider: "OPENAI", baseUrl: "http://host.docker.internal:8787/v1", model: "gpt-6.1-sol", thinkingEffort: "high" });
+    await saveApiKey({ provider: "OPENAI", change: { action: "set", value: "local-bridge-token" } });
+    const encrypted = (await settings()).apiKeyEnc;
+    await saveAiProvider({ provider: "OPENAI", baseUrl: "http://host.docker.internal:8787/v1", model: "gpt-6-luna", thinkingEffort: "low" });
+    expect(await settings()).toMatchObject({ model: "gpt-6-luna", thinkingEffort: "low", apiKeyEnc: encrypted });
+    expect(await saveAiProvider({ provider: "OPENAI", baseUrl: "", model: "gpt-6.1-sol", thinkingEffort: "unknown" as never })).toMatchObject({ ok: false });
+  });
+
   it("saves the provider, address and model (SET-1)", async () => {
     expect(await saveAiProvider({ provider: "LOCAL", baseUrl: " http://ollama:11434 ", model: "qwen2.5:3b" })).toEqual({
       ok: true,

@@ -2,6 +2,7 @@ import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 
 import { JobStatus } from "@/generated/prisma/enums";
+import { readArchive, restoreArchiveFiles } from "@/lib/preparation/archive";
 import { writeBackup } from "@/lib/backups";
 import { currentSummary, importExport, parseExport, summarizeExport } from "@/lib/data-import";
 import { IMPORT_MAX_BYTES, IMPORT_TOO_BIG } from "@/lib/import-limits";
@@ -21,7 +22,13 @@ export const POST = route(async (request) => {
   if (Number(request.headers.get("content-length") ?? 0) > IMPORT_MAX_BYTES) {
     return NextResponse.json({ error: IMPORT_TOO_BIG }, { status: 413 });
   }
-  const parsed = parseExport(await request.text());
+  const parts: Uint8Array[] = []; let size = 0;
+  const reader = request.body?.getReader();
+  if (reader) for (;;) { const { value, done } = await reader.read(); if (done) break; size += value.length; if (size > IMPORT_MAX_BYTES) { await reader.cancel(); return NextResponse.json({ error: IMPORT_TOO_BIG }, { status: 413 }); } parts.push(value); }
+  const bytes = Buffer.concat(parts);
+  let archive;
+  try { archive = readArchive(bytes); } catch (error) { return NextResponse.json({ error: (error as Error).message }, { status: 400 }); }
+  const parsed = parseExport(archive.text);
   if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 });
   const incoming = summarizeExport(parsed.data);
 
@@ -34,7 +41,8 @@ export const POST = route(async (request) => {
   for (const job of unfinished) await cancelJob(job.id);
 
   const backup = await writeBackup("before-import");
-  await importExport(prisma, parsed.data);
+  const rollback = await restoreArchiveFiles(parsed.data, archive.files);
+  try { await importExport(prisma, parsed.data); } catch (error) { await rollback(); throw error; }
   revalidatePath("/", "layout");
   return NextResponse.json({ incoming, backup });
 });

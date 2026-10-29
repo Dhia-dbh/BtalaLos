@@ -3,6 +3,7 @@ import "server-only";
 import { mkdir, readdir, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import { buildArchive } from "@/lib/preparation/archive";
 import { buildExport } from "@/lib/data-export";
 import { env } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
@@ -16,11 +17,11 @@ export const backupsDir = () => path.join(env.DOSSIER_DATA_DIR, "backups");
 
 const pad = (value: number) => String(value).padStart(2, "0");
 
-/** "dossier-backup-nightly-2026-09-28-030000.json", in the server's time zone. */
+/** "dossier-backup-nightly-2026-09-28-030000.zip", in the server's time zone. */
 export function backupFileName(reason: BackupReason, now: Date): string {
   const day = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
   const time = `${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
-  return `dossier-backup-${reason}-${day}-${time}.json`;
+  return `dossier-backup-${reason}-${day}-${time}.zip`;
 }
 
 /** Writes an export of everything to the backups folder; returns the file's name. */
@@ -28,13 +29,13 @@ export async function writeBackup(reason: BackupReason, now = new Date()): Promi
   const data = await buildExport(prisma, { now });
   await mkdir(backupsDir(), { recursive: true });
   const name = backupFileName(reason, now);
-  await writeFile(path.join(backupsDir(), name), JSON.stringify(data, null, 2));
+  await writeFile(path.join(backupsDir(), name), await buildArchive(data), { mode: 0o600 });
   return name;
 }
 
 /** The backup files, newest first. */
 export async function listBackups(): Promise<{ name: string; modified: Date }[]> {
-  const names = (await readdir(backupsDir()).catch(() => [])).filter((name) => /^dossier-backup-.*\.json$/.test(name));
+  const names = (await readdir(backupsDir()).catch(() => [])).filter((name) => /^dossier-backup-.*\.(json|zip)$/.test(name));
   const files = await Promise.all(names.map(async (name) => ({ name, modified: (await stat(path.join(backupsDir(), name))).mtime })));
   return files.sort((a, b) => b.modified.getTime() - a.modified.getTime());
 }

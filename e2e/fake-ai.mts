@@ -102,6 +102,7 @@ const answers: Record<string, (messages: Message[]) => unknown> = {
     signOff: "Warm regards,",
   }),
 
+  package_email: () => ({ subject: "Application package", body: "Please find my application package attached." }),
   application_email: () => ({
     contactName: "John Doe",
     contactEmail: "careers@example.com",
