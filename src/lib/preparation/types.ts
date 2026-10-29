@@ -89,6 +89,7 @@ export const analysisSchema = z.object({
   recruiterEmail: z.email().nullable(),
   applicationMethod: z.string().nullable(),
   applicationUrl: z.string().nullable(),
+  applicationInstructions: z.string().nullable().default(null),
   keywords: z.array(z.string()).max(100),
   requirements: z.array(z.string()).max(100),
 });

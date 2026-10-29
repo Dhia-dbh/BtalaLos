@@ -68,6 +68,10 @@ Build the Dossier image from this branch. Apply Prisma migrations through the us
 6. Review PDFs, saved sources, diffs, and compiler logs. Use revision instructions for a fresh AI preparation. Direct worktree edits are read when starting a fresh revision; unexpected changes during a run stop the affected step.
 7. Edit or copy the recipient, subject, and body. Download the merged PDF or use the folder button. Gmail sending uses the reviewed package and requires explicit confirmation. Drafting never marks the application as sent.
 
+Posting analysis also checks for submission instructions such as "apply here", "click here", and "apply online". Fetched postings retain their link destinations, including relative links resolved against the page URL. When pasting a posting, include the destination URLs; plain text such as "click here" cannot identify a hidden link.
+
+The application page shows the quoted instructions and a **Continue application** link. A portal application without a recruiter email still produces the document package and skips email drafting. Open the link to continue submission yourself. Unverified email addresses or application URLs are discarded with a visible notice. If neither destination is available, preparation still finishes, the email recipient stays empty, and the page asks you to check the posting's instructions. Existing failed runs can be retried; start a fresh preparation to use the updated extraction prompt and current posting.
+
 PyMuPDF combines the selected PDFs in profile order, preserving links and annotations. The worker invokes the Python executable selected by `DOSSIER_PYTHON_BIN` (default `python3`); there is no alternate merge engine.
 
 The final filename starts as `BenHamouda_Dhia.pdf` and is configurable. The worker writes the current file plus `-v1`, `-v2`, and later archives under a branch-named folder for LaTeX applications, or `native-<application-id>` for native applications. Folder opening always occurs on the Linux host, including when browsing remotely. A desktop-session error does not prevent PDF download.

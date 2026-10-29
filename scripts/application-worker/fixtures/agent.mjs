@@ -81,6 +81,8 @@ if (args[0] === "app-server") {
         content: file.content.replaceAll("\\newpage Overflow", ""),
       }));
   } else if (prompt.includes("Extract only explicit job facts")) {
+    const applicationUrl = prompt.includes("https://careers.example.org/apply/42")
+      ? "https://careers.example.org/apply/42" : null;
     answer = {
       title: "Researcher at Example",
       company: "Example",
@@ -92,8 +94,9 @@ if (args[0] === "app-server") {
       externalJobId: "42",
       recruiterName: null,
       recruiterEmail: "hr@example.org",
-      applicationMethod: "email",
-      applicationUrl: null,
+      applicationMethod: applicationUrl ? "Online portal" : "email",
+      applicationUrl,
+      applicationInstructions: applicationUrl ? `Apply here: ${applicationUrl}` : null,
       keywords: ["Python"],
       requirements: ["Python"],
     };

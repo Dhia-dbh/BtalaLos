@@ -156,7 +156,7 @@ export async function fetchPosting(
 ): Promise<FetchedPosting> {
   const page = await fetchHtml(link, { lookup, timeoutMs });
   if (!page.ok) return { ok: false, error: page.error };
-  const posting = postingFromHtml(page.html);
+  const posting = postingFromHtml(page.html, page.url);
   if (!posting) return { ok: false, error: FETCH_MESSAGES.unreadable };
   return { ok: true, ...posting, url: page.url };
 }
@@ -230,18 +230,24 @@ function decode(body: Buffer, contentType: string): string {
 // ─── Reading the page ────────────────────────────────────────────────────────
 
 /** The posting's text from a page: its JobPosting data if it has any, else its main text. */
-export function postingFromHtml(html: string): { text: string; source: "structured" | "page" } | null {
+export function postingFromHtml(html: string, baseUrl?: string): { text: string; source: "structured" | "page" } | null {
   const root = parse(html, { blockTextElements: { script: true, style: false, noscript: false, pre: true } });
   for (const script of root.querySelectorAll('script[type="application/ld+json"]')) {
     const posting = jobPostingIn(parseJson(script.rawText));
-    const text = posting && jobPostingText(posting);
-    if (text && text.length >= MIN_CHARACTERS) return { text, source: "structured" };
+    const text = posting && jobPostingText(posting, baseUrl);
+    if (text && text.length >= MIN_CHARACTERS) {
+      const links = root.querySelectorAll("a[href]")
+        .filter((link) => /\b(apply|click here|submit (your )?application|application portal)\b/i.test(link.text))
+        .map((link) => textOf(link, baseUrl))
+        .filter((link) => !text.includes(link));
+      return { text: [text, ...new Set(links)].join("\n\n"), source: "structured" };
+    }
   }
   for (const noise of root.querySelectorAll("script, style, noscript, template, svg, nav, header, footer, aside, form, iframe, button")) {
     noise.remove();
   }
   const main = root.querySelector("main") ?? root.querySelector("article") ?? root.querySelector('[role="main"]') ?? root.querySelector("body") ?? root;
-  const text = textOf(main);
+  const text = textOf(main, baseUrl);
   return text.length >= MIN_CHARACTERS ? { text, source: "page" } : null;
 }
 
@@ -275,7 +281,7 @@ const str = (value: unknown): string => (typeof value === "string" ? value.trim(
 const nameOf = (value: unknown): string => str(value) || (value && typeof value === "object" ? str((value as Record<string, unknown>).name) : "");
 
 /** A posting as a person would paste it: title and company, the facts, then the description. */
-function jobPostingText(posting: JobPosting): string {
+function jobPostingText(posting: JobPosting, baseUrl?: string): string {
   const title = str(posting.title);
   const company = nameOf(posting.hiringOrganization);
   const locations = [posting.jobLocation].flat().flatMap((place) => {
@@ -293,7 +299,7 @@ function jobPostingText(posting: JobPosting): string {
     salaryOf(posting.baseSalary),
     deadline && `Apply by ${deadline}`,
   ].filter(Boolean);
-  const description = htmlText(str(posting.description));
+  const description = htmlText(str(posting.description), baseUrl);
   return [[company, title].filter(Boolean).join(": "), facts.join(" · "), description].filter(Boolean).join("\n\n");
 }
 
@@ -309,16 +315,16 @@ function salaryOf(value: unknown): string {
 }
 
 /** Text from HTML, including HTML that arrives escaped (&lt;p&gt;), as in many JSON-LD descriptions. */
-function htmlText(html: string): string {
-  let text = textOf(parse(html));
-  if (/<\/?(p|li|ul|br|div|strong)\b/i.test(text)) text = textOf(parse(text));
+function htmlText(html: string, baseUrl?: string): string {
+  let text = textOf(parse(html), baseUrl);
+  if (/<\/?(p|li|ul|br|div|strong|a)\b/i.test(text)) text = textOf(parse(text), baseUrl);
   return text;
 }
 
 const BLOCK = new Set(["p", "div", "section", "article", "main", "ul", "ol", "li", "h1", "h2", "h3", "h4", "h5", "h6", "tr", "table", "br", "hr", "dl", "dt", "dd", "blockquote", "pre"]);
 
 /** The readable text of an element: blocks on their own lines, list items as "- ", spaces tidied. */
-function textOf(node: Node): string {
+function textOf(node: Node, baseUrl?: string): string {
   const lines: string[] = [];
   let line = "";
   const flush = () => {
@@ -337,6 +343,18 @@ function textOf(node: Node): string {
     if (block) flush();
     if (tag === "li") line += "- ";
     for (const child of element.childNodes) walk(child);
+    if (tag === "a") {
+      const href = element.getAttribute("href");
+      if (href) {
+        try {
+          const url = new URL(href, baseUrl);
+          if (["http:", "https:", "mailto:"].includes(url.protocol) && !url.username && !url.password)
+            line += ` (${url.href})`;
+        } catch {
+          // Relative links cannot be resolved without a page URL.
+        }
+      }
+    }
     if (block) flush();
   };
   walk(node);

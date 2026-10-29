@@ -56,6 +56,22 @@ describe("postingFromHtml (E7-8)", () => {
   it("gives up on a page with hardly any text", () => {
     expect(postingFromHtml("<html><body><div id=root></div><p>Loading…</p></body></html>")).toBeNull();
   });
+
+  it("preserves application links and resolves relative targets against the final page URL", () => {
+    const html = `<main><p>${DESCRIPTION}</p><p><a href="../apply/42?lang=en&amp;source=job">Apply here</a></p><a href="javascript:alert(1)">Unsafe</a></main>`;
+    const result = postingFromHtml(html, "https://careers.example.org/jobs/42");
+    expect(result?.text).toContain("Apply here (https://careers.example.org/apply/42?lang=en&source=job)");
+    expect(result?.text).not.toContain("javascript:");
+  });
+
+  it("keeps application links inside structured descriptions and page application buttons outside them", () => {
+    const html = jobPage({ ...posting, description: `<p>${DESCRIPTION}</p><a href="/apply/42">Click here</a>` })
+      .replace('<div id="app"></div>', '<a href="/apply/43">Apply online</a>');
+    const result = postingFromHtml(html, "https://careers.example.org/jobs/42");
+    expect(result?.source).toBe("structured");
+    expect(result?.text).toContain("Click here (https://careers.example.org/apply/42)");
+    expect(result?.text).toContain("Apply online (https://careers.example.org/apply/43)");
+  });
 });
 
 describe("fetchPosting (E7-8)", () => {

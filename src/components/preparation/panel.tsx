@@ -28,6 +28,10 @@ type View = {
   postingText: string;
   extracted: {
     recruiterEmail?: string | null;
+    applicationUrl?: string | null;
+    applicationMethod?: string | null;
+    applicationInstructions?: string | null;
+    warnings?: string[];
     keywords?: string[];
     manualMetadata?: { recruiterEmail?: string | null };
   } | null;
@@ -152,6 +156,12 @@ export function PreparationPanel({
   const pack = data.artifacts.find((file) => file.role === "package");
   const file = data.artifacts.find((file) => file.id === preview) ?? pack;
   const selectedProfile = profileId ?? data.packageProfileId ?? "";
+  const applicationUrl = /^https?:\/\//i.test(data.extracted?.applicationUrl ?? "")
+    ? data.extracted!.applicationUrl
+    : null;
+  const recruiterEmail = data.extracted?.manualMetadata?.recruiterEmail ??
+    data.extracted?.recruiterEmail;
+  const portalOnly = Boolean(applicationUrl && !recruiterEmail && !email?.to);
   const showMetadata = () => {
     setMetadata({
       company: data.company,
@@ -385,6 +395,39 @@ export function PreparationPanel({
               Keywords: {data.extracted.keywords.join(", ")}
             </p>
           ) : null}
+          {data.extracted?.applicationMethod && (
+            <p className="text-sm">
+              Application method: {data.extracted.applicationMethod}
+            </p>
+          )}
+          {data.extracted?.applicationInstructions && (
+            <p className="whitespace-pre-wrap text-sm">
+              {data.extracted.applicationInstructions}
+            </p>
+          )}
+          {applicationUrl && (
+            <div className="flex flex-col items-start gap-2">
+              <a
+                className={buttonClassName("primary", "md")}
+                href={applicationUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Continue application
+              </a>
+              <p className="break-all text-meta text-muted">{applicationUrl}</p>
+              {portalOnly && (
+                <p className="text-sm text-muted">
+                  Submit your prepared documents through this link.
+                </p>
+              )}
+            </div>
+          )}
+          {data.extracted?.warnings?.map((warning) => (
+            <p key={warning} role="status" className="text-sm text-muted">
+              {warning}
+            </p>
+          ))}
           {editMetadata ? (
             <form
               className="grid gap-3 sm:grid-cols-2"
@@ -443,7 +486,7 @@ export function PreparationPanel({
           )}
         </Card>
       )}
-      {latex && (
+      {latex && !portalOnly && (
         <section aria-label="Application email">
           <EmailTab
             applicationId={applicationId}

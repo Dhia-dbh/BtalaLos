@@ -272,6 +272,37 @@ describe("application preparation integration", () => {
       ).company,
     ).toBe("Manual company");
   }, 50_000);
+  it("prepares a portal application without accepting an invented email or drafting one", async () => {
+    const { application } = await createApplication();
+    await db.application.update({
+      where: { id: application.id },
+      data: { postingText: "Researcher at Example. Apply here: https://careers.example.org/apply/42" },
+    });
+    const run = await finished(await queuePreparation(application.id));
+    expect(run.status, run.error ?? "").toBe("READY");
+    expect((await latestPackage(application.id))?.pages).toBe(3);
+    const saved = await db.application.findUniqueOrThrow({ where: { id: application.id } });
+    expect(saved.extracted).toMatchObject({
+      recruiterEmail: null,
+      applicationUrl: "https://careers.example.org/apply/42",
+      applicationInstructions: "Apply here: https://careers.example.org/apply/42",
+      warnings: [expect.stringContaining("email")],
+    });
+    expect((run.steps as { name: string }[]).map((step) => step.name)).not.toContain("Draft application email");
+    expect(await db.document.count({ where: { applicationId: application.id, kind: "EMAIL" } })).toBe(0);
+  }, 50_000);
+  it("finishes preparation with an empty recipient when no submission destination is given", async () => {
+    const { application } = await createApplication();
+    await db.application.update({
+      where: { id: application.id },
+      data: { postingText: "Researcher at Example. Python required." },
+    });
+    const run = await finished(await queuePreparation(application.id));
+    expect(run.status, run.error ?? "").toBe("READY");
+    const email = await db.document.findUniqueOrThrow({ where: { applicationId_kind: { applicationId: application.id, kind: "EMAIL" } } });
+    expect(email.units).toEqual(expect.arrayContaining([expect.objectContaining({ id: "to", text: "" })]));
+    expect(await latestPackage(application.id)).not.toBeNull();
+  }, 50_000);
   it("stops after two unsuccessful shortening rounds without publishing a package or email", async () => {
     const { application } = await createApplication();
     const run = await finished(

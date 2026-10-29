@@ -100,6 +100,25 @@ it("requests merge-only regeneration separately from AI document preparation", a
     }),
   );
 });
+it("shows portal instructions and a continuation link without an email composer", async () => {
+  vi.stubGlobal("fetch", vi.fn(async () => Response.json({
+    ...view,
+    documents: [],
+    extracted: {
+      applicationMethod: "Online portal",
+      applicationUrl: "https://careers.example.org/apply/42",
+      applicationInstructions: "Apply here to submit your documents.",
+      warnings: ["The extracted recruiter email was not present in the posting and was discarded."],
+    },
+  })));
+  render(<PreparationPanel applicationId="app1" latex />);
+  const link = await screen.findByRole("link", { name: "Continue application" });
+  expect(link).toHaveAttribute("href", "https://careers.example.org/apply/42");
+  expect(screen.getByText("Apply here to submit your documents.")).toBeInTheDocument();
+  expect(screen.getByText(/email was not present/)).toBeInTheDocument();
+  expect(screen.queryByRole("region", { name: "Application email" })).not.toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Download BenHamouda_Dhia.pdf" })).toBeInTheDocument();
+});
 it("records explicit email edits without sending", async () => {
   const user = userEvent.setup();
   render(<PreparationPanel applicationId="app1" latex />);
