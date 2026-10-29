@@ -157,7 +157,7 @@ export abstract class BaseProvider implements AIProvider {
   }
 
   /** Runs `call` with the timeout and the caller's signal, mapping whatever it throws. */
-  private async guard<R>(model: string, signal: AbortSignal | undefined, call: (signal: AbortSignal) => Promise<R>): Promise<R> {
+  protected async guard<R>(model: string, signal: AbortSignal | undefined, call: (signal: AbortSignal) => Promise<R>): Promise<R> {
     const timeout = AbortSignal.timeout(this.timeoutMs);
     const combined = signal ? AbortSignal.any([signal, timeout]) : timeout;
     try {

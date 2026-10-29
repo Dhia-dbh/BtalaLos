@@ -58,7 +58,8 @@ function pass(request: NextRequest): NextResponse {
   if (request.nextUrl.pathname.startsWith("/api/")) return NextResponse.next();
   // Behind a reverse proxy that ends TLS, only the forwarded header knows.
   const protocol = request.headers.get("x-forwarded-proto")?.split(",")[0].trim() ?? request.nextUrl.protocol.replace(/:$/, "");
-  const policy = contentSecurityPolicy(createNonce(), { dev: process.env.NODE_ENV === "development", https: protocol === "https" });
+  let policy = contentSecurityPolicy(createNonce(), { dev: process.env.NODE_ENV === "development", https: protocol === "https" });
+  if (request.nextUrl.pathname.startsWith("/api/artifacts/")) policy = policy.replace("frame-ancestors 'none'", "frame-ancestors 'self'");
   const headers = new Headers(request.headers);
   headers.set("content-security-policy", policy);
   const response = NextResponse.next({ request: { headers } });

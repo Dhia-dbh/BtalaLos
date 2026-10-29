@@ -22,6 +22,8 @@ export function SendWithGmail({
   sender,
   to,
   subject,
+  body,
+  packageId,
   attachments,
   sentBefore,
 }: {
@@ -29,6 +31,8 @@ export function SendWithGmail({
   sender: GmailSender;
   to: string;
   subject: string;
+  body?: string;
+  packageId?: string;
   attachments: string[];
   /** It went out through Gmail already. */
   sentBefore: boolean;
@@ -50,7 +54,7 @@ export function SendWithGmail({
   const send = () =>
     startSending(async () => {
       setOpen(false);
-      const result = await sendWithGmail({ id: applicationId });
+      const result = await sendWithGmail({ id: applicationId, ...(packageId ? { reviewed: { packageId, email: { to, subject, body: body ?? "" } } } : {}) });
       if (!result.ok) return toast(result.error);
       toastWithUndo(result.toast, result.data.eventId);
       router.refresh();

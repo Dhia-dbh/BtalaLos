@@ -13,7 +13,11 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
-    "hash-password": "tsx scripts/hash-password.ts"
+    "hash-password": "tsx scripts/hash-password.ts",
+    "codex:bridge": "node scripts/codex-bridge.mjs",
+    "application:worker": "node scripts/application-worker.mjs",
+    "test:application-worker": "node --test scripts/application-worker.test.mjs",
+    "test:codex-bridge": "node --test scripts/codex-bridge.test.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.128.0",

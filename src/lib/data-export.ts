@@ -28,6 +28,7 @@ import {
 } from "@/generated/prisma/enums";
 import { decryptApiKey } from "@/lib/ai/api-key";
 import { decryptSecret, JOB_SOURCE_KEY } from "@/lib/secrets";
+import { bundleSchema } from "@/lib/preparation/types";
 import { appVersion } from "@/lib/version";
 
 // Everything a user keeps in Dossier as one JSON file (E10-4, SET-10): the
@@ -40,10 +41,10 @@ import { appVersion } from "@/lib/version";
 // behind: they belong to the server or the mailbox, not the user's data.
 
 export const EXPORT_FORMAT = "dossier-export";
-/** Bump when the file's shape changes; imports refuse versions they don't know. 2 added Find jobs' postings and keys (E14-9), 3 projects (PRO-13) and the job agent (E16), 4 facts (PRO-14, APP-15), 5 publications (#218), the profile photo's theme and application options (#224) and Startups (#222). */
-export const EXPORT_SCHEMA_VERSION = 5;
+/** Bump when the file's shape changes; imports refuse versions they don't know. 2 added Find jobs' postings and keys (E14-9), 3 projects (PRO-13) and the job agent (E16), 4 facts (PRO-14, APP-15), 5 publications (#218), the profile photo's theme and application options (#224) and Startups (#222); 6 application preparation, profiles, supporting PDFs and artifact manifests. */
+export const EXPORT_SCHEMA_VERSION = 6;
 /** The versions imports can read. */
-export const EXPORT_SCHEMA_VERSIONS: readonly number[] = [1, 2, 3, 4, 5];
+export const EXPORT_SCHEMA_VERSIONS: readonly number[] = [1, 2, 3, 4, 5, 6];
 
 /** The setting that holds the encrypted API key, which only this server can read. */
 const API_KEY_SETTING = "apiKeyEnc";
@@ -184,6 +185,8 @@ const chatMessage = z.object({
 });
 const note = z.object({ id: text, body: text, createdAt: date, updatedAt: date });
 const application = z.object({
+  documentMode: z.enum(["NATIVE", "LATEX"]).default("NATIVE"),
+  packageProfileId: z.string().nullable().default(null),
   id: text,
   title: text,
   company: text,
@@ -315,10 +318,16 @@ const postingSearch = z.object({
   updatedAt: date,
 });
 
+const packageProfile = z.object({ id: text, name: text, version: int, items: bundleSchema, updatedAt: date });
+const supportingVersion = z.object({ id: text, documentId: text, version: int, path: text, checksum: text, pages: int, createdAt: date });
+const supportingDocument = z.object({ id: text, name: text, deletedAt: optionalDate, versions: z.array(supportingVersion).min(1) });
+const preparation = z.object({ id: text, applicationId: text, kind: text, status: text, snapshot: z.unknown(), steps: z.unknown(), error: text.nullable(), createdAt: date, finishedAt: optionalDate });
+const artifact = z.object({ id: text, applicationId: text, runId: text, role: text, version: int, path: text, checksum: text, pages: int.nullable(), manifest: z.unknown(), createdAt: date });
+
 /** An export file as read back (E10-6). */
 export const exportSchema = z.object({
   format: z.literal(EXPORT_FORMAT),
-  schemaVersion: z.literal([1, 2, 3, 4, 5]),
+  schemaVersion: z.literal([1, 2, 3, 4, 5, 6]),
   appVersion: text,
   exportedAt: date,
   profile: z.object({
@@ -342,6 +351,10 @@ export const exportSchema = z.object({
   /** The job sources' keys in plain text, likewise (E14-9). */
   jobSourceKeys: z.object({ jsearch: text.optional(), adzuna: text.optional() }).optional(),
   applications: z.array(application),
+  packageProfiles: z.array(packageProfile).default([]),
+  supportingDocuments: z.array(supportingDocument).default([]),
+  preparations: z.array(preparation).default([]),
+  artifacts: z.array(artifact).default([]),
   /** Saved and dismissed postings (E14-9); absent in version 1 files. */
   postings: z.array(posting).default([]),
   /** Past searches with what they found (E14-10); absent in version 1 files. */
@@ -354,10 +367,10 @@ export const exportSchema = z.object({
 });
 export type DossierExport = z.infer<typeof exportSchema>;
 
-/** "dossier-export-2026-09-28.json", dated in the server's time zone. */
+/** "dossier-export-2026-09-28.zip", dated in the server's time zone. */
 export function exportFileName(now = new Date()): string {
   const pad = (value: number) => String(value).padStart(2, "0");
-  return `dossier-export-${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}.json`;
+  return `dossier-export-${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}.zip`;
 }
 
 /**
@@ -372,7 +385,7 @@ export async function buildExport(
   { includeApiKey = false, now = new Date() }: { includeApiKey?: boolean; now?: Date } = {},
 ): Promise<DossierExport> {
   return db.$transaction(async (tx) => {
-    const [fields, skills, languages, experience, projects, education, publications, references, facts, themes, settings, applications, postings, searches, agentCandidates, startups, startupBlocks] = await Promise.all([
+    const [fields, skills, languages, experience, projects, education, publications, references, facts, themes, settings, applications, postings, searches, agentCandidates, startups, startupBlocks, packageProfiles, supportingDocuments, preparations, artifacts] = await Promise.all([
       tx.profileField.findMany({ select: { key: true, value: true }, orderBy: { key: "asc" } }),
       tx.skill.findMany({ select: { id: true, name: true, sort: true, createdAt: true }, orderBy: { createdAt: "asc" } }),
       tx.language.findMany({ select: { id: true, name: true, level: true, sort: true, createdAt: true }, orderBy: { createdAt: "asc" } }),
@@ -405,6 +418,10 @@ export async function buildExport(
       tx.agentCandidate.findMany({ orderBy: { createdAt: "asc" } }),
       tx.startup.findMany({ orderBy: { createdAt: "asc" } }),
       tx.startupBlock.findMany({ orderBy: { createdAt: "asc" } }),
+      tx.applicationProfile.findMany(),
+      tx.supportingDocument.findMany({ include: { versions: true } }),
+      tx.preparationRun.findMany({ omit: { activeKey: true, jobId: true } }),
+      tx.applicationArtifact.findMany(),
     ]);
 
     // Keys only when asked for, decrypted; one that's unreadable here too (DOSSIER_SECRET changed) has nothing to export.
@@ -450,6 +467,7 @@ export async function buildExport(
       agentCandidates,
       startups,
       startupBlocks,
+      packageProfiles: packageProfiles.map((entry) => ({ ...entry, items: bundleSchema.parse(entry.items) })), supportingDocuments, preparations, artifacts,
     };
   });
 }

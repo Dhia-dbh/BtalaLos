@@ -8,6 +8,7 @@ import { dayPeriod, hourIn } from "@/lib/greeting";
 import { loadProfileName } from "@/lib/profile-data";
 import { loadSettings } from "@/lib/settings-data";
 import { userTimeZone } from "@/lib/time-zone";
+import { loadDocumentMode } from "@/lib/preparation/data";
 
 import { Dashboard } from "./dashboard";
 import { CalendarSkeleton, DashboardCalendar } from "./dashboard-calendar";
@@ -32,6 +33,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/">) {
   ]);
   return (
     <Dashboard
+      documentMode={await loadDocumentMode()}
       figures={figures}
       firstName={name.trim().split(/\s+/)[0] ?? ""}
       period={dayPeriod(hourIn(timeZone))}

@@ -23,6 +23,8 @@ It's for one person on a small server: one password, your data in your own Postg
 
 **Get started:** [run it on your computer](#run-it-on-your-computer) in a few minutes, or [self-host it](#self-hosting) on a server. The [installation guide](https://github.com/AienTech/dossier/wiki) covers every way: Docker with or without Compose, Node.js, a plain Ubuntu server, CapRover, Coolify and Dokploy.
 
+Already signed in to Codex on this computer? The [local Codex CLI bridge](docs/codex-cli.md) lets Dossier use that ChatGPT login through the existing OpenAI-compatible provider, without an OpenAI API key.
+
 ## Demo
 
 ![Dossier in use: the dashboard, dragging a card on the board, a new application from a pasted posting, refining the tailored resume in the chat, the cover letter, and switching resume themes](.github/images/demo.gif)
@@ -30,6 +32,8 @@ It's for one person on a small server: one password, your data in your own Postg
 <sub>Recorded with the demo data (Jane Doe is made up) and a stand-in AI server that answers at once, played at 1.2× speed. With a real model, reading a posting and writing the documents takes from a few seconds to a few minutes.</sub>
 
 ## Features
+
+- **LaTeX and application packages:** use an existing Git-based LaTeX CV project, keep each CV and cover letter to one page, and merge an ordered profile of supporting PDFs. Both native and LaTeX documents support versioned packages, preparation history, local folder access, and email drafts. See [Application preparation](docs/application-preparation.md).
 
 - **Profile:** basics, skills and languages, experience, projects, education, publications and references, in the order you choose, with a strength meter that counts only what a profile needs. Projects (side, open-source, course or thesis work) show what you can do where your job titles don't yet. Publications are cited in your own style, with bold and italics, and go on resumes word for word. Start it from an existing resume (PDF, Word or Markdown) if you like.
 - **Base resume:** twelve themes and a theme builder, previewed live and printed to PDF on the server. Duplicate themes, or share them as files.

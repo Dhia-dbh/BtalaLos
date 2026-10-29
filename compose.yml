@@ -27,6 +27,10 @@ services:
     environment:
       # Overrides the localhost URL in .env, which is meant for tools run on the host.
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-dossier}
+      # Persist uploads, backups, and exports in the writable project mount.
+      DOSSIER_DATA_DIR: /app/data
+      DOSSIER_WORKER_URL: ${DOSSIER_WORKER_URL:-}
+      DOSSIER_WORKER_TOKEN: ${DOSSIER_WORKER_TOKEN:-}
     ports:
       - "3000:3000"
     volumes:

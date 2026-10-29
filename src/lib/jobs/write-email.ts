@@ -7,6 +7,7 @@ import { DocumentKind, VersionCause } from "@/generated/prisma/enums";
 import { getAiProvider } from "@/lib/ai";
 import { loadTaskOptions } from "@/lib/ai/task-options";
 import { writeEmail } from "@/lib/ai/tasks";
+import { AiError } from "@/lib/ai/errors";
 import { extractedOf, matchSchema, unitsSchema, type Unit } from "@/lib/application-data";
 import { emailParts } from "@/lib/application-email";
 import { updateDocuments } from "@/lib/document-units";
@@ -48,6 +49,9 @@ export const writeEmailJob = defineJob({
     const match = matchSchema.safeParse(application.match);
 
     const [provider, options, profile, facts] = await Promise.all([getAiProvider(), loadTaskOptions(), loadProfile(), loadFactTexts(applicationId)]);
+    const packageFile = application.packageProfileId ? await prisma.applicationArtifact.findFirst({ where: { applicationId, role: "package" }, orderBy: { version: "desc" } }) : null;
+    if (application.packageProfileId && !packageFile) throw AiError.config("Build the document package before writing its email.");
+    const attachmentFacts = packageFile ? [`This email accompanies exactly one merged PDF attachment named ${(packageFile.manifest as { fileName: string }).fileName}. It contains the CV and cover letter. Describe it as one application package.`] : [];
     const { data, promptVersion } = await writeEmail(
       provider,
       {
@@ -55,7 +59,7 @@ export const writeEmailJob = defineJob({
         extracted: extractedOf(application),
         match: match.success ? match.data : null,
         tone: application.tone,
-        facts,
+        facts: [...facts, ...attachmentFacts],
         posting: application.postingText,
         // Only the paragraphs: the letter's sender and signature hold contact details (E8-11).
         letter: (unitsOf(DocumentKind.COVER_LETTER) ?? []).filter(isParagraph).map((unit) => unit.text),

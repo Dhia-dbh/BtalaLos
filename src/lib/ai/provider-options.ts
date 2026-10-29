@@ -1,4 +1,5 @@
 import { AiProvider } from "@/generated/prisma/enums";
+import type { ThinkingEffort } from "./model-options";
 
 /** The provider cards in Settings → AI provider (SET-1), as in the prototype's `PROVIDERS`. */
 export const PROVIDER_OPTIONS: readonly {
@@ -102,4 +103,5 @@ export type AiSettingsView = {
   baseUrl: string;
   model: string;
   keyState: KeyState;
+  thinkingEffort: ThinkingEffort | null;
 };

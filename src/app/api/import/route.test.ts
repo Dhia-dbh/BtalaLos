@@ -14,7 +14,7 @@ vi.mock("@/lib/jobs/runner", () => ({ cancelJob: vi.fn() }));
 vi.mock("@/lib/backups", () => ({ writeBackup: vi.fn(async () => "dossier-backup-before-import-2026-09-28-120000.json") }));
 const summary = { applications: 2, roles: 3, skills: 7, themes: 0, notes: 1 };
 vi.mock("@/lib/data-import", () => ({
-  parseExport: vi.fn(() => ({ ok: true, data: { exportedAt: new Date("2026-09-27T10:00:00Z") } })),
+  parseExport: vi.fn(() => ({ ok: true, data: { exportedAt: new Date("2026-09-27T10:00:00Z"), supportingDocuments: [], artifacts: [] } })),
   summarizeExport: vi.fn(() => summary),
   currentSummary: vi.fn(async () => ({ ...summary, applications: 9 })),
   importExport: vi.fn(),
@@ -63,7 +63,7 @@ describe("POST /api/import (E10-6)", () => {
 
   it("refuses a file over the size limit before reading it", async () => {
     vi.mocked(parseExport).mockClear();
-    const response = await post("", { "content-length": String(11 * 1024 * 1024) });
+    const response = await post("", { "content-length": String(201 * 1024 * 1024) });
     expect(response.status).toBe(413);
     expect(parseExport).not.toHaveBeenCalled();
   });

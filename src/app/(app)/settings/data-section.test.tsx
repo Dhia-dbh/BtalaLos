@@ -131,10 +131,10 @@ describe("Import (E10-6)", () => {
     try {
       const { container } = render(<DataSection jobRetentionHours={24} hasApiKey={false} exportName="x.json" backups={backups} />);
       const big = new File(["x"], "big.json", { type: "application/json" });
-      Object.defineProperty(big, "size", { value: 11 * 1024 * 1024 });
+      Object.defineProperty(big, "size", { value: 201 * 1024 * 1024 });
       await user.upload(container.querySelector("input[type=file]")!, big);
       expect(fetch).not.toHaveBeenCalled();
-      expect(toast).toHaveBeenLastCalledWith(expect.stringMatching(/^That file is over 10 MB/));
+      expect(toast).toHaveBeenLastCalledWith(expect.stringMatching(/^That file is over 200 MB/));
     } finally {
       vi.unstubAllGlobals();
     }

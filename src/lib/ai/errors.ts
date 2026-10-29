@@ -75,7 +75,7 @@ function networkCode(error: unknown): string | undefined {
   return undefined;
 }
 
-type HttpLike = { status?: unknown; status_code?: unknown; name?: unknown; message?: unknown };
+type HttpLike = { status?: unknown; status_code?: unknown; name?: unknown; message?: unknown; code?: unknown };
 
 /**
  * Turns whatever a provider SDK or fetch threw into an AiError. `cancelled`
@@ -96,6 +96,31 @@ export function toAiError(
   const message = typeof e.message === "string" ? e.message : "";
   const status = typeof e.status === "number" ? e.status : typeof e.status_code === "number" ? e.status_code : undefined;
   const detail = [name, status].filter(Boolean).join(" ");
+
+  switch (e.code) {
+    case "codex_effort":
+      return AiError.config("Choose a thinking effort supported by the selected Codex model in Settings → AI provider.");
+    case "codex_bridge_auth":
+      return new AiError("auth", "The Codex bridge rejected its local access token. Check it in Settings → AI provider.");
+    case "codex_auth_required":
+      return AiError.config("Sign in with ChatGPT using codex login on the host running the Codex bridge.");
+    case "codex_unavailable":
+      return AiError.config("Codex was not found on the host. Check DOSSIER_CODEX_BIN and restart the bridge.");
+    case "codex_quota":
+      return new AiError("rate-limited", "Your ChatGPT account has reached its Codex usage limit. Check Codex before trying again.");
+    case "codex_busy":
+      return new AiError("busy", "The Codex bridge is handling three requests. Wait for one to finish and try again.");
+    case "codex_timeout":
+      return AiError.of("timeout", "codex_timeout");
+    case "codex_model":
+      return AiError.unknownModel(model, "codex_model");
+    case "codex_context":
+      return AiError.of("too-long", "codex_context");
+    case "codex_output":
+      return AiError.of("invalid-output", "codex_output");
+    case "codex_failed":
+      return new AiError("provider", "The Codex bridge could not complete the request. Check its host service logs.");
+  }
 
   if (name === "TimeoutError" || name === "APIConnectionTimeoutError") return AiError.of("timeout", detail);
   if (name === "AbortError" || name === "APIUserAbortError") return AiError.of("cancelled", detail);

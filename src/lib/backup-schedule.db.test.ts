@@ -44,7 +44,7 @@ describe("nightly backups (E10-7)", () => {
   it("write an export while they're on", async () => {
     const now = new Date(2026, 8, 28, 3, 0);
     expect(await runNightlyBackup(now)).toBe("written");
-    expect(await backups()).toEqual(["dossier-backup-nightly-2026-09-28-030000.json"]);
+    expect(await backups()).toEqual(["dossier-backup-nightly-2026-09-28-030000.zip"]);
     expect(await lastNightlyBackup()).toBeInstanceOf(Date);
   });
 
@@ -62,7 +62,7 @@ describe("nightly backups (E10-7)", () => {
     const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     await utimes(old, monthAgo, monthAgo);
     expect(await pruneBackups(new Date())).toBe(1);
-    expect(await backups()).toEqual(["dossier-backup-nightly-2026-09-28-030000.json"]);
+    expect(await backups()).toEqual(["dossier-backup-nightly-2026-09-28-030000.zip"]);
   });
 
   it("keep a failure for the settings row, and clear it after a success", async () => {

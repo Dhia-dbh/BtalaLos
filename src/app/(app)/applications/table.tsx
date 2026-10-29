@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { PackageFolderButton } from "@/components/preparation/folder-button";
 import { useRouter } from "next/navigation";
 
 import { StatusDot } from "@/components/ui/status-dot";
@@ -88,6 +89,8 @@ export function Table({
               className="cursor-pointer border-b border-line last:border-b-0 hover:bg-hover"
             >
               <td className="py-3.5 pr-4 pl-5">
+                {row.packageId && <PackageFolderButton applicationId={row.id} />}
+                {row.preparation && <span className="mb-1 block text-meta text-muted">Preparation: {row.preparation.toLowerCase()}</span>}
                 <Link href={`/applications/${row.id}`} className="block truncate text-field font-medium text-ink">
                   {row.role}
                 </Link>

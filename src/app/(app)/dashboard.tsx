@@ -27,6 +27,7 @@ export function Dashboard({
   quietDays = DEFAULT_QUIET_DAYS,
   empty,
   calendar,
+  documentMode = "NATIVE",
 }: {
   figures: DashboardFigures;
   firstName: string;
@@ -39,6 +40,7 @@ export function Dashboard({
   empty: boolean;
   /** The calendar (E15-6), which the time filter doesn't scope. */
   calendar?: ReactNode;
+  documentMode?: "NATIVE" | "LATEX";
 }) {
   const { sent, heardBack } = figures;
   // The summary follows the time filter, so it says which period it covers.
@@ -63,7 +65,7 @@ export function Dashboard({
 
       {empty ? (
         <Columns calendar={calendar}>
-          <Welcome />
+          <Welcome latex={documentMode === "LATEX"} />
         </Columns>
       ) : (
         <PeriodFilter period={range}>
@@ -197,17 +199,16 @@ function WorthALook({ items, quietDays }: { items: DashboardFigures["attention"]
 }
 
 /** Before the first application: where to begin. */
-function Welcome() {
+function Welcome({ latex }: { latex: boolean }) {
   return (
     <Panel>
       <h2 className="font-serif text-section">Welcome to Dossier</h2>
       <p className="text-sm text-muted">
-        Start with your profile: your roles, skills and education are what every tailored resume and cover letter is built from.
-        Then paste a job posting, and your funnel and next steps will show up here.
+        {latex ? "Configure your existing LaTeX project and an ordered job profile in Settings. Then paste a posting to create an application branch and compile your tailored documents." : "Start with your profile: your roles, skills and education are what every tailored resume and cover letter is built from. Then paste a job posting, and your funnel and next steps will show up here."}
       </p>
       <div className="flex flex-wrap items-center gap-4 pt-1">
-        <Link href="/profile" className={buttonClassName("secondary")}>
-          Fill in your profile
+        <Link href={latex ? "/settings?section=latex" : "/profile"} className={buttonClassName("secondary")}>
+          {latex ? "Configure LaTeX project" : "Fill in your profile"}
         </Link>
         <Link href="/new?fresh=1" className={buttonClassName("primary", "md", "hover:text-on-primary")}>
           + New application

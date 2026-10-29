@@ -51,6 +51,7 @@ import {
   undoEmailRewrite,
   undoMessage,
 } from "./actions";
+import { PreparationPanel } from "@/components/preparation/panel";
 import { ApplicationHeader } from "./application-header";
 import { ApplicationMenu } from "./application-menu";
 import { ConversationTab } from "./conversation-tab";
@@ -652,6 +653,7 @@ export function ApplicationView({
             </TabsTrigger>
           )}
           <TabsTrigger value="posting">{score ? `Job posting · ${score.hit}/${score.total} match` : "Job posting"}</TabsTrigger>
+          <TabsTrigger value="preparation">Preparation</TabsTrigger>
           <TabsTrigger value="notes">{notes > 0 ? `Notes · ${notes}` : "Notes"}</TabsTrigger>
         </TabsList>
       </ApplicationHeader>
@@ -756,6 +758,8 @@ export function ApplicationView({
             setFacts={setFacts}
           />
         </TabsContent>
+
+        <TabsContent value="preparation" className="flex min-h-0 min-w-0 flex-[999_1_480px]"><PreparationPanel applicationId={application.id} /></TabsContent>
 
         <TabsContent value="notes" className="flex min-h-0 min-w-0 flex-[999_1_480px]">
           <NotesTab applicationId={application.id} activity={activity} />

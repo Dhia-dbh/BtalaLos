@@ -9,6 +9,7 @@ import { toast, toastResult } from "@/components/toast";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Stepper } from "@/components/ui/stepper";
 import { Textarea } from "@/components/ui/textarea";
 import type { Tone } from "@/generated/prisma/enums";
@@ -46,6 +47,7 @@ export type Details = {
 
 /** Everything the flow knows so far; nothing reaches the server as an application until the end. */
 export type Draft = {
+  packageProfileId?: string;
   step: "paste" | "reading" | "review" | "creating";
   posting: string;
   postingUrl: string;
@@ -140,6 +142,7 @@ export type NewApplicationProps = {
   samplePosting: string | null;
   /** Settings → default cover letter tone (SET-6). */
   defaultTone: Tone;
+  profiles?: { id: string; name: string }[];
   /** "+ New application": start over, whatever the tab kept. */
   fresh?: boolean;
   /** "Start application" on Find jobs: start over from this posting. */
@@ -147,7 +150,7 @@ export type NewApplicationProps = {
 };
 
 /** The new application flow (E7): paste → read → review → create. */
-export function NewApplication({ aiReady, writeInClaude = false, samplePosting, defaultTone, fresh = false, fromPosting = null }: NewApplicationProps) {
+export function NewApplication({ aiReady, writeInClaude = false, samplePosting, defaultTone, fresh = false, fromPosting = null, profiles = [] }: NewApplicationProps) {
   const [initial] = useState<Draft>(() => ({
     step: "paste",
     posting: "",
@@ -288,6 +291,7 @@ export function NewApplication({ aiReady, writeInClaude = false, samplePosting, 
     setSaveError(null);
     const result = await createApplication({
       writeJobId,
+      profileId: draft.packageProfileId || undefined,
       details: draft.details,
       postingUrl: draft.postingUrl,
       postingId: draft.postingId ?? null,
@@ -346,6 +350,8 @@ export function NewApplication({ aiReady, writeInClaude = false, samplePosting, 
         description="Paste a job posting. I'll pull out the details, check it against your profile, and draft a tailored resume and cover letter."
       />
       <div className="flex max-w-[816px] flex-col gap-6 px-10 pb-20">
+        {draft.step === "paste" && <Select label="Document mode" value="NATIVE" onChange={() => router.push(`/new/latex${window.location.search}`)}><option value="NATIVE">Dossier documents</option><option value="LATEX">LaTeX project</option></Select>}
+        {draft.step === "paste" && profiles.length > 0 && <Select label="Application package (optional)" value={draft.packageProfileId ?? ""} onChange={(event) => update({ packageProfileId: event.target.value })}><option value="">Individual PDFs</option>{profiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name}</option>)}</Select>}
         <Stepper
           steps={STEPS}
           current={draft.step === "creating" ? 2 : draft.step === "review" ? 1 : 0}

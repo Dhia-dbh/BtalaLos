@@ -1,5 +1,9 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { unlink, writeFile } from "node:fs/promises";
+import { saveBytes, storedPath } from "@/lib/preparation/storage";
+import { emailParts } from "@/lib/application-email";
+import { unitsSchema } from "@/lib/application-data";
 import { MockProvider } from "@/lib/ai/providers/mock";
 import { createTestClient, resetDatabase } from "@/test/db";
 
@@ -118,6 +122,38 @@ describe("Send with Gmail (E15-2)", () => {
     const application = await prisma().application.findUniqueOrThrow({ where: { id: "nw" } });
     expect(application).toMatchObject({ status: "SENT", emailThreadId: "thread-new" });
     expect(await prisma().emailMessage.count({ where: { applicationId: "nw", direction: "OUTGOING" } })).toBe(1);
+  });
+});
+
+describe("merged-package Gmail attachments", () => {
+  async function packageForSend() {
+    const profile = await prisma().applicationProfile.create({ data: { name: "PhD", items: [{ role: "cv" }, { role: "letter" }] } });
+    await prisma().application.update({ where: { id: "nw" }, data: { packageProfileId: profile.id } });
+    const run = await prisma().preparationRun.create({ data: { applicationId: "nw", kind: "prepare", status: "READY", snapshot: {} } });
+    const bytes = Buffer.from("%PDF-verified-merged-package");
+    const file = await prisma().applicationArtifact.create({ data: { applicationId: "nw", runId: run.id, role: "package", version: 1, ...await saveBytes(bytes), pages: 3, manifest: { fileName: "BenHamouda_Dhia.pdf" } } });
+    const email = emailParts(unitsSchema.parse((await prisma().document.findUniqueOrThrow({ where: { applicationId_kind: { applicationId: "nw", kind: "EMAIL" } } })).units));
+    return { file, bytes, reviewed: { packageId: file.id, email } };
+  }
+  it("sends the reviewed merged bytes as one attachment and rejects changed email revisions", async () => {
+    const { file, bytes, reviewed } = await packageForSend();
+    try {
+      await expect(sendApplicationEmail("nw", { ...reviewed, email: { ...reviewed.email, subject: "Changed" } })).rejects.toThrow("changed");
+      expect(sent).toHaveLength(0);
+      const result = await sendApplicationEmail("nw", reviewed);
+      expect(result.attachments).toEqual(["BenHamouda_Dhia.pdf"]);
+      const raw = Buffer.from(sent[0].raw, "base64url").toString("utf8");
+      expect(raw).toContain(bytes.toString("base64"));
+    } finally { await unlink(storedPath(file.path)); }
+  });
+  it("rejects changed package bytes and missing review without sending", async () => {
+    const { file, reviewed } = await packageForSend();
+    try {
+      await expect(sendApplicationEmail("nw")).rejects.toThrow("review");
+      await writeFile(storedPath(file.path), "changed");
+      await expect(sendApplicationEmail("nw", reviewed)).rejects.toThrow("checksum");
+      expect(sent).toHaveLength(0);
+    } finally { await unlink(storedPath(file.path)); }
   });
 });
 

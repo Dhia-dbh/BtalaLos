@@ -40,6 +40,8 @@ export function appEnv(): Record<string, string> {
     DOSSIER_PASSWORD: PASSWORD_HASH,
     DOSSIER_SECRET: "e2e-secret-e2e-secret-e2e-secret-e2e",
     DOSSIER_DATA_DIR: "/tmp/dossier-e2e",
+    DOSSIER_WORKER_URL: "http://127.0.0.1:8791",
+    DOSSIER_WORKER_TOKEN: "dossier-e2e-worker-token-dossier-e2e-worker",
     DOSSIER_AI_PROVIDER: "openai",
     DOSSIER_AI_URL: `http://localhost:${FAKE_AI_PORT}/v1`,
     DOSSIER_AI_MODEL: "fake-model",

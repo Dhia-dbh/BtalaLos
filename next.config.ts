@@ -4,9 +4,11 @@ const nextConfig: NextConfig = {
   // The production image runs .next/standalone: the server and only the files
   // it needs (E12-1).
   output: "standalone",
+  experimental: { proxyClientMaxBodySize: "280mb" },
   // playwright-core reads some of its own files by computed paths, which the
   // tracing can't follow (browsers.json for one), so all of it goes along.
   outputFileTracingIncludes: { "/**": ["./node_modules/playwright-core/**/*"] },
+  outputFileTracingExcludes: { "/**": ["./coverage/**/*", "./e2e/**/*", "./data/**/*", "./docs/**/*", "./.git/**/*", "./.env*"] },
   logging: {
     // In development, Next.js logs every Server Action call with its
     // arguments, which would print the sign-in password (AUTH-1), API keys

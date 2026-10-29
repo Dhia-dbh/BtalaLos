@@ -141,6 +141,12 @@ describe("the dashboard (E9-7)", () => {
     expect(screen.queryByRole("region", { name: "Your funnel" })).not.toBeInTheDocument();
   });
 
+  it("guides a LaTeX user to project settings instead of native profile setup", () => {
+    render(<Dashboard {...props} documentMode="LATEX" empty figures={{ ...figures, sent: 0 }} />);
+    expect(screen.getByRole("link", { name: "Configure LaTeX project" })).toHaveAttribute("href", "/settings?section=latex");
+    expect(screen.queryByRole("link", { name: "Fill in your profile" })).not.toBeInTheDocument();
+  });
+
   it("shows the calendar after the cards, outside the time filter (E15-6)", () => {
     const calendar = <section aria-label="Calendar" />;
     const { rerender } = render(<Dashboard {...props} calendar={calendar} />);

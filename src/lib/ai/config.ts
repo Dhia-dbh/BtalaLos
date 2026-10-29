@@ -6,6 +6,7 @@ import { loadSettings } from "@/lib/settings-data";
 
 import { API_KEY_UNREADABLE, ApiKeyUnreadable, apiKeyState, decryptApiKey } from "./api-key";
 import type { AiSettingsView, KeyState } from "./provider-options";
+import type { ThinkingEffort } from "./model-options";
 
 // Which provider to use and how to reach it (E6-1): what's saved in Settings,
 // or else the DOSSIER_AI_* variables, or else the defaults below.
@@ -18,6 +19,7 @@ export type AiConfig = {
   /** Why the saved key can't be used, e.g. DOSSIER_SECRET changed. */
   apiKeyProblem: string | null;
   timeoutMs: number;
+  thinkingEffort?: ThinkingEffort | null;
 };
 
 export const PROVIDER_DEFAULTS: Record<AiProvider, { baseUrl: string; model: string | null; timeoutSeconds: number }> = {
@@ -43,6 +45,7 @@ type SavedSettings = {
   baseUrl: string | null;
   model: string | null;
   apiKeyEnc: string | null;
+  thinkingEffort?: ThinkingEffort | null;
 };
 
 type AiEnv = Pick<
@@ -81,6 +84,7 @@ export function resolveAiConfig(saved: SavedSettings | null, source: AiEnv, secr
     apiKey,
     apiKeyProblem,
     timeoutMs: (source.DOSSIER_AI_TIMEOUT_SECONDS ?? defaults.timeoutSeconds) * 1000,
+    ...(provider === AiProvider.OPENAI && useSaved && saved?.thinkingEffort ? { thinkingEffort: saved.thinkingEffort } : {}),
   };
 }
 
@@ -101,6 +105,7 @@ export async function loadAiSettingsView(): Promise<AiSettingsView> {
     baseUrl: config.baseUrl,
     model: config.model ?? "",
     keyState: keyStateOf(saved, config),
+    thinkingEffort: config.thinkingEffort ?? null,
   };
 }
 

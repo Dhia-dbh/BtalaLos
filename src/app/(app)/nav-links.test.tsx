@@ -28,6 +28,7 @@ describe("NavLinks", () => {
       "Dashboard",
       "Profile",
       "Base resume",
+      "Preparation",
       "Find jobs",
       "Startups",
       "Agent",

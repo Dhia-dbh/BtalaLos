@@ -96,10 +96,21 @@ jobs:
           key: yarn-${{ runner.os }}-${{ hashFiles('yarn.lock') }}
           restore-keys: yarn-${{ runner.os }}-
 
+      - name: Install application preparation tools
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends latexmk texlive-latex-recommended poppler-utils
+
+      - name: Install PyMuPDF
+        run: |
+          python3 -m venv /tmp/dossier-worker-python
+          /tmp/dossier-worker-python/bin/pip install -r scripts/application-worker/requirements.txt
+          echo "DOSSIER_PYTHON_BIN=/tmp/dossier-worker-python/bin/python" >> "$GITHUB_ENV"
+
       - run: yarn install --immutable
       - run: yarn prisma generate
       - run: yarn lint
       - run: yarn typecheck
+      - run: yarn test:codex-bridge
+      - run: yarn test:application-worker
       # Fails when coverage drops below the thresholds in vitest.config.mts (E11-1).
       - run: yarn test:coverage
       - name: Coverage summary
@@ -148,6 +159,15 @@ jobs:
           path: ${{ steps.yarn-cache.outputs.dir }}
           key: yarn-${{ runner.os }}-${{ hashFiles('yarn.lock') }}
           restore-keys: yarn-${{ runner.os }}-
+
+      - name: Install application preparation tools
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends latexmk texlive-latex-recommended poppler-utils
+
+      - name: Install PyMuPDF
+        run: |
+          python3 -m venv /tmp/dossier-worker-python
+          /tmp/dossier-worker-python/bin/pip install -r scripts/application-worker/requirements.txt
+          echo "DOSSIER_PYTHON_BIN=/tmp/dossier-worker-python/bin/python" >> "$GITHUB_ENV"
 
       - run: yarn install --immutable
       - run: yarn prisma generate

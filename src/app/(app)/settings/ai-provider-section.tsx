@@ -13,6 +13,7 @@ import type { AiProvider } from "@/generated/prisma/enums";
 import { API_KEY_UNREADABLE, PROVIDER_OPTIONS, providerOption, type AiSettingsView } from "@/lib/ai/provider-options";
 import { cn } from "@/lib/cn";
 import { useAutosave } from "@/hooks/use-autosave";
+import { THINKING_LABELS, type ModelOption, type ThinkingEffort } from "@/lib/ai/model-options";
 
 import { listAiModels, saveAiProvider, saveApiKey, testAiConnection } from "./actions";
 import { SettingsSectionIntro } from "./settings-screen";
@@ -23,7 +24,7 @@ type Connection =
   | { status: "connected"; model: string; seconds: number }
   | { status: "failed"; message: string };
 
-type ModelList = { loading: true } | { loading: false; models: string[]; problem: string | null };
+type ModelList = { loading: true } | { loading: false; models: string[]; modelOptions?: ModelOption[]; problem: string | null };
 
 const toModelList = (result: Awaited<ReturnType<typeof listAiModels>>): ModelList =>
   result.ok ? { loading: false, ...result.data } : { loading: false, models: [], problem: result.error };
@@ -45,6 +46,7 @@ export function AiProviderSection({ initial }: { initial: AiSettingsView }) {
   const [provider, setProvider] = useState(initial.provider);
   const [baseUrl, setBaseUrl] = useState(initial.baseUrl);
   const [model, setModel] = useState(initial.model);
+  const [thinkingEffort, setThinkingEffort] = useState(initial.thinkingEffort);
   const [keyState, setKeyState] = useState(initial.keyState);
   const [keyInput, setKeyInput] = useState("");
   const [otherModel, setOtherModel] = useState(false);
@@ -72,7 +74,7 @@ export function AiProviderSection({ initial }: { initial: AiSettingsView }) {
   // SET-2: any change to the provider fields means the last test no longer counts.
   const changed = () => setConnection({ status: "untested" });
 
-  const fields = useMemo(() => ({ provider, baseUrl, model }), [provider, baseUrl, model]);
+  const fields = useMemo(() => ({ provider, baseUrl, model, thinkingEffort }), [provider, baseUrl, model, thinkingEffort]);
   const savedServer = useRef(`${initial.provider} ${initial.baseUrl}`);
   const { flush } = useAutosave(fields, async (value) => {
     const result = await track(saveAiProvider(value));
@@ -99,6 +101,7 @@ export function AiProviderSection({ initial }: { initial: AiSettingsView }) {
     setProvider(next);
     setBaseUrl(nextOption.defaultUrl);
     setModel(nextOption.defaultModel);
+    setThinkingEffort(null);
     setOtherModel(false);
     setUrlLeft(false);
     setKeyInput("");
@@ -128,6 +131,9 @@ export function AiProviderSection({ initial }: { initial: AiSettingsView }) {
   };
 
   const models = [...new Set([...(modelList.loading ? [] : modelList.models), model].filter(Boolean))];
+  const modelOptions = modelList.loading ? [] : modelList.modelOptions ?? [];
+  const selectedModel = modelOptions.find((option) => option.id === model);
+  const supportsThinking = Boolean(selectedModel?.thinkingEfforts.length);
 
   return (
     <>
@@ -185,6 +191,7 @@ export function AiProviderSection({ initial }: { initial: AiSettingsView }) {
           autoComplete="off"
           onChange={(event) => {
             setBaseUrl(event.target.value);
+            setThinkingEffort(null);
             changed();
           }}
           onBlur={() => {
@@ -209,6 +216,9 @@ export function AiProviderSection({ initial }: { initial: AiSettingsView }) {
               }
               setOtherModel(false);
               setModel(event.target.value);
+              const nextModel = modelOptions.find((option) => option.id === event.target.value);
+              const currentEffort = thinkingEffort ?? "medium";
+              setThinkingEffort(nextModel?.thinkingEfforts.includes(currentEffort) ? currentEffort : nextModel?.defaultThinkingEffort ?? null);
               changed();
               setSaveNow((count) => count + 1);
             }}
@@ -217,7 +227,7 @@ export function AiProviderSection({ initial }: { initial: AiSettingsView }) {
             {!model && !otherModel && <option value="">{modelList.loading ? "Loading models…" : "Choose a model"}</option>}
             {models.map((name) => (
               <option key={name} value={name}>
-                {name}
+                {modelOptions.find((option) => option.id === name)?.name ?? name}
               </option>
             ))}
             <option value={OTHER_MODEL}>Other model…</option>
@@ -238,8 +248,23 @@ export function AiProviderSection({ initial }: { initial: AiSettingsView }) {
           )}
         </div>
 
+        {supportsThinking && (
+          <Select
+            label="Thinking effort"
+            value={thinkingEffort ?? "medium"}
+            hint="Higher effort gives the model more time to reason and can make answers slower."
+            onChange={(event) => {
+              setThinkingEffort(event.target.value as ThinkingEffort);
+              changed();
+              setSaveNow((count) => count + 1);
+            }}
+          >
+            {selectedModel!.thinkingEfforts.map((effort) => <option key={effort} value={effort}>{THINKING_LABELS[effort]}</option>)}
+          </Select>
+        )}
+
         {option.apiKey ? (
-          <div className="flex flex-col gap-2.5">
+          <div className={cn("flex flex-col gap-2.5", supportsThinking && "sm:col-span-2")}>
             <Input
               label={option.apiKey.label}
               hint={keyState === "unreadable" ? undefined : option.apiKey.hint}

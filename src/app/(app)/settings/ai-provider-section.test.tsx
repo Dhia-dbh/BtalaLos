@@ -15,7 +15,7 @@ vi.mock("./actions", () => ({
 }));
 vi.mock("@/components/toast", () => ({ toast: vi.fn(), toastResult: (result: unknown) => result }));
 
-const local: AiSettingsView = { provider: "LOCAL", baseUrl: "http://ollama:11434", model: "qwen2.5:3b", keyState: "none" };
+const local: AiSettingsView = { provider: "LOCAL", baseUrl: "http://ollama:11434", model: "qwen2.5:3b", keyState: "none", thinkingEffort: null };
 
 beforeEach(() => {
   vi.mocked(saveAiProvider).mockReset().mockResolvedValue({ ok: true, data: { keyState: "none" } });
@@ -25,6 +25,37 @@ beforeEach(() => {
 });
 
 describe("AiProviderSection", () => {
+  it("offers independent Codex model and thinking selects and saves both", async () => {
+    vi.mocked(listAiModels).mockResolvedValue({ ok: true, data: {
+      models: ["gpt-6.1-sol", "gpt-6-luna"], problem: null,
+      modelOptions: [
+        { id: "gpt-6.1-sol", name: "GPT-6.1 Sol", thinkingEfforts: ["low", "medium", "high", "ultra"], defaultThinkingEffort: "low" },
+        { id: "gpt-6-luna", name: "GPT-6 Luna", thinkingEfforts: ["low", "medium"], defaultThinkingEffort: "medium" },
+      ],
+    } });
+    render(<AiProviderSection initial={{ ...local, provider: "OPENAI", baseUrl: "http://host.docker.internal:8787/v1", model: "gpt-6.1-sol" }} />);
+    const thinking = await screen.findByRole("combobox", { name: "Thinking effort" });
+    expect(thinking).toHaveValue("medium");
+    expect(screen.getByRole("combobox", { name: "Model" })).toHaveValue("gpt-6.1-sol");
+    await userEvent.selectOptions(thinking, "high");
+    await waitFor(() => expect(saveAiProvider).toHaveBeenLastCalledWith(expect.objectContaining({ model: "gpt-6.1-sol", thinkingEffort: "high" })));
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Model" }), "gpt-6-luna");
+    expect(thinking).toHaveValue("medium");
+    expect(screen.queryByRole("option", { name: "Ultra" })).not.toBeInTheDocument();
+    await waitFor(() => expect(saveAiProvider).toHaveBeenLastCalledWith(expect.objectContaining({ model: "gpt-6-luna", thinkingEffort: "medium" })));
+    await userEvent.selectOptions(thinking, "low");
+    await waitFor(() => expect(saveAiProvider).toHaveBeenLastCalledWith(expect.objectContaining({ model: "gpt-6-luna", thinkingEffort: "low" })));
+  });
+
+  it("restores the saved thinking effort when settings are reopened", async () => {
+    vi.mocked(listAiModels).mockResolvedValue({ ok: true, data: {
+      models: ["gpt-6.1-sol"], problem: null,
+      modelOptions: [{ id: "gpt-6.1-sol", name: "GPT-6.1 Sol", thinkingEfforts: ["low", "medium", "high"], defaultThinkingEffort: "low" }],
+    } });
+    render(<AiProviderSection initial={{ ...local, provider: "OPENAI", model: "gpt-6.1-sol", thinkingEffort: "high" }} />);
+    expect(await screen.findByRole("combobox", { name: "Thinking effort" })).toHaveValue("high");
+  });
+
   it("shows the providers as a radio group, and the fields for the chosen one (SET-1)", async () => {
     render(<AiProviderSection initial={local} />);
     expect(screen.getByRole("heading", { name: "AI provider" })).toBeInTheDocument();
@@ -41,6 +72,7 @@ describe("AiProviderSection", () => {
     expect(screen.getByLabelText("Model")).toHaveValue("qwen2.5:3b");
     expect(screen.getByText("Not needed for a local model")).toBeInTheDocument();
     expect(screen.queryByRole("note")).not.toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: "Thinking effort" })).not.toBeInTheDocument();
   });
 
   it("fills in a hosted provider's defaults, says what's sent to it and saves at once", async () => {
@@ -51,7 +83,7 @@ describe("AiProviderSection", () => {
     expect(screen.getByRole("note")).toHaveTextContent(/depend on your account with Anthropic\.$/);
     expect(screen.getByLabelText("API key")).toHaveAttribute("placeholder", "Stored encrypted on your server");
     await waitFor(() =>
-      expect(saveAiProvider).toHaveBeenCalledWith({ provider: "ANTHROPIC", baseUrl: "https://api.anthropic.com", model: "claude-sonnet-5" }),
+      expect(saveAiProvider).toHaveBeenCalledWith({ provider: "ANTHROPIC", baseUrl: "https://api.anthropic.com", model: "claude-sonnet-5", thinkingEffort: null }),
     );
   });
 
@@ -62,7 +94,7 @@ describe("AiProviderSection", () => {
     expect(screen.getByRole("note")).toHaveTextContent(/^Mistral receives what each task needs: .* depend on your account with Mistral\.$/);
     expect(screen.getByLabelText("API key")).toBeInTheDocument();
     await waitFor(() =>
-      expect(saveAiProvider).toHaveBeenCalledWith({ provider: "MISTRAL", baseUrl: "https://api.mistral.ai/v1", model: "mistral-medium-latest" }),
+      expect(saveAiProvider).toHaveBeenCalledWith({ provider: "MISTRAL", baseUrl: "https://api.mistral.ai/v1", model: "mistral-medium-latest", thinkingEffort: null }),
     );
   });
 
@@ -74,7 +106,7 @@ describe("AiProviderSection", () => {
     expect(screen.getByLabelText("API token")).toBeInTheDocument();
     expect(screen.getByText("Only needed if you've turned on authentication in LM Studio's server settings.")).toBeInTheDocument();
     expect(screen.queryByRole("note")).not.toBeInTheDocument();
-    await waitFor(() => expect(saveAiProvider).toHaveBeenCalledWith({ provider: "LMSTUDIO", baseUrl: "http://host.docker.internal:1234", model: "" }));
+    await waitFor(() => expect(saveAiProvider).toHaveBeenCalledWith({ provider: "LMSTUDIO", baseUrl: "http://host.docker.internal:1234", model: "", thinkingEffort: null }));
   });
 
   it("saves a key when you leave the field, then forgets it in the browser (E6-2)", async () => {

@@ -1,0 +1,16 @@
+[Unit]
+Description=Dossier bridge to the local Codex CLI
+
+[Service]
+Type=simple
+EnvironmentFile=%h/.config/dossier-codex-bridge.env
+ExecStart=/usr/bin/env node ${DOSSIER_CODEX_BRIDGE_SCRIPT}
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=10
+KillMode=control-group
+NoNewPrivileges=true
+UMask=0077
+
+[Install]
+WantedBy=default.target

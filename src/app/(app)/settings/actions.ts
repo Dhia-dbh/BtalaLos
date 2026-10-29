@@ -10,7 +10,10 @@ import { AiError, createProvider } from "@/lib/ai";
 import { applyApiKeyChange } from "@/lib/ai/api-key";
 import { keyStateOf, loadAiConfig, resolveAiConfig } from "@/lib/ai/config";
 import type { KeyState } from "@/lib/ai/provider-options";
+import { THINKING_EFFORTS } from "@/lib/ai/model-options";
+import { OpenAICompatibleProvider } from "@/lib/ai/providers/openai-compatible";
 import { DOCUMENT_LANGUAGES } from "@/lib/document-language";
+import { deletePreparationFiles } from "@/lib/preparation/storage";
 import { deleteAllBackups } from "@/lib/backups";
 import { env } from "@/lib/env";
 import { JobSearchError, testSource } from "@/lib/job-search";
@@ -47,13 +50,15 @@ export const saveAiProvider = action(
     // Saved as typed: a half-typed address is harmless, and the connection test explains a wrong one.
     baseUrl: z.string().trim().max(500),
     model: z.string().trim().max(200),
+    thinkingEffort: z.enum(THINKING_EFFORTS).nullable().optional(),
   }),
-  async ({ provider, baseUrl, model }) => {
+  async ({ provider, baseUrl, model, thinkingEffort }) => {
     const current = await loadSettings();
     await saveSettings({
       provider,
       baseUrl: baseUrl || null,
       model: model || null,
+      thinkingEffort,
       ...(current.provider !== provider ? { apiKeyEnc: null } : {}),
     });
     return { keyState: await currentKeyState() };
@@ -84,6 +89,10 @@ export const saveApiKey = action(
 export const listAiModels = action(z.object({}), async () => {
   try {
     const provider = createProvider(await loadAiConfig());
+    if (provider instanceof OpenAICompatibleProvider) {
+      const modelOptions = await provider.listModelOptions(AbortSignal.timeout(15_000));
+      return { models: modelOptions.map((model) => model.id), modelOptions, problem: null };
+    }
     return { models: await provider.listModels(AbortSignal.timeout(15_000)), problem: null };
   } catch (error) {
     if (error instanceof AiError) return { models: [], problem: error.message };
@@ -255,6 +264,8 @@ export const deleteEverything = action(z.object({ confirm: z.literal("DELETE") }
     await tx.emailMessage.deleteMany();
     // Applications take their history, documents, chat and notes along.
     await tx.application.deleteMany();
+    await tx.applicationProfile.deleteMany();
+    await tx.supportingDocument.deleteMany();
     await tx.experience.deleteMany();
     await tx.project.deleteMany();
     await tx.skill.deleteMany();
@@ -269,7 +280,7 @@ export const deleteEverything = action(z.object({ confirm: z.literal("DELETE") }
   });
   // An empty profile and default settings need no rows; the built-in themes do.
   await seedBuiltIns(prisma);
-  await Promise.all([deleteAllBackups(), deleteAllDownloads()]);
+  await Promise.all([deleteAllBackups(), deleteAllDownloads(), deletePreparationFiles()]);
 
   revalidatePath("/", "layout");
   redirect("/");

@@ -34,6 +34,9 @@ import { AboutSection, type AboutFacts, type UsagePingView } from "./about-secti
 import { ConnectorSection } from "./connector-section";
 import { settingsSectionFromParam } from "./sections";
 import { SettingsScreen } from "./settings-screen";
+import { ProjectSettings } from "@/components/preparation/project-settings";
+import { PreparationLibrary } from "@/components/preparation/library";
+import { loadDocumentMode, preparationLibrary } from "@/lib/preparation/data";
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -45,7 +48,11 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
 
   return (
     <SettingsScreen section={section}>
-      {section === "ai" ? (
+      {section === "latex" ? (
+        <ProjectSettings initial={await preparationLibrary()} initialMode={await loadDocumentMode()} />
+      ) : section === "profiles" ? (
+        <PreparationLibrary initial={await preparationLibrary()} inSettings />
+      ) : section === "ai" ? (
         <>
           <AiProviderSection initial={await loadAiSettingsView()} />
           <AiBehaviour initial={{ creativity: settings.creativity, strict: settings.strict, showDiff: settings.showDiff }} />

@@ -77,7 +77,7 @@ const jsonList = (value: unknown) => (Array.isArray(value) ? value : []) as Pris
  * install's own settings (the usage ping's) stay as they are.
  */
 export async function importExport(db: PrismaClient, data: DossierExport): Promise<void> {
-  const { profile, themes, settings, applications, postings, searches, agentCandidates, startups, startupBlocks, apiKey, jobSourceKeys } = data;
+  const { profile, themes, settings, applications, postings, searches, agentCandidates, startups, startupBlocks, apiKey, jobSourceKeys, packageProfiles, supportingDocuments, preparations, artifacts } = data;
   const fromFile: Record<string, string | null> = {
     apiKeyEnc: apiKey ? encryptApiKey(apiKey) : null,
     jsearchKeyEnc: jobSourceKeys?.jsearch ? encryptSecret(JOB_SOURCE_KEY, jobSourceKeys.jsearch) : null,
@@ -100,6 +100,8 @@ export async function importExport(db: PrismaClient, data: DossierExport): Promi
       // Mail from Gmail belongs to the applications being replaced; the next check fetches what's still relevant.
       await tx.emailMessage.deleteMany();
       await tx.application.deleteMany();
+      await tx.applicationProfile.deleteMany();
+      await tx.supportingDocument.deleteMany();
       await tx.experience.deleteMany();
       await tx.project.deleteMany();
       await tx.skill.deleteMany();
@@ -137,6 +139,9 @@ export async function importExport(db: PrismaClient, data: DossierExport): Promi
       for (const [key, value] of Object.entries(fromFile)) if (value) await tx.setting.create({ data: { key, value } });
 
       const themeIds = new Set((await tx.theme.findMany({ select: { id: true } })).map((theme) => theme.id));
+      await tx.applicationProfile.createMany({ data: packageProfiles.map((entry) => ({ ...entry, items: entry.items as Prisma.InputJsonValue })) });
+      await tx.supportingDocument.createMany({ data: supportingDocuments.map((entry) => omit(entry, "versions")) });
+      await tx.supportingDocumentVersion.createMany({ data: supportingDocuments.flatMap((entry) => entry.versions) });
       await tx.application.createMany({
         data: applications.map((application) => ({
           ...omit(application, "events", "documents", "messages", "notes", "facts", "userNote"),
@@ -144,6 +149,8 @@ export async function importExport(db: PrismaClient, data: DossierExport): Promi
           match: json(application.match),
         })),
       });
+      await tx.preparationRun.createMany({ data: preparations.map((entry) => ({ ...entry, snapshot: { ...(entry.snapshot as object ?? {}), restored: true }, steps: (entry.steps ?? []) as Prisma.InputJsonValue, status: ["QUEUED", "RUNNING"].includes(entry.status) ? "FAILED" : entry.status, activeKey: null, jobId: null })) });
+      await tx.applicationArtifact.createMany({ data: artifacts.map((entry) => ({ ...entry, manifest: { ...(entry.manifest as object), restored: true } })) });
       await tx.statusEvent.createMany({
         data: applications.flatMap((application) => application.events.map((event) => ({ ...event, applicationId: application.id }))),
       });
