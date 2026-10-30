@@ -66,6 +66,7 @@ export class OpenAICompatibleProvider extends BaseProvider {
       try {
         return await this.send(call, known);
       } catch (error) {
+        if (call.thinking !== undefined && error instanceof OpenAI.APIError && /reasoning_effort/i.test(error.message)) throw error;
         if (error instanceof OpenAI.APIError && error.code === "codex_effort") throw error;
         const message = error instanceof OpenAI.BadRequestError || error instanceof OpenAI.UnprocessableEntityError ? error.message : "";
         const jsonRefused = call.json !== undefined && /response_format|json_schema|json_object|structured/i.test(message);
@@ -91,12 +92,13 @@ export class OpenAICompatibleProvider extends BaseProvider {
 
   /** The `reasoning_effort` to send for `call`, if any; none by default, as servers differ in what they take. */
   protected reasoningEffort(call: ChatCall): ReasoningEffort | undefined {
-    void call;
+    if (call.thinking !== undefined) return call.thinking as ReasoningEffort;
     // The Codex bridge also accepts "ultra", beyond this SDK's API effort union.
     return this.thinkingEffort ? this.thinkingEffort as ReasoningEffort : undefined;
   }
 
   private async send(call: ChatCall, { noTemperature, maxCompletionTokens, noEffort, json }: Quirks): Promise<ChatAnswer> {
+    if (noEffort && call.thinking !== undefined) throw new Error("This provider does not accept an explicit thinking setting. Select Model default or another provider.");
     const effort = noEffort ? undefined : this.reasoningEffort(call);
     // Without schema support, the schema goes into the instructions instead.
     const system = call.json && json !== "schema" ? withJsonSchema(call.system, call.json.schema) : call.system;

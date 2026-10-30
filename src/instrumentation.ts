@@ -12,6 +12,8 @@ export async function register() {
 
     const { recoverPreparations } = await import("@/lib/preparation/service");
     await recoverPreparations();
+    const { recoverBrowserRuns } = await import("@/lib/browser/service");
+    await recoverBrowserRuns();
 
     // Finished jobs, with what they were given and wrote, are deleted after a while.
     const { startJobSweep } = await import("@/lib/jobs/retention");

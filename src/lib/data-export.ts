@@ -42,14 +42,14 @@ import { appVersion } from "@/lib/version";
 
 export const EXPORT_FORMAT = "dossier-export";
 /** Bump when the file's shape changes; imports refuse versions they don't know. 2 added Find jobs' postings and keys (E14-9), 3 projects (PRO-13) and the job agent (E16), 4 facts (PRO-14, APP-15), 5 publications (#218), the profile photo's theme and application options (#224) and Startups (#222); 6 application preparation, profiles, supporting PDFs and artifact manifests. */
-export const EXPORT_SCHEMA_VERSION = 6;
+export const EXPORT_SCHEMA_VERSION = 7;
 /** The versions imports can read. */
-export const EXPORT_SCHEMA_VERSIONS: readonly number[] = [1, 2, 3, 4, 5, 6];
+export const EXPORT_SCHEMA_VERSIONS: readonly number[] = [1, 2, 3, 4, 5, 6, 7];
 
 /** The setting that holds the encrypted API key, which only this server can read. */
 const API_KEY_SETTING = "apiKeyEnc";
 /** The settings that hold encrypted keys, which only this server can read: never exported as they are. */
-export const SECRET_SETTINGS: readonly string[] = [API_KEY_SETTING, "jsearchKeyEnc", "adzunaKeyEnc"];
+export const SECRET_SETTINGS: readonly string[] = [API_KEY_SETTING, "jsearchKeyEnc", "adzunaKeyEnc", "browserAiKeyEnc"];
 /** The settings that belong to this install rather than its data (the usage ping's and its consent, the update check's, the Google client and the browser's time zone): never exported, and kept by an import. */
 export const INSTALL_SETTINGS: readonly string[] = [
   "usagePingId",
@@ -69,6 +69,7 @@ export const INSTALL_SETTINGS: readonly string[] = [
   "googleClientId",
   "googleClientSecretEnc",
   "browserTimeZone",
+  "gmailBrowserEmail", "gmailBrowserLastSync", "gmailBrowserProblem", "gmailLastSkipped",
   // An import must never open the Claude connector's addresses on this server (#221).
   "connectorEnabledAt",
 ];
@@ -322,12 +323,13 @@ const packageProfile = z.object({ id: text, name: text, version: int, items: bun
 const supportingVersion = z.object({ id: text, documentId: text, version: int, path: text, checksum: text, pages: int, createdAt: date });
 const supportingDocument = z.object({ id: text, name: text, deletedAt: optionalDate, versions: z.array(supportingVersion).min(1) });
 const preparation = z.object({ id: text, applicationId: text, kind: text, status: text, snapshot: z.unknown(), steps: z.unknown(), error: text.nullable(), createdAt: date, finishedAt: optionalDate });
+const browserRun = z.object({ id: text, applicationId: text.nullable(), kind: text, status: text, revision: int, snapshot: z.unknown(), error: text.nullable(), createdAt: date, updatedAt: date, finishedAt: optionalDate, events: z.array(z.object({ id: text, kind: text, data: z.unknown(), createdAt: date })) });
 const artifact = z.object({ id: text, applicationId: text, runId: text, role: text, version: int, path: text, checksum: text, pages: int.nullable(), manifest: z.unknown(), createdAt: date });
 
 /** An export file as read back (E10-6). */
 export const exportSchema = z.object({
   format: z.literal(EXPORT_FORMAT),
-  schemaVersion: z.literal([1, 2, 3, 4, 5, 6]),
+  schemaVersion: z.literal([1, 2, 3, 4, 5, 6, 7]),
   appVersion: text,
   exportedAt: date,
   profile: z.object({
@@ -355,6 +357,7 @@ export const exportSchema = z.object({
   supportingDocuments: z.array(supportingDocument).default([]),
   preparations: z.array(preparation).default([]),
   artifacts: z.array(artifact).default([]),
+  browserRuns: z.array(browserRun).default([]),
   /** Saved and dismissed postings (E14-9); absent in version 1 files. */
   postings: z.array(posting).default([]),
   /** Past searches with what they found (E14-10); absent in version 1 files. */
@@ -385,7 +388,7 @@ export async function buildExport(
   { includeApiKey = false, now = new Date() }: { includeApiKey?: boolean; now?: Date } = {},
 ): Promise<DossierExport> {
   return db.$transaction(async (tx) => {
-    const [fields, skills, languages, experience, projects, education, publications, references, facts, themes, settings, applications, postings, searches, agentCandidates, startups, startupBlocks, packageProfiles, supportingDocuments, preparations, artifacts] = await Promise.all([
+    const [fields, skills, languages, experience, projects, education, publications, references, facts, themes, settings, applications, postings, searches, agentCandidates, startups, startupBlocks, packageProfiles, supportingDocuments, preparations, artifacts, browserRuns] = await Promise.all([
       tx.profileField.findMany({ select: { key: true, value: true }, orderBy: { key: "asc" } }),
       tx.skill.findMany({ select: { id: true, name: true, sort: true, createdAt: true }, orderBy: { createdAt: "asc" } }),
       tx.language.findMany({ select: { id: true, name: true, level: true, sort: true, createdAt: true }, orderBy: { createdAt: "asc" } }),
@@ -422,6 +425,7 @@ export async function buildExport(
       tx.supportingDocument.findMany({ include: { versions: true } }),
       tx.preparationRun.findMany({ omit: { activeKey: true, jobId: true } }),
       tx.applicationArtifact.findMany(),
+      tx.browserRun.findMany({ where: { applicationId: { not: null } }, omit: { activeKey: true, approvedHash: true, jobId: true }, include: { events: { omit: { runId: true }, orderBy: { createdAt: "asc" } } } }),
     ]);
 
     // Keys only when asked for, decrypted; one that's unreadable here too (DOSSIER_SECRET changed) has nothing to export.
@@ -467,7 +471,7 @@ export async function buildExport(
       agentCandidates,
       startups,
       startupBlocks,
-      packageProfiles: packageProfiles.map((entry) => ({ ...entry, items: bundleSchema.parse(entry.items) })), supportingDocuments, preparations, artifacts,
+      packageProfiles: packageProfiles.map((entry) => ({ ...entry, items: bundleSchema.parse(entry.items) })), supportingDocuments, preparations, artifacts, browserRuns,
     };
   });
 }

@@ -54,6 +54,7 @@ export const draftReply: Task<DraftReplyInput, DraftedReply> = async (provider, 
   const { profile, extracted, tone, email, timeZone, thread, slots, note, facts, posting } = input;
   const answer = await provider.complete({
     system: system(
+      options.prompts?.replyPrompt ?? INSTRUCTIONS,
       INSTRUCTIONS,
       `Tone: ${TONES[tone].label}. ${TONES[tone].description}`,
       truthfulness(options.strict),

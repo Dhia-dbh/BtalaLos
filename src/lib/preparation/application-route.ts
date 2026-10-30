@@ -1,7 +1,7 @@
 import { parse } from "node-html-parser";
 import type { z } from "zod";
 import { emailAddresses } from "@/lib/application-email";
-import { analysisSchema } from "./types";
+import type { analysisSchema } from "./types";
 
 export function applicationLinks(posting: string, baseUrl?: string): string[] {
   const targets = parse(posting)
@@ -27,13 +27,14 @@ export function applicationLinks(posting: string, baseUrl?: string): string[] {
   return [...urls];
 }
 
-export function verifyApplicationRoute(
-  extracted: z.infer<typeof analysisSchema>,
+type RouteFields = Pick<z.infer<typeof analysisSchema>, "recruiterEmail" | "applicationUrl" | "applicationInstructions">;
+export function verifyApplicationRoute<T extends RouteFields>(
+  extracted: T,
   posting: string,
   baseUrl?: string,
   manualMetadata?: Record<string, unknown>,
 ) {
-  const result = analysisSchema.parse({ ...extracted, ...manualMetadata });
+  const result = { ...extracted, ...manualMetadata } as T;
   const warnings: string[] = [];
   if (
     result.recruiterEmail && !manualMetadata?.recruiterEmail &&
@@ -63,5 +64,5 @@ export function verifyApplicationRoute(
   }
   if (!result.recruiterEmail && !result.applicationUrl)
     warnings.push("No verified application email or link was found. Check the posting's instructions before submitting.");
-  return { ...result, warnings };
+  return { ...result, warnings, contactEmails: emailAddresses(posting), channel: result.applicationUrl ? "portal" as const : result.recruiterEmail ? "email" as const : "unresolved" as const };
 }

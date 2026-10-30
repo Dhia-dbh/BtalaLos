@@ -32,7 +32,7 @@ async function sender(address: string): Promise<string> {
   return name ? `${name} <${address}>` : address;
 }
 
-export type SentApplication = { threadId: string; eventId: string | null; attachments: string[] };
+export type SentApplication = { threadId: string; eventId: string | null; attachments: string[]; browserRunId?: string };
 
 /**
  * Sends the application's email from the connected account, with the
@@ -40,7 +40,8 @@ export type SentApplication = { threadId: string; eventId: string | null; attach
  * replies, and moves a draft to Sent.
  */
 export async function sendApplicationEmail(applicationId: string, reviewed?: { packageId: string; email: { to: string; subject: string; body: string } }): Promise<SentApplication> {
-  const account = await loadGoogleAccount();
+  const mailSettings = await loadSettings();
+  const account = mailSettings.gmailBackend === "browser" ? (mailSettings.gmailBrowserEmail ? { email: mailSettings.gmailBrowserEmail } : null) : await loadGoogleAccount();
   if (!account) throw new GoogleError("not-connected", "Connect your Google account in Settings → Google first.");
   const application = await prisma.application.findUnique({ where: { id: applicationId }, include: { documents: { select: { kind: true, units: true } } } });
   if (!application) throw new GoogleError("unavailable", "That application no longer exists.");
@@ -66,6 +67,12 @@ export async function sendApplicationEmail(applicationId: string, reviewed?: { p
     });
   }
 
+  if (mailSettings.gmailBackend === "browser" || mailSettings.applicationSubmissionMode === "automatic") {
+    const { startMailRun } = await import("@/lib/browser/service");
+    const pack = application.packageProfileId ? await latestPackage(applicationId) : null;
+    const run = await startMailRun({ applicationId, kind: "application-email", transport: mailSettings.gmailBackend, to, subject, body, ...(pack ? { artifactIds: [pack.id] } : { renderedAttachments: attachments }) });
+    return { threadId: "", eventId: null, attachments: attachments.map((file) => file.fileName), browserRunId: run.id };
+  }
   const from = await sender(account.email);
   const sent = await sendMail({ from, to, subject, body, attachments });
   await prisma.$transaction([
@@ -74,6 +81,7 @@ export async function sendApplicationEmail(applicationId: string, reviewed?: { p
       where: { gmailId: sent.id },
       create: {
         gmailId: sent.id,
+        mailbox: account.email.toLowerCase(),
         threadId: sent.threadId,
         applicationId,
         direction: EmailDirection.OUTGOING,
@@ -101,8 +109,9 @@ export async function sendApplicationEmail(applicationId: string, reviewed?: { p
 export const replySubject = (subject: string) => (/^\s*(re|aw|sv|antw)\s*:/i.test(subject) ? subject.trim() : `Re: ${subject.trim()}`);
 
 /** Sends the answer to an employer's mail in its thread, and marks the mail as answered. */
-export async function sendReply(emailId: string, body: string): Promise<{ applicationId: string | null }> {
-  const account = await loadGoogleAccount();
+export async function sendReply(emailId: string, body: string): Promise<{ applicationId: string | null; browserRunId?: string }> {
+  const mailSettings = await loadSettings();
+  const account = mailSettings.gmailBackend === "browser" ? (mailSettings.gmailBrowserEmail ? { email: mailSettings.gmailBrowserEmail } : null) : await loadGoogleAccount();
   if (!account) throw new GoogleError("not-connected", "Connect your Google account in Settings → Google first.");
   const email = await prisma.emailMessage.findUnique({ where: { id: emailId } });
   if (!email) throw new GoogleError("unavailable", "That email is no longer in Dossier.");
@@ -111,6 +120,13 @@ export async function sendReply(emailId: string, body: string): Promise<{ applic
 
   const to = email.fromName ? `${email.fromName.replace(/[<>"]/g, "")} <${email.fromAddress}>` : email.fromAddress;
   const subject = replySubject(email.subject);
+  if (mailSettings.gmailBackend === "browser") {
+    if (!email.browserThreadUrl) throw new GoogleError("unavailable", "Read this conversation with the browser backend first to resolve its Gmail thread.");
+    const { startMailRun } = await import("@/lib/browser/service");
+    const run = await startMailRun({ applicationId: email.applicationId ?? undefined, kind: "reply", emailId, to, subject, body, threadUrl: email.browserThreadUrl });
+    return { applicationId: email.applicationId, browserRunId: run.id };
+  }
+  if (email.threadId.startsWith("browser:")) throw new GoogleError("unavailable", "Read this conversation with the API backend first to resolve its Gmail thread.");
   const sent = await sendMail(
     { from: await sender(account.email), to, subject, body, inReplyTo: email.messageId || undefined },
     { threadId: email.threadId },
@@ -121,6 +137,7 @@ export async function sendReply(emailId: string, body: string): Promise<{ applic
       where: { gmailId: sent.id },
       create: {
         gmailId: sent.id,
+        mailbox: account.email.toLowerCase(),
         threadId: sent.threadId,
         applicationId: email.applicationId,
         direction: EmailDirection.OUTGOING,

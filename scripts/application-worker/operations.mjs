@@ -117,6 +117,11 @@ function checkProject(input) {
   );
 }
 export async function execute(config, input, signal, operationId) {
+  if (input.kind === "browser") {
+    if (config.hostUrl) return hostOperation(config, input, signal, operationId);
+    const { browserOperation } = await import("../browser/runtime.mjs");
+    return browserOperation({ ...config, browserBinary: config.browserBinary || process.env.DOSSIER_BROWSER_BIN }, input, signal);
+  }
   const root = await privateDirectory(path.join(config.data, "operations"));
   const temporary = await mkdtemp(path.join(root, `${id(operationId)}-`));
   try {

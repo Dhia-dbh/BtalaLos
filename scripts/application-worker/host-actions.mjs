@@ -62,11 +62,12 @@ export async function generate(config, input, signal) {
       typeof input.schema === "object",
     "Invalid generation request.",
   );
+  const effort = input.effort ?? selected.default_reasoning_effort;
   if (input.provider === "codex") {
     const answer = await runCodex(
       {
         model: input.model,
-        reasoning_effort: input.effort,
+        reasoning_effort: effort,
         messages: [
           {
             role: "system",
@@ -112,7 +113,7 @@ export async function generate(config, input, signal) {
         "--model",
         input.model,
         "--effort",
-        input.effort,
+        effort,
       ],
       { signal, cwd: temporary, input: input.prompt, timeout: 900_000 },
     );
@@ -146,7 +147,11 @@ export async function revealExport(config, input, signal) {
   return { folder: input.folder, fileName: input.fileName };
 }
 
-export function executeHost(config, input, signal) {
+export async function executeHost(config, input, signal) {
+  if (input.kind === "browser") {
+    const { browserOperation } = await import("../browser/runtime.mjs");
+    return browserOperation(config, input, signal);
+  }
   if (input.kind === "capabilities") return capabilities(config, input.provider, signal);
   if (input.kind === "generate") return generate(config, input, signal);
   if (input.kind === "reveal") return revealExport(config, input, signal);

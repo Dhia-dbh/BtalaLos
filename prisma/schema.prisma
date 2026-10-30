@@ -457,6 +457,7 @@ model Application {
   packageProfile      ApplicationProfile?   @relation(fields: [packageProfileId], references: [id], onDelete: SetNull)
   preparations        PreparationRun[]
   artifacts           ApplicationArtifact[]
+  browserRuns         BrowserRun[]
   createdAt           DateTime              @default(now())
   updatedAt           DateTime              @updatedAt
 
@@ -531,6 +532,37 @@ model ApplicationArtifact {
   createdAt     DateTime       @default(now())
 
   @@unique([applicationId, role, version])
+}
+
+model BrowserRun {
+  id            String       @id @default(cuid())
+  applicationId String?
+  application   Application? @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  kind          String
+  status        String       @default("QUEUED")
+  activeKey     String?      @unique
+  revision      Int          @default(1)
+  approvedHash  String?
+  snapshot      Json
+  error         String?
+  jobId         String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  finishedAt    DateTime?
+  events        BrowserEvent[]
+
+  @@index([applicationId, createdAt])
+}
+
+model BrowserEvent {
+  id        String     @id @default(cuid())
+  runId     String
+  run       BrowserRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  kind      String
+  data      Json
+  createdAt DateTime   @default(now())
+
+  @@index([runId, createdAt])
 }
 
 /// One status change. Keeps the application's furthestStage and sentAt from
@@ -907,6 +939,9 @@ enum ReplyKind {
 model EmailMessage {
   id              String             @id @default(cuid())
   gmailId         String             @unique
+  mailbox         String             @default("")
+  browserMessageId String?
+  browserThreadUrl String?
   threadId        String
   /// Null while it isn't linked to an application ("Needs a look").
   /// Deleting the application deletes its mail, as it does its documents.
@@ -946,6 +981,7 @@ model EmailMessage {
   createdAt       DateTime           @default(now())
 
   @@index([threadId])
+  @@index([mailbox, messageId])
   @@index([applicationId, sentAt])
   @@index([sentAt])
 }

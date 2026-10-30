@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import "server-only";
 
 import { z } from "zod";
@@ -8,10 +9,12 @@ import { isAiConfigured } from "@/lib/ai/config";
 import { loadTaskOptions } from "@/lib/ai/task-options";
 import { classifyReply } from "@/lib/ai/tasks";
 import { unitsSchema } from "@/lib/application-data";
-import { emailParts } from "@/lib/application-email";
+import { emailAddresses, emailParts } from "@/lib/application-email";
 import { logServerError } from "@/lib/log";
 import { prisma } from "@/lib/prisma";
-import { loadSettings } from "@/lib/settings-data";
+import { loadSettings, saveSettings } from "@/lib/settings-data";
+import { matchingMailFilters } from "@/lib/browser/mail-filters";
+import { readBrowserMailbox } from "./transport";
 import { lastKnownTimeZone } from "@/lib/time-zone";
 
 import { googleConnection, loadGoogleAccount } from "./account";
@@ -55,11 +58,12 @@ async function matchables(): Promise<MatchableApplication[]> {
 
 async function knownThreads(): Promise<Map<string, string>> {
   const [linked, sent] = await Promise.all([
-    prisma.emailMessage.findMany({ where: { applicationId: { not: null } }, select: { threadId: true, applicationId: true }, distinct: ["threadId"] }),
+    prisma.emailMessage.findMany({ where: { applicationId: { not: null } }, select: { threadId: true, applicationId: true, browserThreadUrl: true }, distinct: ["threadId"] }),
     prisma.application.findMany({ where: { emailThreadId: { not: null } }, select: { id: true, emailThreadId: true } }),
   ]);
   return new Map([
     ...linked.map((entry) => [entry.threadId, entry.applicationId!] as const),
+    ...linked.filter((entry) => entry.browserThreadUrl).map((entry) => [`browser:${createHash("sha256").update(entry.browserThreadUrl!).digest("hex")}`, entry.applicationId!] as const),
     ...sent.map((entry) => [entry.emailThreadId!, entry.id] as const),
   ]);
 }
@@ -71,25 +75,32 @@ export type SyncResult = { fetched: number; kept: number; read: number };
  * Settings can show it, and cleared by the next success.
  */
 export async function syncInbox({ signal }: { signal?: AbortSignal } = {}): Promise<SyncResult> {
-  const [account, settings] = await Promise.all([loadGoogleAccount(), loadSettings()]);
+  const settings = await loadSettings();
+  const browser = settings.gmailBackend === "browser";
+  const account = browser ? (settings.gmailBrowserEmail ? { id: "browser", email: settings.gmailBrowserEmail, historyId: null } : null) : await loadGoogleAccount();
   if (!account) throw new GoogleError("not-connected", "Connect your Google account in Settings → Google first.");
   try {
-    const result = await runSync(account.historyId, account.email, settings.gmailScope, signal);
-    await prisma.googleAccount.update({ where: { id: account.id }, data: { lastSyncAt: new Date(), syncProblem: null, historyId: result.historyId } });
+    const result = await runSync(account.historyId, account.email, settings.gmailScope, signal, browser);
+    if (browser) await saveSettings({ gmailBrowserLastSync: new Date().toISOString(), gmailBrowserProblem: null });
+    else await prisma.googleAccount.update({ where: { id: account.id }, data: { lastSyncAt: new Date(), syncProblem: null, historyId: result.historyId } });
     return result.counts;
   } catch (error) {
     logServerError("inbox check", error instanceof GoogleError && error.detail ? new GoogleError(error.problem, `${error.message} (${error.detail})`) : error);
     const message = error instanceof GoogleError ? error.message : "The inbox check failed. It tries again on its own.";
-    await prisma.googleAccount.updateMany({ where: { id: account.id }, data: { syncProblem: message } }).catch(() => {});
+    if (browser) await saveSettings({ gmailBrowserProblem: message });
+    else await prisma.googleAccount.updateMany({ where: { id: account.id }, data: { syncProblem: message } }).catch(() => {});
     throw error;
   }
 }
 
-async function runSync(historyId: string | null, ownAddress: string, scope: "known" | "all", signal?: AbortSignal) {
+async function runSync(historyId: string | null, ownAddress: string, scope: "known" | "all", signal?: AbortSignal, browser = false) {
+  const settings = await loadSettings();
+  const browserMails = browser ? await readBrowserMailbox(ownAddress, signal) : [];
   let ids: string[];
   let next: string;
-  const since = historyId ? await messagesSince(historyId, signal) : null;
-  if (since) {
+  const since = !browser && historyId ? await messagesSince(historyId, signal) : null;
+  if (browser) { ids = browserMails.map((mail) => mail.id); next = ""; }
+  else if (since) {
     ids = since.ids;
     next = since.historyId;
   } else {
@@ -101,19 +112,50 @@ async function runSync(historyId: string | null, ownAddress: string, scope: "kno
   const seen = new Set((await prisma.emailMessage.findMany({ where: { gmailId: { in: ids } }, select: { gmailId: true } })).map((entry) => entry.gmailId));
   const fresh = ids.filter((id) => !seen.has(id));
   const counts = { fetched: fresh.length, kept: 0, read: 0 };
-  if (fresh.length === 0) return { historyId: next, counts };
+  if (fresh.length === 0) { await saveSettings({ gmailLastSkipped: [] }); return { historyId: next, counts }; }
 
   const [applications, threads, aiReady] = await Promise.all([matchables(), knownThreads(), isAiConfigured()]);
   const kept: string[] = [];
   // Oldest first, so a thread's first mail links it for the ones after.
-  const mails: ReadMail[] = [];
+  const skipped: { rules: string[]; count: number }[] = [];
+  const mails: (ReadMail & { browserMessageId?: string; browserThreadUrl?: string })[] = [];
   for (const id of fresh) {
-    const mail = await getMessage(id, signal);
+    const mail = browser ? browserMails.find((mail) => mail.id === id) : await getMessage(id, signal);
     if (mail) mails.push(mail);
   }
   mails.sort((a, b) => a.date.getTime() - b.date.getTime());
 
   for (const mail of mails) {
+    const rules = matchingMailFilters(mail.subject, mail.text, settings.gmailFilters);
+    if (rules.length) {
+      const existing = skipped.find((entry) => entry.rules.join("|") === rules.join("|"));
+      if (existing) existing.count++; else skipped.push({ rules, count: 1 });
+      continue;
+    }
+    if (mail.messageId) {
+      if (parseAddress(mail.from).address === ownAddress.toLowerCase()) {
+        const possible = await prisma.emailMessage.findMany({ where: { mailbox: ownAddress.toLowerCase(), direction: "OUTGOING", messageId: "", subject: mail.subject, body: stripQuoted(mail.text).slice(0, MAX_BODY), sentAt: { gte: new Date(mail.date.getTime() - 5 * 60_000), lte: new Date(mail.date.getTime() + 5 * 60_000) } } });
+        const recipients = emailAddresses(mail.to).map((address) => address.toLowerCase()).sort().join(",");
+        const matching = possible.filter((email) => emailAddresses(email.toAddress).map((address) => address.toLowerCase()).sort().join(",") === recipients);
+        if (matching.length === 1) {
+          const outgoing = matching[0];
+          await prisma.emailMessage.update({ where: { id: outgoing.id }, data: { messageId: mail.messageId, ...(browser ? { browserMessageId: mail.browserMessageId, browserThreadUrl: mail.browserThreadUrl } : {}) } });
+        }
+      }
+      const duplicate = await prisma.emailMessage.findFirst({ where: { mailbox: ownAddress.toLowerCase(), messageId: mail.messageId } });
+      if (duplicate) {
+        if (browser) await prisma.emailMessage.update({ where: { id: duplicate.id }, data: { browserMessageId: mail.browserMessageId, browserThreadUrl: mail.browserThreadUrl } });
+        else if (duplicate.gmailId.startsWith("browser:")) {
+          await prisma.$transaction([
+            prisma.emailMessage.updateMany({ where: { threadId: duplicate.threadId, mailbox: ownAddress.toLowerCase() }, data: { threadId: mail.threadId } }),
+            prisma.emailMessage.update({ where: { id: duplicate.id }, data: { gmailId: mail.id } }),
+            prisma.application.updateMany({ where: { emailThreadId: duplicate.threadId }, data: { emailThreadId: mail.threadId } }),
+          ]);
+        }
+        if (duplicate.applicationId) threads.set(mail.threadId, duplicate.applicationId);
+        continue;
+      }
+    }
     const from = parseAddress(mail.from);
     const outgoing = mail.labels.includes("SENT") || from.address === ownAddress.toLowerCase();
     if (mail.labels.some((label) => NOISE_LABELS.includes(label))) continue;
@@ -126,6 +168,9 @@ async function runSync(historyId: string | null, ownAddress: string, scope: "kno
       where: { gmailId: mail.id },
       create: {
         gmailId: mail.id,
+        mailbox: ownAddress.toLowerCase(),
+        browserMessageId: mail.browserMessageId,
+        browserThreadUrl: mail.browserThreadUrl,
         threadId: mail.threadId,
         applicationId: match?.applicationId ?? null,
         direction: outgoing ? EmailDirection.OUTGOING : EmailDirection.INCOMING,
@@ -158,6 +203,7 @@ async function runSync(historyId: string | null, ownAddress: string, scope: "kno
       }
     }
   }
+  await saveSettings({ gmailLastSkipped: skipped });
   return { historyId: next, counts };
 }
 
@@ -195,6 +241,22 @@ export async function readReply(emailId: string, signal?: AbortSignal): Promise<
       ...(data.kind === "ACKNOWLEDGEMENT" || data.kind === "REJECTION" ? { handledAt: new Date() } : {}),
     },
   });
+  if (settings.gmailAutoDraft && email.applicationId && !email.handledAt && !email.replyDraft && ["INTERVIEW", "QUESTION", "OFFER"].includes(data.kind)) {
+    const { draftReplyJob } = await import("@/lib/jobs/draft-reply");
+    const draft = await draftReplyJob.run({ emailId, note: "", slots: null }, { id: `auto-reply-${emailId}`, step: async () => {}, signal: signal ?? new AbortController().signal });
+    if (settings.replySubmissionMode === "automatic" && draft.gaps.length === 0 && draft.unverified.length === 0 && draft.body.trim() && !/\[…\]|\[\.\.\.\]/.test(draft.body)) {
+      if (settings.gmailBackend === "browser") {
+        const { sendReply } = await import("./send");
+        await sendReply(emailId, draft.body);
+      } else {
+        const { startMailRun } = await import("@/lib/browser/service");
+        const { loadGoogleAccount } = await import("./account");
+        const { replySubject } = await import("./send");
+        if (!(await loadGoogleAccount())) throw new GoogleError("not-connected", "Connect the selected Gmail API account first.");
+        await startMailRun({ applicationId: email.applicationId ?? undefined, kind: "reply", transport: "api", emailId, to: email.fromAddress, subject: replySubject(email.subject), body: draft.body });
+      }
+    }
+  }
 }
 
 const globalForSync = globalThis as unknown as { inboxTimer?: ReturnType<typeof setTimeout>; inboxRunning?: boolean };
@@ -203,12 +265,10 @@ const globalForSync = globalThis as unknown as { inboxTimer?: ReturnType<typeof 
 async function scheduledCheck(): Promise<void> {
   if (globalForSync.inboxRunning) return;
   const [connection, settings] = await Promise.all([googleConnection(), loadSettings()]);
-  if (connection.status !== "connected") return;
   globalForSync.inboxRunning = true;
   try {
-    // Interviews moved or deleted in Google Calendar, whether or not mail is read.
-    await pullInterviewEvents().catch((error) => logServerError("calendar check", error));
-    if (connection.canRead && settings.gmailRead) await syncInbox();
+    if (connection.status === "connected") await pullInterviewEvents().catch((error) => logServerError("calendar check", error));
+    if (settings.gmailRead && settings.gmailReadingMode === "scheduled" && (settings.gmailBackend === "browser" ? Boolean(settings.gmailBrowserEmail) : connection.status === "connected" && connection.canRead)) await syncInbox();
   } finally {
     globalForSync.inboxRunning = false;
   }

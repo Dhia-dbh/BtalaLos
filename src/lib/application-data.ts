@@ -54,6 +54,13 @@ export type Requirement = z.infer<typeof requirementSchema>;
 
 /** Application.extracted: what the AI read from the posting (NEW-3). Missing fields are null. */
 export const extractedSchema = z.object({
+  recruiterEmail: z.email().nullable().optional(),
+  applicationUrl: z.string().nullable().optional(),
+  applicationInstructions: z.string().nullable().optional(),
+  applicationMethod: z.string().nullable().optional(),
+  contactEmails: z.array(z.email()).optional(),
+  channel: z.enum(["portal", "email", "unresolved"]).optional(),
+  warnings: z.array(z.string()).optional(),
   title: z.string().nullable(),
   company: z.string().nullable(),
   role: z.string().nullable(),

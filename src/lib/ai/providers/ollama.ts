@@ -41,7 +41,7 @@ export class OllamaProvider extends BaseProvider {
       // A model's thinking counts towards `num_predict`, and on local hardware it can think
       // through all of it, or past the time limit, before it answers. Models that can't
       // think take `false` too (`true` they refuse).
-      think: false,
+      think: (call.thinking ?? false) as boolean | "low" | "medium" | "high",
       format: call.json ? z.toJSONSchema(call.json.schema) : undefined,
       options: { temperature: call.temperature, num_predict: call.maxTokens, num_ctx: CONTEXT_TOKENS },
     });

@@ -17,3 +17,5 @@ import "@/lib/startups/refresh";
 import "@/lib/connector/draft";
 
 import "@/lib/preparation/service";
+
+import "@/lib/browser/service";

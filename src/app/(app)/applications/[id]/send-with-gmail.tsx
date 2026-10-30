@@ -11,7 +11,7 @@ import { emailAddresses } from "@/lib/application-email";
 import { sendWithGmail } from "@/lib/google/actions";
 
 /** Whether Gmail can send, for the Email tab: the account it sends from, or why not. */
-export type GmailSender = { from: string } | { from: null; reason: "not-configured" | "not-connected" | "no-permission" };
+export type GmailSender = ({ from: string } | { from: null; reason: "not-configured" | "not-connected" | "no-permission" }) & { backend?: "api" | "browser" };
 
 /**
  * "Send with Gmail" (E15-2): sends the email from the connected account with
@@ -42,9 +42,9 @@ export function SendWithGmail({
   const [sending, startSending] = useTransition();
 
   if (sender.from === null) {
-    if (sender.reason === "not-configured") return null;
+    if (sender.reason === "not-configured" && sender.backend !== "browser") return null;
     return (
-      <a href={sender.reason === "no-permission" ? "/api/google/connect?scopes=send" : "/settings?section=google"} className={buttonClassName("secondary", "md")}>
+      <a href={sender.reason === "no-permission" ? "/api/google/connect?scopes=send" : sender.backend === "browser" ? "/settings?section=browser" : "/settings?section=google"} className={buttonClassName("secondary", "md")}>
         {sender.reason === "no-permission" ? "Allow sending with Gmail" : "Connect Gmail to send"}
       </a>
     );
@@ -67,10 +67,11 @@ export function SendWithGmail({
         onClick={() => {
           if (sending) return;
           if (!ready) return toast(emailAddresses(to).length === 0 ? "Add who it's to first: the posting doesn't give an address." : "Add a subject first.");
-          setOpen(true);
+          if (sender.backend === "browser") send();
+          else setOpen(true);
         }}
       >
-        {sending ? "Sending…" : sentBefore ? "Send again with Gmail" : "Send with Gmail"}
+        {sending ? "Sending…" : sender.backend === "browser" ? "Prepare in Gmail browser" : sentBefore ? "Send again with Gmail" : "Send with Gmail"}
       </Button>
       <AlertDialog.Portal>
         <AlertDialog.Overlay className="fixed inset-0 z-40 bg-black/40" />

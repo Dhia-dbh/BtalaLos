@@ -1,3 +1,4 @@
+import { BrowserSettings } from "@/components/browser/settings";
 import type { Metadata } from "next";
 import { CREATIVITY, languageRule, NO_EM_DASHES, truthfulness, UNTRUSTED_POSTING } from "@/lib/ai/tasks/prompt-parts";
 import { LATEX_DOCUMENT_RULES, LATEX_EMAIL_RULES } from "@/lib/generation-prompts";
@@ -53,7 +54,7 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
     <SettingsScreen section={section}>
       {section === "prompts" ? (
         <PromptsSection
-          initial={{ cvPrompt: settings.cvPrompt, letterPrompt: settings.letterPrompt, emailPrompt: settings.emailPrompt, latexCvPrompt: settings.latexCvPrompt, latexLetterPrompt: settings.latexLetterPrompt, latexEmailPrompt: settings.latexEmailPrompt }}
+          initial={{ cvPrompt: settings.cvPrompt, letterPrompt: settings.letterPrompt, emailPrompt: settings.emailPrompt, latexCvPrompt: settings.latexCvPrompt, latexLetterPrompt: settings.latexLetterPrompt, latexEmailPrompt: settings.latexEmailPrompt, routingPrompt: settings.routingPrompt, browserPrompt: settings.browserPrompt, classificationPrompt: settings.classificationPrompt, replyPrompt: settings.replyPrompt, outreachPrompt: settings.outreachPrompt }}
           initialMode={await loadDocumentMode()}
           nativeRules={[truthfulness(settings.strict), CREATIVITY[settings.creativity], languageRule(settings.docLanguage), UNTRUSTED_POSTING, NO_EM_DASHES, "Document tone and CV page limit follow your settings and application choices. Candidate facts are used selectively, in context."].join("\n\n")}
           latexRules={[LATEX_DOCUMENT_RULES, LATEX_EMAIL_RULES].join("\n\n")}
@@ -86,6 +87,8 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
           countries={COUNTRIES}
           timeZone={await lastKnownTimeZone()}
         />
+      ) : section === "browser" ? (
+        <BrowserSettings initial={{ browserEnabled: settings.browserEnabled, browserAi: settings.browserAi, applicationSubmissionMode: settings.applicationSubmissionMode, replySubmissionMode: settings.replySubmissionMode, gmailBackend: settings.gmailBackend, gmailReadingMode: settings.gmailReadingMode, gmailAutoDraft: settings.gmailAutoDraft, gmailRead: settings.gmailRead, gmailScope: settings.gmailScope, gmailInterval: settings.gmailInterval, gmailFilters: settings.gmailFilters }} keySet={Boolean(settings.browserAiKeyEnc)} email={settings.gmailBrowserEmail} lastSkipped={settings.gmailLastSkipped} />
       ) : section === "google" ? (
         <>
           <GoogleNotice outcome={typeof params.google === "string" ? params.google : null} />

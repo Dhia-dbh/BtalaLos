@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Textarea } from "@/components/ui/textarea";
 import { useAutosave } from "@/hooks/use-autosave";
-import { DEFAULT_GENERATION_PROMPTS, MAX_PROMPT_LENGTH, type GenerationPromptKey, type GenerationPrompts } from "@/lib/generation-prompts";
+import { AUTOMATION_PROMPT_KEYS, DEFAULT_GENERATION_PROMPTS, MAX_PROMPT_LENGTH, type GenerationPromptKey, type GenerationPrompts } from "@/lib/generation-prompts";
 
 import { saveGenerationPrompt } from "./actions";
 import { SettingsSectionIntro } from "./settings-screen";
@@ -56,6 +56,7 @@ export function PromptsSection({ initial, initialMode, nativeRules, latexRules }
           />
         );
       })}
+      {AUTOMATION_PROMPT_KEYS.map((key) => <PromptEditor key={key} promptKey={key} label={({ routingPrompt: "Application routing prompt", browserPrompt: "Browser exploration and filling prompt", classificationPrompt: "Email classification prompt", replyPrompt: "Reply generation prompt", outreachPrompt: "Recruiter outreach prompt" })[key]} value={prompts[key] ?? DEFAULT_GENERATION_PROMPTS[key]} onChange={(text) => setPrompts((current) => ({ ...current, [key]: text }))} />)}
       <details className="rounded-panel border border-line bg-card p-5 text-sm">
         <summary className="cursor-pointer font-medium">Rules added automatically</summary>
         <p className="mt-3 text-muted">These rules and the required output format are added separately to the editable instructions.</p>

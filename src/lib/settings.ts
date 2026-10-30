@@ -1,3 +1,4 @@
+import { browserAiSchema, mailFilterSchema, submissionModeSchema } from "@/lib/browser/types";
 import { z } from "zod";
 
 import { DEFAULT_GENERATION_PROMPTS } from "@/lib/generation-prompts";
@@ -103,6 +104,24 @@ export type AgentRun = z.infer<typeof agentRunSchema>;
 export const AGENT_RUNS_KEPT = 10;
 
 export const settingsSchema = z.object({
+  browserEnabled: flag(false),
+  browserAi: json(browserAiSchema).catch({ source: "cli", provider: "codex", baseUrl: "", model: "", effort: "medium" }),
+  browserAiKeyEnc: z.string().nullable().catch(null),
+  applicationSubmissionMode: submissionModeSchema.catch("review"),
+  replySubmissionMode: submissionModeSchema.catch("review"),
+  gmailBackend: z.enum(["api", "browser"]).catch("api"),
+  gmailReadingMode: z.enum(["manual", "scheduled"]).catch("scheduled"),
+  gmailAutoDraft: flag(false),
+  gmailFilters: json(z.array(mailFilterSchema).max(100)).catch([]),
+  gmailBrowserEmail: z.string().catch(""),
+  gmailBrowserLastSync: z.string().nullable().catch(null),
+  gmailBrowserProblem: z.string().nullable().catch(null),
+  gmailLastSkipped: json(z.array(z.object({ rules: z.array(z.string()), count: z.number() }))).catch([]),
+  routingPrompt: z.string().catch(DEFAULT_GENERATION_PROMPTS.routingPrompt),
+  browserPrompt: z.string().catch(DEFAULT_GENERATION_PROMPTS.browserPrompt),
+  classificationPrompt: z.string().catch(DEFAULT_GENERATION_PROMPTS.classificationPrompt),
+  replyPrompt: z.string().catch(DEFAULT_GENERATION_PROMPTS.replyPrompt),
+  outreachPrompt: z.string().catch(DEFAULT_GENERATION_PROMPTS.outreachPrompt),
   cvPrompt: z.string().catch(DEFAULT_GENERATION_PROMPTS.cvPrompt),
   letterPrompt: z.string().catch(DEFAULT_GENERATION_PROMPTS.letterPrompt),
   emailPrompt: z.string().catch(DEFAULT_GENERATION_PROMPTS.emailPrompt),
