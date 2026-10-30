@@ -117,6 +117,53 @@ function checkProject(input) {
     "Authorize distinct CV and letter entrypoints.",
   );
 }
+async function sourceCommit(repository, baseRef, signal) {
+  requireValue(
+    typeof baseRef === "string" && baseRef.length > 0 && !baseRef.startsWith("-"),
+    "Invalid base reference.",
+  );
+  return command(
+    "git",
+    ["-C", repository, "rev-parse", "--verify", "--end-of-options", `${baseRef}^{commit}`],
+    { signal },
+  );
+}
+async function compilePdf(config, root, entrypoint, engine, signal, operationId) {
+  await inside(root, entrypoint);
+  requireValue(
+    ["pdflatex", "xelatex", "lualatex"].includes(engine),
+    "Unsupported LaTeX engine.",
+  );
+  const build = `.dossier-build/${id(operationId)}`;
+  await inside(root, build, false);
+  await privateDirectory(path.join(root, build));
+  const args = [
+    "-norc",
+    { pdflatex: "-pdf", xelatex: "-xelatex", lualatex: "-lualatex" }[engine],
+    "-no-shell-escape",
+    "-interaction=nonstopmode",
+    "-halt-on-error",
+    `-outdir=${build}`,
+    entrypoint,
+  ];
+  const containerLua = config.container && engine === "lualatex";
+  if (engine === "lualatex")
+    // Lua's --safer breaks luaotfload; container mode uses filesystem isolation.
+    args.splice(2, 0, containerLua
+      ? "-pdflualatex=lualatex --nosocket %O %S"
+      : "-pdflualatex=lualatex --safer %O %S");
+  const log = await command("latexmk", args, {
+    cwd: root,
+    signal,
+    env: { ...cliEnvironment(), openin_any: containerLua ? "a" : "p", openout_any: "p" },
+  });
+  const file = path.join(root, build, `${path.basename(entrypoint, ".tex")}.pdf`);
+  return {
+    ...(await pdf(file, signal)),
+    log,
+    text: await command("pdftotext", [file, "-"], { signal }),
+  };
+}
 export async function execute(config, input, signal, operationId) {
   if (input.kind === "browser") {
     if (config.hostUrl) return hostOperation(config, input, signal, operationId);
@@ -257,6 +304,37 @@ async function executeOperation(config, input, signal, operationId, temporary) {
     }
     return { commit, files };
   }
+  if (input.kind === "base-resume") {
+    const repository = await repositoryRoot(config, input.repository, signal);
+    const commit = await sourceCommit(repository, input.baseRef, signal);
+    requireValue(
+      typeof input.entrypoint === "string" &&
+        input.entrypoint.endsWith(".tex") && !input.entrypoint.startsWith("-"),
+      "Select a .tex CV entrypoint.",
+    );
+    const checkout = path.join(temporary, "checkout");
+    try {
+      await command(
+        "git",
+        ["-C", repository, "worktree", "add", "--detach", checkout, commit],
+        { signal },
+      );
+      await filesAt(checkout, [input.entrypoint]);
+      return {
+        ...(await compilePdf(config, checkout, input.entrypoint, input.engine, signal, operationId)),
+        commit,
+      };
+    } finally {
+      const marker = await lstat(path.join(checkout, ".git")).catch((error) => {
+        if (error.code === "ENOENT") return null;
+        throw error;
+      });
+      if (marker)
+        await command("git", ["-C", repository, "worktree", "remove", "--force", checkout], {
+          timeout: 20_000,
+        });
+    }
+  }
   if (input.kind === "worktree") {
     const repository = await repositoryRoot(config, input.repository, signal);
     requireValue(
@@ -366,46 +444,7 @@ async function executeOperation(config, input, signal, operationId, temporary) {
         `${relative} changed before compilation. Start a fresh preparation.`,
       );
     }
-    await inside(root, input.entrypoint);
-    requireValue(
-      ["pdflatex", "xelatex", "lualatex"].includes(input.engine),
-      "Unsupported LaTeX engine.",
-    );
-    const build = `.dossier-build/${id(operationId)}`;
-    await inside(root, build, false);
-    await privateDirectory(path.join(root, build));
-    const args = [
-      "-norc",
-      { pdflatex: "-pdf", xelatex: "-xelatex", lualatex: "-lualatex" }[
-        input.engine
-      ],
-      "-no-shell-escape",
-      "-interaction=nonstopmode",
-      "-halt-on-error",
-      `-outdir=${build}`,
-      input.entrypoint,
-    ];
-    const containerLua = config.container && input.engine === "lualatex";
-    if (input.engine === "lualatex")
-      // Lua's --safer breaks luaotfload; container mode uses filesystem isolation.
-      args.splice(2, 0, containerLua
-        ? "-pdflualatex=lualatex --nosocket %O %S"
-        : "-pdflualatex=lualatex --safer %O %S");
-    const log = await command("latexmk", args, {
-      cwd: root,
-      signal,
-      env: { ...cliEnvironment(), openin_any: containerLua ? "a" : "p", openout_any: "p" },
-    });
-    const file = path.join(
-      root,
-      build,
-      `${path.basename(input.entrypoint, ".tex")}.pdf`,
-    );
-    return {
-      ...(await pdf(file, signal)),
-      log,
-      text: await command("pdftotext", [file, "-"], { signal }),
-    };
+    return compilePdf(config, root, input.entrypoint, input.engine, signal, operationId);
   }
   if (input.kind === "pdf" || input.kind === "merge") {
     requireValue(

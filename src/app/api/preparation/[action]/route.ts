@@ -2,6 +2,9 @@ import { exportOptions, previewExports, writeExports, revealExports } from "@/li
 import { exportSelectionSchema, exportWriteSchema } from "@/lib/preparation/export-types";
 import { emailDraftModeSchema } from "@/lib/email-drafting";
 import { loadSettings } from "@/lib/settings-data";
+import { randomUUID } from "node:crypto";
+import path from "node:path";
+import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { route } from "@/lib/route";
@@ -13,13 +16,14 @@ import {
   queuePreparation,
   latestPackage,
 } from "@/lib/preparation/service";
-import { preparationLibrary, loadProject } from "@/lib/preparation/data";
+import { preparationLibrary, loadDocumentMode, loadProject } from "@/lib/preparation/data";
 import {
   bundleSchema,
   documentNameSchema,
   documentModeSchema,
   cliOptionsSchema,
   projectSchema,
+  type BaseResumeResult,
   type Step,
   type PdfResult,
 } from "@/lib/preparation/types";
@@ -196,7 +200,34 @@ export const POST = route<RouteContext<"/api/preparation/[action]">>(
       if (Number(request.headers.get("content-length")) > 1024 * 1024)
         throw new RangeError("Request exceeds 1 MiB.");
       const input = await request.json();
-      if (action === "explain-error") {
+      if (action === "base-resume") {
+        z.object({}).strict().parse(input);
+        if ((await loadDocumentMode()) !== "LATEX")
+          throw new ActionError("Select Existing LaTeX project in Settings to compile its base CV.");
+        const project = await loadProject();
+        if (!project.repository || !project.cvPath)
+          throw new ActionError("Configure your LaTeX project in Settings first.");
+        const { data, checksum: hash, pages, commit } = await workerOperation<PdfResult & { commit: string }>(
+          `base-resume-${randomUUID()}`,
+          {
+            kind: "base-resume",
+            repository: project.repository,
+            baseRef: project.baseRef,
+            entrypoint: project.cvPath,
+            engine: project.engine,
+          },
+          request.signal,
+        );
+        if (checksum(Buffer.from(data, "base64")) !== hash)
+          throw new ActionError("Compiled PDF differs from its recorded checksum.");
+        return NextResponse.json({
+          data,
+          checksum: hash,
+          pages,
+          commit,
+          fileName: `${path.basename(project.cvPath, ".tex")}.pdf`,
+        } satisfies BaseResumeResult);
+      } else if (action === "explain-error") {
         const { applicationId, runId } = z.object({ applicationId: z.string().min(1), runId: z.string().min(1) }).parse(input);
         const run = await prisma.preparationRun.findFirst({ where: { id: runId, applicationId }, select: { error: true } });
         if (!run?.error) throw new ActionError("This preparation no longer has an error to explain.");
@@ -223,6 +254,7 @@ export const POST = route<RouteContext<"/api/preparation/[action]">>(
           create: { key: "applicationDocumentMode", value: documentMode },
           update: { value: documentMode },
         });
+        revalidatePath("/resume");
       } else if (action === "config") {
         const project = projectSchema.parse(input);
         await workerOperation(`config-${Date.now()}`, {
@@ -234,6 +266,7 @@ export const POST = route<RouteContext<"/api/preparation/[action]">>(
           create: { key: "latexProject", value: JSON.stringify(project) },
           update: { value: JSON.stringify(project) },
         });
+        revalidatePath("/resume");
       } else if (action === "directories") {
         const data = z
           .object({ directory: z.string().min(1).optional() })

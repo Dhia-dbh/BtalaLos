@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { mkdtemp, writeFile, rm } from "node:fs/promises";
+import { mkdtemp, writeFile, readFile, rm } from "node:fs/promises";
 import path from "node:path";
 import { tmpdir } from "node:os";
 import { execFile, spawn, type ChildProcess } from "node:child_process";
@@ -15,6 +15,69 @@ let root: string, repository: string;
 let worker: ChildProcess;
 const tex = (text: string) =>
   `\\documentclass{article}\n\\usepackage{hyperref}\n\\begin{document}${text} \\href{https://example.org}{Example}\\end{document}\n`;
+
+test("Base resume follows the document setting and previews the compiled LaTeX CV", async ({ page }) => {
+  await resetData();
+  const policyErrors: string[] = [];
+  page.on("console", (message) => {
+    if (message.type() === "error" && /Content Security Policy|Refused to (frame|display)/i.test(message.text()))
+      policyErrors.push(message.text());
+  });
+  await page.goto("/resume");
+  await expect(page.getByRole("tab", { name: "Themes", exact: true })).toBeVisible();
+  const saved = await page.request.post("/api/preparation/config", {
+    headers: { origin: new URL(page.url()).origin },
+    data: {
+      repository, baseRef: "HEAD", cvPath: "cv.tex", letterPath: "letter.tex",
+      editablePaths: ["cv.tex", "letter.tex"], engine: "pdflatex",
+      provider: "codex", model: "fixture", effort: "medium",
+      contextDocumentIds: [], fileName: "application.pdf",
+    },
+  });
+  expect(saved.status()).toBe(200);
+  await page.goto("/settings?section=latex");
+  const modeSaved = page.waitForResponse((response) => response.url().endsWith("/api/preparation/document-mode"));
+  await page.getByLabel("Default document mode", { exact: true }).selectOption("LATEX");
+  expect((await modeSaved).status()).toBe(200);
+  const compiled = page.waitForResponse((response) => response.url().endsWith("/api/preparation/base-resume"));
+  await page.getByRole("link", { name: "Base resume", exact: true }).click();
+  const response = await compiled;
+  expect(response.status()).toBe(200);
+  const result = await response.json();
+  await expect(page.getByTitle("Base resume PDF")).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Themes", exact: true })).toHaveCount(0);
+  const previewUrl = await page.getByTitle("Base resume PDF").getAttribute("src");
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("link", { name: "Download PDF", exact: true }).click(),
+  ]);
+  const bytes = await readFile((await download.path())!);
+  expect(bytes).toEqual(Buffer.from(result.data, "base64"));
+  expect(await command("pdftotext", [(await download.path())!, "-"])).toContain("CV: verified Python research");
+  await expect(page.getByRole("link", { name: "Download PDF", exact: true })).toHaveAttribute("href", previewUrl!);
+  const rebuilt = page.waitForResponse((next) => next.url().endsWith("/api/preparation/base-resume"));
+  await page.getByRole("button", { name: "Rebuild", exact: true }).click();
+  expect((await rebuilt).status()).toBe(200);
+  await expect(page.getByTitle("Base resume PDF")).toBeVisible();
+  await expect(page.getByTitle("Base resume PDF")).not.toHaveAttribute("src", previewUrl!);
+  await page.screenshot({ path: "/tmp/dossier-base-latex-resume.png", fullPage: true, animations: "disabled" });
+  await page.getByRole("button", { name: "Collapse sidebar", exact: true }).click();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({ path: "/tmp/dossier-base-latex-resume-mobile.png", fullPage: true, animations: "disabled" });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  expect(policyErrors).toEqual([]);
+  await page.setViewportSize({ width: 1400, height: 900 });
+  await page.getByRole("button", { name: "Expand sidebar", exact: true }).click();
+  await page.goto("/settings?section=latex");
+  const nativeSaved = page.waitForResponse((next) => next.url().endsWith("/api/preparation/document-mode"));
+  await page.getByLabel("Default document mode", { exact: true }).selectOption("NATIVE");
+  expect((await nativeSaved).status()).toBe(200);
+  await page.getByRole("link", { name: "Base resume", exact: true }).click();
+  await expect(page.getByRole("tab", { name: "Themes", exact: true })).toBeVisible();
+  await expect(page.getByTitle("Base resume PDF")).toHaveCount(0);
+  // Leave the project picker in its initial state for the application scenario.
+  await resetData();
+});
 
 test.beforeAll(async () => {
   await resetData();

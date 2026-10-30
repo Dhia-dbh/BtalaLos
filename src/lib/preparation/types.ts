@@ -67,6 +67,10 @@ export type PdfResult = {
   text?: string;
   log?: string;
 };
+export type BaseResumeResult = Pick<PdfResult, "data" | "checksum" | "pages"> & {
+  commit: string;
+  fileName: string;
+};
 export type Step = {
   name: string;
   attempts: { startedAt: string; finishedAt?: string; error?: string }[];

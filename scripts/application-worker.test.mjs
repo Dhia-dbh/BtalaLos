@@ -7,9 +7,11 @@ import {
   rm,
   symlink,
   mkdir,
+  readdir,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { setTimeout as delay } from "node:timers/promises";
 import { execute } from "./application-worker/operations.mjs";
 import { command, digest } from "./application-worker/tools.mjs";
 import { createWorker } from "./application-worker.mjs";
@@ -235,6 +237,103 @@ test("rejects source or branch changes before compilation", async (t) => {
     }),
     /branch changed/,
   );
+});
+
+test("compiles the committed base CV in a temporary worktree and refreshes its reference", async (t) => {
+  const { config, repo, operation } = await fixture(t);
+  await mkdir(path.join(repo, "sources"));
+  await writeFile(path.join(repo, "sources", "Base CV.tex"),
+    "\\documentclass{article}\n\\begin{document}\\input{summary}\\newpage Second page\\end{document}\n");
+  await writeFile(path.join(repo, "summary.tex"), "Committed base CV");
+  await command("git", ["-C", repo, "add", "."]);
+  await command("git", ["-C", repo, "-c", "user.name=Fixture", "-c", "user.email=test@example.org", "commit", "-m", "Nested CV"]);
+  const baseCommit = await command("git", ["-C", repo, "rev-parse", "HEAD"]);
+  await command("git", ["-C", repo, "tag", "saved-base"]);
+  await writeFile(path.join(repo, "summary.tex"), "New committed CV");
+  await command("git", ["-C", repo, "add", "."]);
+  await command("git", ["-C", repo, "-c", "user.name=Fixture", "-c", "user.email=test@example.org", "commit", "-m", "Updated CV"]);
+  const currentCommit = await command("git", ["-C", repo, "rev-parse", "HEAD"]);
+  await writeFile(path.join(repo, "summary.tex"), "Uncommitted CV");
+  await operation({ kind: "worktree", repository: repo, applicationId: "existing", commit: currentCommit });
+  const applicationSource = path.join(config.data, "worktrees", "existing", "cv.tex");
+  await writeFile(applicationSource, tex.replace("CV", "Existing application CV"));
+  const status = await command("git", ["-C", repo, "status", "--porcelain"]);
+  const branches = await command("git", ["-C", repo, "branch"]);
+  const worktrees = await command("git", ["-C", repo, "worktree", "list", "--porcelain"]);
+  const input = { kind: "base-resume", repository: repo, baseRef: "saved-base", entrypoint: "sources/Base CV.tex", engine: "pdflatex" };
+  const compiled = await operation(input, "base-cv");
+  assert.equal(compiled.commit, baseCommit);
+  assert.equal(compiled.pages, 2);
+  assert.match(compiled.text, /Committed base CV/);
+  assert.doesNotMatch(compiled.text, /New committed|Uncommitted|Existing application/);
+  assert.equal(digest(Buffer.from(compiled.data, "base64")), compiled.checksum);
+  assert.equal(Buffer.from(compiled.data, "base64").subarray(0, 5).toString(), "%PDF-");
+  const fresh = await operation({ ...input, baseRef: "HEAD" }, "fresh-base-cv");
+  assert.equal(fresh.commit, currentCommit);
+  assert.match(fresh.text, /New committed CV/);
+  assert.equal(await readFile(path.join(repo, "summary.tex"), "utf8"), "Uncommitted CV");
+  assert.match(await readFile(applicationSource, "utf8"), /Existing application CV/);
+  assert.equal(await command("git", ["-C", repo, "status", "--porcelain"]), status);
+  assert.equal(await command("git", ["-C", repo, "branch"]), branches);
+  assert.equal(await command("git", ["-C", repo, "worktree", "list", "--porcelain"]), worktrees);
+  assert.deepEqual(await readdir(path.join(config.data, "operations")), []);
+});
+
+test("cleans up base CV worktrees after compilation errors and rejects unsafe inputs", async (t) => {
+  const { config, repo, operation } = await fixture(t);
+  await writeFile(path.join(repo, "broken.tex"), "\\documentclass{article}\\begin{document}\\undefinedcommand\\end{document}");
+  await writeFile(path.join(repo, "notes.txt"), "Not LaTeX");
+  await symlink("cv.tex", path.join(repo, "linked.tex"));
+  await command("git", ["-C", repo, "add", "."]);
+  await command("git", ["-C", repo, "-c", "user.name=Fixture", "-c", "user.email=test@example.org", "commit", "-m", "Invalid sources"]);
+  const worktrees = await command("git", ["-C", repo, "worktree", "list", "--porcelain"]);
+  const input = { kind: "base-resume", repository: repo, baseRef: "HEAD", entrypoint: "cv.tex", engine: "pdflatex" };
+  for (const [changes, expected] of [
+    [{ entrypoint: "broken.tex" }, /latexmk failed/],
+    [{ entrypoint: "../cv.tex" }, /relative path/],
+    [{ entrypoint: "linked.tex" }, /Symbolic links/],
+    [{ entrypoint: "missing.tex" }, /ENOENT/],
+    [{ entrypoint: "notes.txt" }, /\.tex CV entrypoint/],
+    [{ entrypoint: "-evil.tex" }, /\.tex CV entrypoint/],
+    [{ engine: "unsupported" }, /Unsupported LaTeX engine/],
+    [{ baseRef: "-HEAD" }, /Invalid base reference/],
+    [{ baseRef: "missing-ref" }, /git failed/],
+    [{ repository: path.join(repo, "missing") }, /ENOENT/],
+  ]) {
+    await assert.rejects(operation({ ...input, ...changes }), expected);
+    assert.equal(await command("git", ["-C", repo, "worktree", "list", "--porcelain"]), worktrees);
+    assert.deepEqual(await readdir(path.join(config.data, "operations")), []);
+  }
+  config.repositoryRoot = path.join(config.data);
+  await assert.rejects(operation(input), /shared repository root/);
+});
+
+test("removes a temporary base CV worktree when compilation is cancelled", async (t) => {
+  const { config, repo } = await fixture(t);
+  await writeFile(path.join(repo, "cv.tex"), "\\documentclass{article}\\begin{document}\\loop\\iftrue\\repeat\\end{document}");
+  await command("git", ["-C", repo, "add", "."]);
+  await command("git", ["-C", repo, "-c", "user.name=Fixture", "-c", "user.email=test@example.org", "commit", "-m", "Slow CV"]);
+  const worktrees = await command("git", ["-C", repo, "worktree", "list", "--porcelain"]);
+  const controller = new AbortController();
+  const pending = execute(config, {
+    kind: "base-resume", repository: repo, baseRef: "HEAD", entrypoint: "cv.tex", engine: "pdflatex",
+  }, controller.signal, "cancel-base");
+  const rejected = assert.rejects(pending, /Cancelled|aborted/);
+  let started = false;
+  for (let attempt = 0; attempt < 100; attempt++) {
+    const directories = await readdir(path.join(config.data, "operations")).catch(() => []);
+    if (directories.length) {
+      const build = path.join(config.data, "operations", directories[0], "checkout", ".dossier-build", "cancel-base");
+      started = await readFile(path.join(build, "cv.log")).then(() => true, () => false);
+      if (started) break;
+    }
+    await delay(20);
+  }
+  controller.abort();
+  await rejected;
+  assert.equal(started, true);
+  assert.equal(await command("git", ["-C", repo, "worktree", "list", "--porcelain"]), worktrees);
+  assert.deepEqual(await readdir(path.join(config.data, "operations")), []);
 });
 
 test("uses structured generation through both subscription CLI adapters", async (t) => {

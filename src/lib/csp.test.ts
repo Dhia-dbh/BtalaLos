@@ -8,6 +8,7 @@ describe("contentSecurityPolicy (E11-5)", () => {
     expect(policy).toContain("script-src 'self' 'nonce-abc' 'strict-dynamic'");
     expect(policy).toContain("default-src 'self'");
     expect(policy).toContain("frame-ancestors 'none'");
+    expect(policy).toContain("frame-src 'self' blob:");
     expect(policy).toContain("object-src 'none'");
     expect(policy).not.toContain("unsafe-eval");
     expect(policy).not.toContain("upgrade-insecure-requests");

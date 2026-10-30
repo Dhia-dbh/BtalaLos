@@ -76,8 +76,8 @@ export function ProjectSettings({
           <option value="LATEX">Existing LaTeX project</option>
         </Select>
         <p className="text-sm text-muted">
-          New applications use this mode. LaTeX applications use your existing
-          sources, create a branch for each application, and compile the
+          Base resume and new applications use this mode. LaTeX applications
+          use your existing sources, create a branch for each application, and compile the
           tailored CV and cover letter with latexmk.
         </p>
         <Link href="/settings?section=profiles" className="text-sm underline">

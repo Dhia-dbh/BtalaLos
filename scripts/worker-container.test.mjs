@@ -98,6 +98,12 @@ test("image prepares linked PDFs with host-only CLI login and persistent editabl
     cv = await operation({ kind: "compile", applicationId: "fixture", entrypoint: "cv.tex", engine, expected }, `cv-${engine}`);
     assert.equal(cv.pages, 1);
     assert.match(cv.text, /Tailored CV/);
+    const base = await operation({ kind: "base-resume", repository: repo, baseRef: "HEAD", entrypoint: "cv.tex", engine }, `base-cv-${engine}`);
+    assert.equal(base.commit, inspected.commit);
+    assert.equal(base.pages, 1);
+    assert.doesNotMatch(base.text, /Tailored/);
+    assert.match(base.text, /CV/);
+    assert.equal(digest(Buffer.from(base.data, "base64")), base.checksum);
   }
   const letter = await operation({ kind: "compile", applicationId: "fixture", entrypoint: "letter.tex", engine: "pdflatex", expected }, "letter");
   const supporting = await operation({ kind: "compile", applicationId: "fixture", entrypoint: "support.tex", engine: "pdflatex", expected }, "support");

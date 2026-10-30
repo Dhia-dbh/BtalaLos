@@ -24,6 +24,7 @@ export function contentSecurityPolicy(nonce: string, { dev = false, https = fals
     "img-src 'self' blob: data:",
     "font-src 'self'",
     "connect-src 'self'",
+    "frame-src 'self' blob:",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",

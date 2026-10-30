@@ -1,5 +1,6 @@
 import { afterAll, beforeEach, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
+import { revalidatePath } from "next/cache";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -18,6 +19,7 @@ vi.mock("@/lib/prisma", () => ({
   },
 }));
 vi.mock("@/lib/auth/session", () => ({ getSession: vi.fn() }));
+vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/jobs/runner", () => ({
   defineJob: <T>(value: T) => value,
   startJob: vi.fn(async () => "job1"),
@@ -93,6 +95,7 @@ it("persists the document mode and rejects unknown modes", async () => {
     (await request("document-mode", { documentMode: "LATEX" })).status,
   ).toBe(200);
   expect(await loadDocumentMode()).toBe("LATEX");
+  expect(revalidatePath).toHaveBeenCalledWith("/resume");
   expect(
     (await request("document-mode", { documentMode: "OTHER" })).status,
   ).toBe(422);
@@ -124,6 +127,7 @@ it("routes folder browsing and source discovery to the authenticated worker", as
 });
 it("validates project paths through the worker and stores the selected CLI settings", async () => {
   expect((await request("config", project)).status).toBe(200);
+  expect(revalidatePath).toHaveBeenCalledWith("/resume");
   expect(workerOperation).toHaveBeenCalledWith(
     expect.any(String),
     expect.objectContaining({
