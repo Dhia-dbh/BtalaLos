@@ -2,7 +2,7 @@
 
 Dossier can use your existing Codex ChatGPT login through a small host bridge. The Docker container sends its usual OpenAI-compatible requests to the bridge, which runs `codex exec`. No OpenAI API key is needed. Inference still runs on OpenAI's servers and uses your Codex account limits.
 
-This setup targets Docker Desktop on Linux, with Codex installed on the same computer. The bridge binds only to `127.0.0.1`; it is not a public service. Docker Desktop can reach that loopback listener through `host.docker.internal`. Native Docker Engine needs a different networking arrangement and is not covered here.
+The address examples below target Docker Desktop on Linux, with Codex installed on the same computer. The bridge binds only to `127.0.0.1`; it is not a public service. Docker Desktop on Linux can reach that loopback listener through `host.docker.internal`. For Docker Engine on Linux or inside Windows WSL2, first follow the [installation guide](installation.md), including its host-network overlay, and use `http://127.0.0.1:8787/v1` instead. On Windows, run the bridge and Codex inside WSL2; native PowerShell execution of this bridge is not supported by these instructions.
 
 ## Start the bridge
 
@@ -58,6 +58,8 @@ In **Settings → AI provider**, select **OpenAI-compatible** and enter:
 The existing API key field is used for the bridge token. Dossier stores it encrypted. Selecting another provider clears its previous saved key, as it normally does.
 
 Set `DOSSIER_AI_TIMEOUT_SECONDS=300` in your deployment's `.env` and recreate the app container to apply that environment change:
+
+Use the same production Compose files as installation. The installation guide sets `COMPOSE_FILE` in `.env`, so the following command selects them automatically. Without that setting, pass the matching `-f` options explicitly; the repository's default Compose file is for development.
 
 ```bash
 docker compose up -d --no-deps app

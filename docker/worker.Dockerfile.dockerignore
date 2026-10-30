@@ -1,0 +1,10 @@
+**
+!scripts
+!scripts/application-worker.mjs
+!scripts/codex-bridge.mjs
+!scripts/application-worker
+!scripts/application-worker/*.mjs
+!scripts/application-worker/merge_pdfs.py
+!scripts/application-worker/requirements.txt
+!LICENSE
+!NOTICE.md

@@ -145,7 +145,7 @@ export function command(
       else if (code)
         reject(
           new Error(
-            `${path.basename(binary)} failed (${code}).\n${(errors || output).slice(-12_000)}`,
+            `${path.basename(binary)} failed (${code}).\n${`${errors}\n${output}`.trim().slice(-12_000)}`,
           ),
         );
       else resolve(trim ? output.trim() : output);

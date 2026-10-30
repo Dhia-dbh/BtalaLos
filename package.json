@@ -16,6 +16,9 @@
     "hash-password": "tsx scripts/hash-password.ts",
     "codex:bridge": "node scripts/codex-bridge.mjs",
     "application:worker": "node scripts/application-worker.mjs",
+    "application:host": "node scripts/application-host.mjs",
+    "test:application-host": "node --test scripts/application-host.test.mjs",
+    "test:worker-container": "node --test scripts/worker-container.test.mjs",
     "test:application-worker": "node --test scripts/application-worker.test.mjs",
     "test:codex-bridge": "node --test scripts/codex-bridge.test.mjs"
   },

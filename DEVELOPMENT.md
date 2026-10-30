@@ -1,8 +1,12 @@
 # Developing Dossier
 
-Next.js 16 (App Router) + Prisma 7 + PostgreSQL 18, run with Docker Compose and Yarn 4. Nothing runs on the host: every command goes through the containers. For installing and running Dossier, see the [README](README.md); for how it's secured, [SECURITY.md](SECURITY.md).
+Next.js 16 (App Router) + Prisma 7 + PostgreSQL 18, run with Docker Compose and Yarn 4. App development commands go through the containers. The optional Codex bridge and application worker run on the Linux host or inside WSL2. For installing and running BtalaLos, see the [installation guide](docs/installation.md); for how it's secured, [SECURITY.md](SECURITY.md).
+
+Production preparation can instead use the [worker image](docs/container-worker.md), with only the CLI/desktop companion on the host. Its Compose overlays target `compose.production.yml`; keep the development configuration below separate.
 
 ## Getting started
+
+If reusing an installation `.env`, set `COMPOSE_FILE=compose.yml` for development before these commands. The installation guide selects production Compose files; the development helpers need the development app container.
 
 ```bash
 cp .env.example .env

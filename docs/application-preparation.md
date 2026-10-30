@@ -1,10 +1,12 @@
 # Application preparation
 
-This branch adds Git-based LaTeX preparation alongside Dossier's native document editor. No data is imported from Job Application Automation.
+BtalaLos adds Git-based LaTeX preparation alongside Dossier's native document editor. Start with the [Linux and Windows installation guide](installation.md) for operating-system prerequisites and host-service networking. Windows users run the worker and tools inside WSL2; native PowerShell execution is not covered.
+
+The recommended deployment is now the [containerized worker](container-worker.md): Git, TeX, Python, Poppler, and PyMuPDF run in Docker, while the host companion handles your existing CLI login and folder opening. The following **Host worker** section is the retained all-host alternative. The configuration and workflow sections apply to both deployments; use the container guide's automatically configured worker URL when choosing Docker.
 
 ## Host worker
 
-Dossier stays in Docker. A separate private Node.js worker runs on the Linux computer holding the LaTeX Git repository and the authenticated coding CLIs. It uses Git, `latexmk`, the chosen TeX engine, `pdfinfo`, `pdftotext`, Python with PyMuPDF, and optionally `gdbus` for the folder button. Install the TeX packages and fonts your project requires. Codex and Claude Code must be installed and signed in with subscription accounts under the worker's user. Node 22 or later runs the host worker; Dossier itself requires Node 24.
+Dossier stays in Docker. A separate private Node.js worker runs in the Linux environment holding the LaTeX Git repository and the authenticated coding CLI. It uses Git, `latexmk`, the chosen TeX engine, `pdfinfo`, `pdftotext`, Python with PyMuPDF, and optionally `gdbus` for the folder button. Install the TeX packages and fonts your project requires. The selected CLI, Codex or Claude Code, must be installed and signed in with a subscription account under the worker's user; both are not required. Only Codex has been tested with a live account. Node 22 or later runs the host worker; Dossier itself requires Node 24.
 
 Install the worker's Python dependency in a dedicated environment:
 
@@ -54,7 +56,7 @@ DOSSIER_WORKER_URL=http://host.docker.internal:8788
 DOSSIER_WORKER_TOKEN=THE_SAME_LOCAL_TOKEN
 ```
 
-The loopback URL is reachable through `host.docker.internal` on the existing Docker Desktop setup. Native Docker Engine requires an explicitly configured private network route to the host. Do not expose the worker publicly or mount CLI credentials into the container. The existing Codex OpenAI-compatible bridge remains separate.
+The URL above applies to the existing Docker Desktop on Linux setup. For Docker Engine on Linux or inside WSL2, follow the [host-network overlay instructions](installation.md#4-connect-containers-to-loopback-host-services) and use `DOSSIER_WORKER_URL=http://127.0.0.1:8788`. A hostname mapping alone cannot reach the worker's host-loopback listener. Do not expose the worker publicly or mount CLI credentials into the container. The existing Codex OpenAI-compatible bridge remains separate.
 
 Build the Dossier image from this branch. Apply Prisma migrations through the usual startup process. The additive migration keeps every existing application in native mode.
 
