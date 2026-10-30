@@ -1,0 +1,18 @@
+# Native rootful Docker Engine on Linux/WSL2. Add after compose.preparation.yml.
+services:
+  db:
+    ports:
+      - "127.0.0.1:${DOSSIER_DB_PORT:-55432}:5432"
+  app:
+    network_mode: host
+    ports: !reset []
+    environment:
+      HOSTNAME: "127.0.0.1"
+      PORT: ${DOSSIER_PORT:-3000}
+      DATABASE_URL: postgresql://dossier:${POSTGRES_PASSWORD}@127.0.0.1:${DOSSIER_DB_PORT:-55432}/dossier
+      DOSSIER_WORKER_URL: http://127.0.0.1:8788
+  worker:
+    network_mode: host
+    environment:
+      DOSSIER_WORKER_BIND: "127.0.0.1"
+      DOSSIER_HOST_URL: http://127.0.0.1:8789

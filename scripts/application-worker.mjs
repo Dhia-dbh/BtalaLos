@@ -1,7 +1,9 @@
 import http from "node:http";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { readFile, readdir, realpath } from "node:fs/promises";
+import { access, mkdir, readFile, readdir, realpath } from "node:fs/promises";
+import { constants } from "node:fs";
+import { homedir } from "node:os";
 import { timingSafeEqual } from "node:crypto";
 import { execute } from "./application-worker/operations.mjs";
 import {
@@ -12,12 +14,27 @@ import {
   requireValue,
 } from "./application-worker/tools.mjs";
 
-export async function createWorker(config) {
+export async function createWorker(config, {
+  executeOperation = execute,
+  allowedKinds,
+  maxRequestBytes = 280 * 1024 * 1024,
+} = {}) {
   requireValue(
     config.token?.length >= 32,
     "Set a private worker token of at least 32 characters.",
   );
   if (config.repository) config.repository = await realpath(config.repository);
+  if (config.container) {
+    requireValue(process.getuid() !== 0, "Run the worker with your non-root host UID and GID.");
+    for (const directory of [config.repositoryRoot, config.data, config.exports]) {
+      requireValue(typeof directory === "string" && path.isAbsolute(directory), "Configure absolute repository, data, and export mount paths.");
+      requireValue(await realpath(directory) === directory, "Use canonical mount paths, not symbolic links.");
+      await access(directory, constants.R_OK | constants.W_OK | constants.X_OK);
+    }
+    requireValue(config.hostUrl && config.hostToken?.length >= 32, "Configure the host companion URL and token.");
+    await mkdir(homedir(), { recursive: true, mode: 0o700 });
+  }
+  if (config.repositoryRoot) config.repositoryRoot = await realpath(config.repositoryRoot);
   const operations = await privateDirectory(path.join(config.data, "receipts"));
   const controllers = new Map();
   const accepted = new Map();
@@ -67,12 +84,14 @@ export async function createWorker(config) {
       for await (const part of req) {
         size += part.length;
         requireValue(
-          size <= 280 * 1024 * 1024,
-          "Worker request exceeds 280 MiB.",
+          size <= maxRequestBytes,
+          "Worker request exceeds the size limit.",
         );
         parts.push(part);
       }
       const input = JSON.parse(Buffer.concat(parts).toString());
+      requireValue(input && typeof input === "object", "Expected an operation object.");
+      requireValue(!allowedKinds || allowedKinds.includes(input.kind), "Unsupported host operation.");
       const hash = digest(JSON.stringify(input));
       if (accepted.has(key)) {
         requireValue(
@@ -106,7 +125,7 @@ export async function createWorker(config) {
               receipt(key),
               JSON.stringify({ status: "RUNNING", hash }),
             );
-            const result = await execute(config, input, controller.signal, key);
+            const result = await executeOperation(config, input, controller.signal, key);
             await atomic(
               receipt(key),
               JSON.stringify({ status: "DONE", hash, result }),
@@ -154,16 +173,21 @@ if (
     const worker = await createWorker({
       token: process.env.DOSSIER_WORKER_TOKEN,
       repository: process.env.DOSSIER_WORKER_REPOSITORY,
+      repositoryRoot: process.env.DOSSIER_WORKER_REPOSITORY_ROOT,
       data: process.env.DOSSIER_WORKER_DATA_DIR,
       exports: process.env.DOSSIER_WORKER_EXPORT_DIR,
       codex: process.env.DOSSIER_CODEX_BIN || "codex",
       claude: process.env.DOSSIER_CLAUDE_BIN || "claude",
+      hostUrl: process.env.DOSSIER_HOST_URL,
+      hostToken: process.env.DOSSIER_HOST_TOKEN,
+      container: process.env.DOSSIER_WORKER_CONTAINER === "1",
     });
     worker.server.listen(
       Number(process.env.DOSSIER_WORKER_PORT || 8788),
-      "127.0.0.1",
-      () => console.log("Dossier application worker listening on loopback."),
+      process.env.DOSSIER_WORKER_BIND || "127.0.0.1",
+      () => console.log("BtalaLos preparation worker listening."),
     );
+    worker.server.on("error", (error) => { console.error(error.message); process.exitCode = 1; });
     for (const signal of ["SIGINT", "SIGTERM"])
       process.once(signal, () => void worker.close());
   } catch (error) {

@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { DEFAULT_GENERATION_PROMPTS } from "@/lib/generation-prompts";
+
 import { AiProvider, Creativity, DateFormat, PaperSize, Tone } from "@/generated/prisma/enums";
 import { EMPTY_QUERY, JOB_SOURCES, JSEARCH_HOSTS, searchQuerySchema } from "@/lib/job-search/search";
 import { startupsRefreshSchema } from "@/lib/startups/types";
@@ -101,6 +103,13 @@ export type AgentRun = z.infer<typeof agentRunSchema>;
 export const AGENT_RUNS_KEPT = 10;
 
 export const settingsSchema = z.object({
+  cvPrompt: z.string().catch(DEFAULT_GENERATION_PROMPTS.cvPrompt),
+  letterPrompt: z.string().catch(DEFAULT_GENERATION_PROMPTS.letterPrompt),
+  emailPrompt: z.string().catch(DEFAULT_GENERATION_PROMPTS.emailPrompt),
+  latexCvPrompt: z.string().catch(DEFAULT_GENERATION_PROMPTS.latexCvPrompt),
+  latexLetterPrompt: z.string().catch(DEFAULT_GENERATION_PROMPTS.latexLetterPrompt),
+  latexEmailPrompt: z.string().catch(DEFAULT_GENERATION_PROMPTS.latexEmailPrompt),
+
   // AI provider (SET-1). Null means "not set in the app": fall back to the
   // DOSSIER_AI_* environment variables, then to the built-in defaults.
   provider: z.enum(AiProvider).nullable().catch(null),

@@ -1,3 +1,4 @@
+import type { GenerationPrompts } from "@/lib/generation-prompts";
 import type { Creativity } from "@/generated/prisma/enums";
 import type { Extracted, Match } from "@/lib/application-data";
 import { citationText } from "@/lib/citation";
@@ -17,6 +18,7 @@ export type TaskOptions = {
   language: string | null;
   /** SET-9 "Resume length": the most pages a resume may have, or null for no limit (E10-10). */
   maxPages?: number | null;
+  prompts?: GenerationPrompts;
   signal?: AbortSignal;
 };
 
@@ -113,7 +115,7 @@ export function applicationFacts(facts: string[]): string | null {
 /** How to use the candidate's own facts (PRO-14, APP-15), for the writing tasks; null when there are none. */
 export function candidateFacts(profile: ProfileData, facts: string[]): string | null {
   return factTexts(profile.facts).length > 0 || facts.length > 0
-    ? "The candidate's facts (factsAboutMe in the profile, and what they tell you for this application) are true and come from them. Use the ones that help with this job, in your own words and where they fit, rather than listing them; leave out the rest. When they say what to emphasise or how to come across, do that within the facts."
+    ? "The candidate's facts (factsAboutMe in the profile, and what they tell you for this application) are true and come from them. Use the ones that help with this job, in your own words and where they fit, rather than listing them; leave out the rest. Distinguish university coursework, certifications and personal projects from professional experience. When they say what to emphasise or how to come across, do that within the facts."
     : null;
 }
 

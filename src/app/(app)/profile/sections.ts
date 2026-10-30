@@ -55,9 +55,9 @@ export const SECTIONS = [
   {
     id: "facts",
     optional: true,
-    label: "Facts about me",
-    title: "Facts about me",
-    hint: "What the AI should know about you that the rest of your profile doesn't say. It reads these when it writes your resumes and cover letters, and never copies them onto a resume as a list.",
+    label: "Other relevant information",
+    title: "Other relevant information",
+    hint: "Add certifications, subjects studied at university, personal projects, or other details missing from your CV. Include what you studied or built, the tools you used, and any results. Generation uses relevant details for each job in your CV, motivation letter and email draft. Describe coursework and personal projects accurately; they do not count as professional experience.",
   },
 ] as const;
 

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { Extracted, Match } from "@/lib/application-data";
 import { demoLetterUnits, demoProfile, demoResumeUnits } from "@/lib/demo-profile";
+import { DEFAULT_GENERATION_PROMPTS } from "@/lib/generation-prompts";
 import { experienceMonths } from "@/lib/profile";
 
 import sample from "../../../../prisma/seed/prototype-sample.json";
@@ -598,6 +599,26 @@ describe("the profile photo (#224)", () => {
       for (const { system, messages } of provider.calls) {
         expect([system, ...messages.map((message) => message.content)].join("\n")).not.toMatch(/data:image|iVBORw0KGgo|"photo"/);
       }
+    }
+  });
+});
+
+describe("custom generation prompts", () => {
+  it("uses each saved prompt, profile facts and mandatory truthfulness rules", async () => {
+    const factsProfile = { ...profile, facts: [{ id: "course", text: "Studied graph algorithms at university." }] };
+    const custom = { ...options, prompts: { ...DEFAULT_GENERATION_PROMPTS, cvPrompt: "CV_CUSTOM", letterPrompt: "LETTER_CUSTOM", emailPrompt: "EMAIL_CUSTOM" } };
+    const cv = model({ summary: "Summary", roles: [], projects: [], skills: [], education: [] });
+    const letter = model({ recipient: "", greeting: "Hello,", paragraphs: [], signOff: "Regards," });
+    const email = model({ contactName: null, contactEmail: null, subject: "Application", greeting: "Hello,", paragraphs: ["Attached."], signOff: "Regards," });
+    const input = { profile: factsProfile, extracted, match: null, facts: [], posting };
+    await tailorResume(cv, input, custom);
+    await writeCoverLetter(letter, { ...input, tone: "WARM" }, custom);
+    await writeEmail(email, { ...input, tone: "WARM", letter: [] }, custom);
+    for (const [provider, instruction] of [[cv, "CV_CUSTOM"], [letter, "LETTER_CUSTOM"], [email, "EMAIL_CUSTOM"]] as const) {
+      expect(sent(provider).system).toContain(instruction);
+      expect(sent(provider).system).toContain("Never invent or embellish");
+      expect(sent(provider).system).toContain("Distinguish university coursework");
+      expect(prompt(provider)).toContain("Studied graph algorithms at university.");
     }
   });
 });

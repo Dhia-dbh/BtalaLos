@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { DEFAULT_GENERATION_PROMPTS } from "@/lib/generation-prompts";
+
 import { unitsSchema, type Extracted, type Match, type Unit } from "@/lib/application-data";
 import { publicationLabel } from "@/lib/citation";
 import { documentLabels, ENGLISH_LABELS, languagesLine, type DocumentLabels } from "@/lib/document-labels";
@@ -32,15 +34,6 @@ const answerSchema = z.object({
   education: z.array(z.object({ id: z.string(), notes: z.string() })),
 });
 
-const INSTRUCTIONS = `You tailor a candidate's resume to one job, as JSON.
-
-- summary: 2–3 sentences in the first person without "I" at the start of every sentence, about the candidate as this job would see them.
-- roles: every role from the profile, by id, with 2–5 bullets each. Lead with what this job cares about, keep each bullet to one line, and start with a verb.
-- projects: every project from the profile, by id, with 1–3 bullets each, written like the roles' bullets: what was built and what it shows that this job cares about.
-- skills: the candidate's own skills, most relevant to this job first. Copy their names exactly; you may leave out ones that don't help.
-- education: every entry by id, with its notes shortened or left empty.
-- The profile's publications go on the resume word for word, so don't answer with them; the summary may mention them.`;
-
 /** SET-9: asked for when "Resume length" has a limit; anything still over is trimmed afterwards (E10-10). */
 function pageFit(maxPages: number | null | undefined): string | null {
   if (maxPages === 1) {
@@ -66,7 +59,7 @@ export type TailorInput = {
 export const tailorResume: Task<TailorInput, Unit[]> = async (provider, { profile, extracted, match, facts, posting }, options) => {
   const answer = await provider.complete({
     system: system(
-      INSTRUCTIONS,
+      options.prompts?.cvPrompt ?? DEFAULT_GENERATION_PROMPTS.cvPrompt,
       pageFit(options.maxPages),
       truthfulness(options.strict),
       candidateFacts(profile, facts),

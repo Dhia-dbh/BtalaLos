@@ -62,13 +62,16 @@ The complete setup, revision, retry, and backup behavior is documented in [Appli
 | --- | --- | --- |
 | Next.js application and PostgreSQL | Docker | Interface, application data, AI tasks, preparation history, and saved artifacts |
 | Codex HTTP bridge, port 8787 | Host | Converts supported OpenAI-compatible text requests into `codex exec` calls |
-| Application worker, port 8788 | Host | Git worktrees, CLI generation, LaTeX compilation, PDF merging, exports, and folder opening |
+| Application worker, port 8788 | Docker by default; host alternative available | Git worktrees, LaTeX compilation, PDF merging, exports, and preparation operations |
+| Host companion, port 8789 | Host | CLI generation/model discovery for the container worker, and verified folder opening |
 
-The two host services are configured separately. LaTeX preparation uses the worker directly and does not require the HTTP bridge. Native AI tasks can use the bridge through the existing OpenAI-compatible provider.
+The optional Codex bridge and host companion are configured separately. The container worker uses the companion for CLI requests; it does not require the Codex HTTP bridge. Native AI tasks can use that bridge through the existing OpenAI-compatible provider. The all-host worker alternative invokes its CLI directly.
 
 The host services require private tokens. CLI login credentials remain on the host. A locally installed CLI may still send prompts and selected document content to its provider's cloud service.
 
 ## Run this fork with Docker
+
+**Start with the [Linux and Windows installation guide](docs/installation.md).** For LaTeX and PDF packages, the recommended route is the [containerized preparation worker](docs/container-worker.md), which bundles the compilation and Python tools. Only Node.js and the authenticated CLI remain on the host. For desktop distribution options, see [installers and packaging](docs/packaging.md).
 
 Run these commands from a checkout of **BtalaLos**. Build from this source so the image includes the fork's changes:
 
@@ -100,10 +103,11 @@ Open [http://localhost:3000](http://localhost:3000). The production Compose file
 
 For the additional host features, follow:
 
+- [Containerized preparation worker](docs/container-worker.md), recommended: the worker image bundles Git, compilation runtimes, Poppler, and Python/PyMuPDF; the host companion uses Node.js and the selected authenticated CLI.
 - [Codex HTTP bridge setup](docs/codex-cli.md): Node.js 22 or later and an authenticated host Codex CLI.
-- [Application worker setup](docs/application-preparation.md): Node.js 22 or later, Git, `latexmk`, the project's TeX engine and fonts, Poppler, Python with the pinned PyMuPDF dependency, and the selected authenticated CLI. Desktop folder opening additionally uses `gdbus` on Linux.
+- [All-host worker alternative](docs/application-preparation.md): Node.js 22 or later, Git, `latexmk`, the project's TeX engine and fonts, Poppler, Python with the pinned PyMuPDF dependency, and the selected authenticated CLI. Desktop folder opening additionally uses `gdbus` on Linux.
 
-The documented host connection targets **Docker Desktop on Linux**, through `host.docker.internal`. Native Docker Engine needs a separately configured private route to reach the loopback host services. Neither service should be exposed publicly.
+The service-specific guides describe **Docker Desktop on Linux**, through `host.docker.internal`. For native Docker Engine on Linux or inside WSL2, use the explicit loopback networking setup in the [installation guide](docs/installation.md#4-connect-containers-to-loopback-host-services). Neither host service should be exposed publicly. Native Windows execution of the host services is not supported by these instructions.
 
 ## Development and validation
 

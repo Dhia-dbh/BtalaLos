@@ -84,8 +84,8 @@ export async function loadProfile(): Promise<ProfileData> {
   };
 }
 
-/** One application's facts as the AI gets them (APP-15): trimmed, without empty ones. */
-export async function loadFactTexts(applicationId: string): Promise<string[]> {
+/** Profile or application facts as the AI gets them: trimmed, without empty ones. */
+export async function loadFactTexts(applicationId: string | null): Promise<string[]> {
   return factTexts(await loadFacts(applicationId));
 }
 

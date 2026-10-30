@@ -1,4 +1,7 @@
 import type { Metadata } from "next";
+import { CREATIVITY, languageRule, NO_EM_DASHES, truthfulness, UNTRUSTED_POSTING } from "@/lib/ai/tasks/prompt-parts";
+import { LATEX_DOCUMENT_RULES, LATEX_EMAIL_RULES } from "@/lib/generation-prompts";
+import { PromptsSection } from "./prompts-section";
 import { headers } from "next/headers";
 
 import { isAiConfigured, loadAiConfig, loadAiSettingsView } from "@/lib/ai/config";
@@ -48,7 +51,14 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
 
   return (
     <SettingsScreen section={section}>
-      {section === "latex" ? (
+      {section === "prompts" ? (
+        <PromptsSection
+          initial={{ cvPrompt: settings.cvPrompt, letterPrompt: settings.letterPrompt, emailPrompt: settings.emailPrompt, latexCvPrompt: settings.latexCvPrompt, latexLetterPrompt: settings.latexLetterPrompt, latexEmailPrompt: settings.latexEmailPrompt }}
+          initialMode={await loadDocumentMode()}
+          nativeRules={[truthfulness(settings.strict), CREATIVITY[settings.creativity], languageRule(settings.docLanguage), UNTRUSTED_POSTING, NO_EM_DASHES, "Document tone and CV page limit follow your settings and application choices. Candidate facts are used selectively, in context."].join("\n\n")}
+          latexRules={[LATEX_DOCUMENT_RULES, LATEX_EMAIL_RULES].join("\n\n")}
+        />
+      ) : section === "latex" ? (
         <ProjectSettings initial={await preparationLibrary()} initialMode={await loadDocumentMode()} />
       ) : section === "profiles" ? (
         <PreparationLibrary initial={await preparationLibrary()} inSettings />

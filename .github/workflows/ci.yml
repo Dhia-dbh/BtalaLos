@@ -111,6 +111,7 @@ jobs:
       - run: yarn typecheck
       - run: yarn test:codex-bridge
       - run: yarn test:application-worker
+      - run: yarn test:application-host
       # Fails when coverage drops below the thresholds in vitest.config.mts (E11-1).
       - run: yarn test:coverage
       - name: Coverage summary

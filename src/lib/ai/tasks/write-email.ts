@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { DEFAULT_GENERATION_PROMPTS } from "@/lib/generation-prompts";
+
 import type { Tone } from "@/generated/prisma/enums";
 import type { Extracted, Match, Unit } from "@/lib/application-data";
 import { emailUnits, isEmailAddress } from "@/lib/application-email";
@@ -35,15 +37,6 @@ const answerSchema = z.object({
   signOff: z.string(),
 });
 
-const INSTRUCTIONS = `You write the email a candidate sends their job application with, as JSON. The resume and the cover letter are attached to it, so the email doesn't repeat them: it's a short, friendly note that gets them opened.
-
-- contactName and contactEmail: the person and the email address the posting says to send applications to, exactly as the posting writes them. Use null for anything the posting doesn't give; never guess an address.
-- subject: a clear subject line with the role and the candidate's name, e.g. "Application: Senior Product Designer, Jane Doe". If the posting asks for a reference number or a particular subject line, use that.
-- greeting: the salutation, usual for an email in its language, with its punctuation: the contact person by name when the posting names one, else the hiring team, e.g. "Dear Ledgerly team,".
-- paragraphs: two or three short paragraphs, about 80–150 words together: the role the candidate is applying for, the one or two things that make them a strong fit for it (not a summary of the resume or the letter), that the resume and cover letter are attached, and that they'd be glad to talk. No greeting, sign-off or name in them: those are separate.
-- signOff: the closing line before the name, matching the tone, with its punctuation (e.g. "Warm regards,").
-- The candidate's name is added after the sign-off; don't write it.`;
-
 export type EmailInput = {
   profile: ProfileData;
   extracted: Extracted;
@@ -66,7 +59,7 @@ export type EmailInput = {
 export const writeEmail: Task<EmailInput, Unit[]> = async (provider, { profile, extracted, match, tone, facts, posting, letter }, options) => {
   const answer = await provider.complete({
     system: system(
-      INSTRUCTIONS,
+      options.prompts?.emailPrompt ?? DEFAULT_GENERATION_PROMPTS.emailPrompt,
       `Tone: ${TONES[tone].label}. ${TONES[tone].description}`,
       truthfulness(options.strict),
       candidateFacts(profile, facts),

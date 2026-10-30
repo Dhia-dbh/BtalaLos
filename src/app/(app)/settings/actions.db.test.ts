@@ -17,6 +17,7 @@ import {
   disconnectClaude,
   listAiModels,
   saveAiProvider,
+  saveGenerationPrompt,
   saveApiKey,
   saveJobSearchDetails,
   saveJobSource,
@@ -54,6 +55,23 @@ beforeEach(async () => {
   provider.current = new MockProvider({ model: "qwen2.5:3b", models: ["qwen2.5:3b", "llama3.1:8b"] });
 });
 afterAll(() => prisma().$disconnect());
+
+describe("generation prompt settings", () => {
+  it("saves each prompt independently and exposes it to native generation", async () => {
+    expect(await saveGenerationPrompt({ key: "cvPrompt", text: " Focus on coursework. " })).toMatchObject({ ok: true });
+    expect(await saveGenerationPrompt({ key: "latexEmailPrompt", text: "Keep the email brief." })).toMatchObject({ ok: true });
+    expect(await settings()).toMatchObject({ cvPrompt: "Focus on coursework.", latexEmailPrompt: "Keep the email brief." });
+    const { loadTaskOptions } = await import("@/lib/ai/task-options");
+    expect((await loadTaskOptions()).prompts).toMatchObject({ cvPrompt: "Focus on coursework." });
+  });
+
+  it("rejects empty, oversized and unknown prompts", async () => {
+    for (const input of [{ key: "cvPrompt", text: " " }, { key: "letterPrompt", text: "x".repeat(20_001) }, { key: "provider", text: "Wrong key" }]) {
+      expect(await saveGenerationPrompt(input as never)).toMatchObject({ ok: false });
+    }
+    expect(await prisma().setting.count({ where: { key: { in: ["cvPrompt", "letterPrompt"] } } })).toBe(0);
+  });
+});
 
 describe("saveAiProvider", () => {
   it("persists thinking effort changes without clearing the provider's encrypted key", async () => {

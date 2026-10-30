@@ -1,0 +1,63 @@
+# Add to compose.production.yml. See docs/container-worker.md.
+services:
+  app:
+    image: ${DOSSIER_IMAGE:-btalalos:local}
+    pull_policy: never
+    build:
+      context: .
+      target: production
+    environment:
+      DOSSIER_WORKER_URL: http://worker:8788
+      DOSSIER_WORKER_TOKEN: ${DOSSIER_WORKER_TOKEN:?Set DOSSIER_WORKER_TOKEN}
+    depends_on:
+      worker:
+        condition: service_healthy
+
+  worker:
+    image: ${DOSSIER_WORKER_IMAGE:-btalalos-worker:local}
+    pull_policy: never
+    build:
+      context: .
+      dockerfile: docker/worker.Dockerfile
+      args:
+        TEXLIVE_EXTRA_PACKAGES: ${DOSSIER_TEX_EXTRA_PACKAGES:-}
+    user: "${DOSSIER_WORKER_UID:-1000}:${DOSSIER_WORKER_GID:-1000}"
+    init: true
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 256
+    mem_limit: ${DOSSIER_WORKER_MEMORY:-2g}
+    tmpfs:
+      - /tmp:rw,nosuid,size=536870912,mode=1777
+    environment:
+      DOSSIER_WORKER_TOKEN: ${DOSSIER_WORKER_TOKEN:?Set DOSSIER_WORKER_TOKEN}
+      DOSSIER_WORKER_REPOSITORY_ROOT: ${DOSSIER_WORKER_REPOSITORY_ROOT:?Set the shared repository root}
+      DOSSIER_WORKER_DATA_DIR: ${DOSSIER_WORKER_DATA_DIR:?Set the worker data directory}
+      DOSSIER_WORKER_EXPORT_DIR: ${DOSSIER_WORKER_EXPORT_DIR:?Set the export directory}
+      DOSSIER_HOST_URL: ${DOSSIER_HOST_URL:-http://host.docker.internal:8789}
+      DOSSIER_HOST_TOKEN: ${DOSSIER_HOST_TOKEN:?Set the host companion token}
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    volumes:
+      - type: bind
+        source: ${DOSSIER_WORKER_REPOSITORY_ROOT:?Set the shared repository root}
+        target: ${DOSSIER_WORKER_REPOSITORY_ROOT:?Set the shared repository root}
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${DOSSIER_WORKER_DATA_DIR:?Set the worker data directory}
+        target: ${DOSSIER_WORKER_DATA_DIR:?Set the worker data directory}
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${DOSSIER_WORKER_EXPORT_DIR:?Set the export directory}
+        target: ${DOSSIER_WORKER_EXPORT_DIR:?Set the export directory}
+        bind:
+          create_host_path: false
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
