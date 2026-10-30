@@ -37,6 +37,7 @@ export const NAV: { label?: string; items: NavItem[] }[] = [
         // A new application becomes one, so the flow belongs to Applications.
         isActive: (pathname) => within(pathname, "/applications") || within(pathname, "/new"),
       },
+      { href: "/automation", label: "Automation", icon: Bot },
       { href: "/inbox", label: "Inbox", icon: Inbox },
     ],
   },

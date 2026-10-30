@@ -11,7 +11,7 @@ import { refineJobKey } from "@/lib/jobs/refine";
 import { regenerateUnitJob, unitJobKey } from "@/lib/jobs/regenerate-unit";
 import { findUnfinishedJobs } from "@/lib/jobs/runner";
 import { emailJobKey } from "@/lib/jobs/write-email";
-import { googleConnection } from "@/lib/google/account";
+import { mailConnection as googleConnection } from "@/lib/google/transport";
 import { pullInterviewEvents } from "@/lib/google/availability";
 import { loadConversation } from "@/lib/google/inbox-data";
 import { refineSuggestions } from "@/lib/refine-suggestions";
@@ -61,7 +61,7 @@ export default async function ApplicationPage({ params, searchParams }: PageProp
   if (application.documentMode === "LATEX") return <LatexApplication
     application={{ id, title: application.title, status: application.status, archived: application.archivedAt !== null, nextInterviewAt: application.nextInterviewAt }}
     meta={metaLine(application)} timeZone={timeZone}
-    gmail={google.status === "connected" ? google.canSend ? { from: google.email } : { from: null, reason: "no-permission" } : google.status === "not-configured" ? undefined : { from: null, reason: "not-connected" }}
+    gmail={google.status === "connected" ? google.canSend ? { from: google.email, backend: settings.gmailBackend } : { from: null, reason: "no-permission", backend: settings.gmailBackend } : google.status === "not-configured" ? undefined : { from: null, reason: "not-connected", backend: settings.gmailBackend }}
     initialTab={tab === "notes" || tab === "conversation" ? tab : "preparation"}
     notes={<NotesTab applicationId={id} activity={activityTimeline({ notes: application.notes, events: application.events, createdAt: application.createdAt })} />}
     conversation={<ConversationTab emails={emails} aiReady={aiReady} timeZone={timeZone} reading={google.status === "connected" && google.canRead && settings.gmailRead} composeLocation="Preparation and email" />}
@@ -136,9 +136,9 @@ export default async function ApplicationPage({ params, searchParams }: PageProp
               sender:
                 google.status === "connected"
                   ? google.canSend
-                    ? { from: google.email }
-                    : { from: null, reason: "no-permission" }
-                  : { from: null, reason: google.status === "not-configured" ? "not-configured" : "not-connected" },
+                    ? { from: google.email, backend: settings.gmailBackend }
+                    : { from: null, reason: "no-permission", backend: settings.gmailBackend }
+                  : { from: null, reason: google.status === "not-configured" ? "not-configured" : "not-connected", backend: settings.gmailBackend },
               sentBefore: application.emailThreadId !== null,
               emails,
               reading: google.status === "connected" && google.canRead && settings.gmailRead,

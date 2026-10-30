@@ -5,6 +5,7 @@ import { PreparationPanel } from "./panel";
 import { preparationRequest } from "./client";
 import { emailUnits } from "@/lib/application-email";
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
+vi.mock("@/components/browser/runs", () => ({ BrowserRuns: () => null }));
 vi.mock("./client", () => ({ preparationRequest: vi.fn(async () => ({})) }));
 vi.mock("@/components/toast", () => ({ toast: vi.fn() }));
 vi.mock("@/lib/google/actions", () => ({ sendWithGmail: vi.fn() }));

@@ -132,7 +132,7 @@ export const checkInbox = action(z.object({}), async (_, { toast }) => {
 export const sendWithGmail = action(z.object({ id: z.string().min(1), reviewed: z.object({ packageId: z.string(), email: z.object({ to: z.string(), subject: z.string(), body: z.string() }) }).optional() }), async ({ id, reviewed }, { toast }) => {
   const sent = await google(() => sendApplicationEmail(id, reviewed));
   refreshEverything();
-  toast(sent.eventId ? `Sent. ${statusInfo(ApplicationStatus.SENT).toast}` : "Sent. I'll watch for replies.");
+  toast(sent.browserRunId ? "Message prepared by the browser. Review it under Application automation." : sent.eventId ? `Sent. ${statusInfo(ApplicationStatus.SENT).toast}` : "Sent. I'll watch for replies.");
   return { eventId: sent.eventId };
 });
 
@@ -158,9 +158,9 @@ export const saveReplyDraft = action(z.object({ emailId: z.string().min(1), body
 
 /** "Send" on a drafted answer, after the confirmation. */
 export const sendReplyEmail = action(z.object({ emailId: z.string().min(1), body: z.string().min(1).max(20_000) }), async ({ emailId, body }, { toast }) => {
-  await google(() => sendReply(emailId, body));
+  const sent = await google(() => sendReply(emailId, body));
   refreshEverything();
-  toast("Answer sent.");
+  toast(sent.browserRunId ? "Reply queued. Review it under Application automation." : "Answer sent.");
   return null;
 });
 

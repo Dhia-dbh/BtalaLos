@@ -65,7 +65,7 @@ export const SUGGESTED_STATUS: Record<ReplyKind, ApplicationStatus | null> = {
 /** Reads a reply: what it is, what it asks, and the interview time it confirms (E15-4). */
 export const classifyReply: Task<ClassifyInput, Classified> = async (provider, input, options) => {
   const answer = await provider.complete({
-    system: system(INSTRUCTIONS, UNTRUSTED_EMAIL),
+    system: system(options.prompts?.classificationPrompt ?? INSTRUCTIONS, INSTRUCTIONS, UNTRUSTED_EMAIL),
     messages: [
       {
         role: "user",

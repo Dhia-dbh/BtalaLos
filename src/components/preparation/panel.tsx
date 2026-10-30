@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { BrowserRuns } from "@/components/browser/runs";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FolderOpen } from "lucide-react";
@@ -177,6 +178,7 @@ export function PreparationPanel({
   };
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-6 overflow-auto bg-canvas p-5 sm:p-8">
+      <BrowserRuns applicationId={applicationId} />
       <Card className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-serif text-section">

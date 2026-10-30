@@ -54,6 +54,7 @@ fs.appendFileSync(${JSON.stringify(auditPath)}, JSON.stringify({pid: process.pid
   secrets: ['OPENAI_API_KEY', 'CODEX_API_KEY', 'DOSSIER_CODEX_BRIDGE_TOKEN', 'DATABASE_URL', 'CODEX_THREAD_ID'].filter(key => process.env[key])}) + '\\n');
 if (mode === 'hang') { setInterval(() => {}, 1000); }
 else if (mode === 'auth') { console.error('Unauthorized: refresh token expired PRIVATE'); process.exit(1); }
+else if (mode === 'schema') { console.error('Invalid schema for response_format PRIVATE'); process.exit(1); }
 else if (mode === 'quota') { console.error('You have reached your usage limit PRIVATE'); process.exit(1); }
 else if (mode === 'model') { console.error('The model is not available PRIVATE'); process.exit(1); }
 else if (mode === 'context') { console.error('Context length exceeds limit PRIVATE'); process.exit(1); }
@@ -209,7 +210,7 @@ test("rejects unsupported input before launching Codex", async (t) => {
 test("classifies CLI failures without leaking stderr and never accepts unfinished output", async (t) => {
   const { post } = await serve(t);
   for (const [mode, status, code] of [
-    ["auth", 503, "codex_auth_required"], ["quota", 429, "codex_quota"], ["model", 404, "codex_model"],
+    ["schema", 400, "codex_schema"], ["auth", 503, "codex_auth_required"], ["quota", 429, "codex_quota"], ["model", 404, "codex_model"],
     ["context", 413, "codex_context"], ["failure", 502, "codex_failed"], ["malformed", 502, "codex_output"],
     ["missing", 502, "codex_output"], ["failed-turn", 429, "codex_quota"], ["oversized", 502, "codex_output"],
   ]) {

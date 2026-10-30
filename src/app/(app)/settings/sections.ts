@@ -7,6 +7,7 @@ export const SETTINGS_SECTIONS = [
   { id: "documents", label: "Documents" },
   { id: "latex", label: "LaTeX project" },
   { id: "profiles", label: "Job profiles and bundles" },
+  { id: "browser", label: "Browser and email automation" },
   { id: "google", label: "Google" },
   { id: "claude", label: "Claude connector" },
   { id: "data", label: "Your data" },

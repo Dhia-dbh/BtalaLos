@@ -149,6 +149,9 @@ export function validateRequest(body, catalog) {
 }
 
 function cliFailure(message) {
+  if (/invalid_json_schema|invalid schema for response_format/i.test(message)) {
+    return new BridgeError(400, "codex_schema", "Codex rejected the generated response schema. This is an application integration error, not a login failure.");
+  }
   if (/not logged in|unauthorized|authentication|refresh.*token|token.*expired|401\b/i.test(message)) {
     return new BridgeError(503, "codex_auth_required", "Sign in again with codex login on the host.");
   }

@@ -111,6 +111,7 @@ export function GoogleSection({
 
   return (
     <>
+      <p className="text-sm"><a className="underline" href="/settings?section=browser">Choose Gmail API or browser, reading schedule, reply automation, and email filters</a></p>
       <SettingsSectionIntro title="Google">
         Send applications from your Gmail, see employers&apos; replies next to each application, and offer interview times from your
         calendar. Dossier always asks before it sends anything.
@@ -326,6 +327,7 @@ function SetupSteps({ redirectUri, client }: { redirectUri: string; client: Goog
   };
   return (
     <>
+      <p className="text-sm"><a className="underline" href="/settings?section=browser">Choose Gmail API or browser, reading schedule, reply automation, and email filters</a></p>
       <SettingsSectionIntro title="Google">
         Connect Gmail and Google Calendar to send applications, read replies and offer interview times. First, give this server a
         Google OAuth client.

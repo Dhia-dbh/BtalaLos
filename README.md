@@ -144,3 +144,5 @@ BtalaLos is licensed under the **GNU Affero General Public License, version 3 on
 Copyright in the original Dossier work remains with its authors and contributors. Copyright in modifications by Dhia Ben Hamouda is claimed only for those contributions. Bundled fonts and other third-party components retain their own notices and licenses; see [the font documentation](src/fonts/README.md).
 
 You may use, modify, and redistribute this software under the AGPLv3 conditions. If you run a modified version for users over a network, prominently offer those users free access to the corresponding source for that version, as required by section 13. The software comes without warranty, to the extent permitted by law. See the license for the complete terms.
+
+Browser portal applications and the optional Gmail browser backend: [setup and operation](docs/browser-automation.md).

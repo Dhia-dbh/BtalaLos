@@ -4,6 +4,7 @@ import type { ReasoningEffort } from "openai/resources/shared";
 
 import { AiError, toAiError } from "../errors";
 import type { ChatAnswer, ChatCall } from "../provider";
+import { withJsonSchema } from "../provider";
 import { keyGuardedFetch } from "./guarded-fetch";
 import { OpenAICompatibleProvider } from "./openai-compatible";
 
@@ -20,6 +21,8 @@ export const LMSTUDIO_UNREACHABLE =
 type LmStudioModel = {
   type: string;
   key: string;
+  display_name?: string;
+  reasoning?: { allowed_options: string[]; default: string };
   max_context_length?: number | null;
   loaded_instances?: { id: string; config?: { context_length?: number } }[];
 };
@@ -53,6 +56,14 @@ export class LmStudioProvider extends OpenAICompatibleProvider {
   protected override async chat(call: ChatCall): Promise<ChatAnswer> {
     try {
       await this.ready(call.model, call.signal);
+      if (call.thinking !== undefined) {
+        const reasoning = call.thinking === true ? "on" : call.thinking === false ? "off" : call.thinking;
+        const answer = await this.request("/api/v1/chat", call.signal, {
+          model: call.model, system_prompt: call.json ? withJsonSchema(call.system, call.json.schema) : call.system,
+          input: JSON.stringify(call.messages), reasoning, stream: false, store: false, integrations: [], max_output_tokens: call.maxTokens,
+        }) as { output: { type: string; content?: string }[] };
+        return { text: answer.output.filter((item) => item.type === "message").map((item) => item.content ?? "").join("\n"), cutOff: false };
+      }
       const thinking = this.reasoningEffort(call) === "none" ? 0 : THINKING_TOKENS;
       return await super.chat({ ...call, maxTokens: call.maxTokens + thinking });
     } catch (error) {
@@ -62,6 +73,7 @@ export class LmStudioProvider extends OpenAICompatibleProvider {
 
   /** Reading tasks don't need long thought: the model answers without thinking first. */
   protected override reasoningEffort(call: ChatCall): ReasoningEffort | undefined {
+    if (call.thinking !== undefined) return call.thinking as ReasoningEffort;
     return call.effort === "low" ? "none" : undefined;
   }
 
@@ -77,6 +89,12 @@ export class LmStudioProvider extends OpenAICompatibleProvider {
     } catch (error) {
       throw this.plainly(error, this.model ?? "");
     }
+  }
+
+  async listReasoningModels(signal: AbortSignal) {
+    const models = await this.models(signal);
+    if (!models) throw AiError.config("Browser thinking discovery requires LM Studio's native /api/v1/models endpoint.");
+    return models.filter((model) => model.type === "llm").map((model) => ({ id: model.key, name: model.display_name ?? model.key, efforts: model.reasoning?.allowed_options ?? [] }));
   }
 
   /**

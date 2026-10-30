@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { isAiConfigured } from "@/lib/ai/config";
-import { googleConnection } from "@/lib/google/account";
+import { mailConnection as googleConnection } from "@/lib/google/transport";
 import { loadInbox } from "@/lib/google/inbox-data";
 import { prisma } from "@/lib/prisma";
 import { loadSettings } from "@/lib/settings-data";

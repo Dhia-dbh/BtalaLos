@@ -29,6 +29,16 @@ describe("SendWithGmail (E15-2)", () => {
     expect(toastWithUndo).toHaveBeenCalledWith("Sent.", "ev1");
   });
 
+  it("prepares a browser message for the automation review and links browser connections to its settings", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<SendWithGmail {...props} sender={{ from: "jane@gmail.com", backend: "browser" }} />);
+    await user.click(screen.getByRole("button", { name: "Prepare in Gmail browser" }));
+    expect(sendWithGmail).toHaveBeenCalledWith({ id: "nw" });
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    rerender(<SendWithGmail {...props} sender={{ from: null, reason: "not-connected", backend: "browser" }} />);
+    expect(screen.getByRole("link", { name: "Connect Gmail to send" })).toHaveAttribute("href", "/settings?section=browser");
+  });
+
   it("asks for a recipient first", async () => {
     const user = userEvent.setup();
     render(<SendWithGmail {...props} to="" sender={{ from: "jane@gmail.com" }} />);

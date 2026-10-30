@@ -77,7 +77,7 @@ const jsonList = (value: unknown) => (Array.isArray(value) ? value : []) as Pris
  * install's own settings (the usage ping's) stay as they are.
  */
 export async function importExport(db: PrismaClient, data: DossierExport): Promise<void> {
-  const { profile, themes, settings, applications, postings, searches, agentCandidates, startups, startupBlocks, apiKey, jobSourceKeys, packageProfiles, supportingDocuments, preparations, artifacts } = data;
+  const { profile, themes, settings, applications, postings, searches, agentCandidates, startups, startupBlocks, apiKey, jobSourceKeys, packageProfiles, supportingDocuments, preparations, artifacts, browserRuns } = data;
   const fromFile: Record<string, string | null> = {
     apiKeyEnc: apiKey ? encryptApiKey(apiKey) : null,
     jsearchKeyEnc: jobSourceKeys?.jsearch ? encryptSecret(JOB_SOURCE_KEY, jobSourceKeys.jsearch) : null,
@@ -99,6 +99,7 @@ export async function importExport(db: PrismaClient, data: DossierExport): Promi
       await tx.postingScore.deleteMany();
       // Mail from Gmail belongs to the applications being replaced; the next check fetches what's still relevant.
       await tx.emailMessage.deleteMany();
+      await tx.browserRun.deleteMany();
       await tx.application.deleteMany();
       await tx.applicationProfile.deleteMany();
       await tx.supportingDocument.deleteMany();
@@ -151,6 +152,10 @@ export async function importExport(db: PrismaClient, data: DossierExport): Promi
       });
       await tx.preparationRun.createMany({ data: preparations.map((entry) => ({ ...entry, snapshot: { ...(entry.snapshot as object ?? {}), restored: true }, steps: (entry.steps ?? []) as Prisma.InputJsonValue, status: ["QUEUED", "RUNNING"].includes(entry.status) ? "FAILED" : entry.status, activeKey: null, jobId: null })) });
       await tx.applicationArtifact.createMany({ data: artifacts.map((entry) => ({ ...entry, manifest: { ...(entry.manifest as object), restored: true } })) });
+      for (const entry of browserRuns) {
+        const { events, ...record } = entry;
+        await tx.browserRun.create({ data: { ...record, snapshot: record.snapshot as Prisma.InputJsonValue, status: ["SUBMITTED", "CANCELLED"].includes(record.status) ? record.status : "CANCELLED", activeKey: null, approvedHash: null, jobId: null, error: "Restored history cannot resume host browser operations.", events: { create: events.map((event) => ({ ...event, data: event.data as Prisma.InputJsonValue })) } } });
+      }
       await tx.statusEvent.createMany({
         data: applications.flatMap((application) => application.events.map((event) => ({ ...event, applicationId: application.id }))),
       });

@@ -1,3 +1,5 @@
+import { applicationLinks, verifyApplicationRoute } from "@/lib/preparation/application-route";
+import { DEFAULT_GENERATION_PROMPTS } from "@/lib/generation-prompts";
 import { z } from "zod";
 
 import { extractedSchema, requirementSchema, type Extracted } from "@/lib/application-data";
@@ -10,6 +12,10 @@ export const EXTRACT_POSTING_VERSION = "extract-posting@2";
 // code, since models like to answer "15 Oct" rather than an ISO date. Small
 // models leave out the keys of a requirement that don't apply, so those read as null.
 const answerSchema = z.object({
+  recruiterEmail: z.email().nullable().default(null),
+  applicationUrl: z.string().nullable().default(null),
+  applicationInstructions: z.string().nullable().default(null),
+  applicationMethod: z.string().nullable().default(null),
   title: z.string().nullable(),
   company: z.string().nullable(),
   role: z.string().nullable(),
@@ -45,11 +51,11 @@ const INSTRUCTIONS = `You read job postings and pull out their details as JSON.
 - language: the language the posting is written in, as its English name.`;
 
 /** NEW-3: title, company, role, location, work mode, salary, deadline, typed requirements and language. */
-export const extractPosting: Task<{ posting: string; today?: Date }, Extracted> = async (provider, { posting, today = new Date() }, { signal }) => {
+export const extractPosting: Task<{ posting: string; today?: Date }, Extracted> = async (provider, { posting, today = new Date() }, { signal, prompts }) => {
   const ask = () =>
     provider.complete({
-      system: system(INSTRUCTIONS, `Today is ${localDate(today)}.`, UNTRUSTED_POSTING),
-      messages: [{ role: "user", content: postingForPrompt(posting) }],
+      system: system(prompts?.routingPrompt ?? DEFAULT_GENERATION_PROMPTS.routingPrompt, "Extract recruiterEmail, applicationMethod, applicationUrl, and applicationInstructions. Use null if missing. applicationUrl must be one of the links observed in the posting. Quote applicationInstructions exactly.", INSTRUCTIONS, `Today is ${localDate(today)}.`, UNTRUSTED_POSTING),
+      messages: [{ role: "user", content: `${postingForPrompt(posting)}\nPOSTING LINKS:\n${JSON.stringify(applicationLinks(posting))}` }],
       schema: answerSchema,
       schemaName: "extracted_posting",
       // Reading, not writing: no creativity or long thought wanted.
@@ -71,7 +77,7 @@ export const extractPosting: Task<{ posting: string; today?: Date }, Extracted> 
   const company = answer.company?.trim() || null;
   return {
     data: extractedSchema.parse({
-      ...answer,
+      ...verifyApplicationRoute(answer, posting),
       role,
       company,
       title: answer.title?.trim() || (role && company ? `${role} · ${company}` : null),

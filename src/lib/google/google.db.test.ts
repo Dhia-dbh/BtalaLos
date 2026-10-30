@@ -5,6 +5,8 @@ import { saveBytes, storedPath } from "@/lib/preparation/storage";
 import { emailParts } from "@/lib/application-email";
 import { unitsSchema } from "@/lib/application-data";
 import { MockProvider } from "@/lib/ai/providers/mock";
+import { loadSettings, saveSettings } from "@/lib/settings-data";
+import type { ReadMail } from "./gmail";
 import { createTestClient, resetDatabase } from "@/test/db";
 
 // The inbox check and Send with Gmail (E15-2, E15-3) against a test
@@ -25,6 +27,9 @@ vi.mock("@/lib/ai/config", () => ({ isAiConfigured: async () => true }));
 vi.mock("@/lib/ai/task-options", () => ({ loadTaskOptions: async () => ({ creativity: "BALANCED", strict: true, language: null }) }));
 vi.mock("@/lib/pdf/render", () => ({ renderPdf: async () => new Uint8Array([37, 80, 68, 70]) }));
 vi.mock("@/lib/time-zone", () => ({ userTimeZone: async () => "Europe/Berlin", lastKnownTimeZone: async () => "Europe/Berlin" }));
+vi.mock("@/lib/jobs/runner", () => ({ defineJob: <T,>(job: T) => job, startJob: async () => "queued-mail-job", cancelJob: async () => {} }));
+const browserInbox = vi.hoisted(() => ({ mails: [] as (ReadMail & { browserMessageId: string; browserThreadUrl: string })[] }));
+vi.mock("./transport", () => ({ readBrowserMailbox: async () => browserInbox.mails }));
 
 import { encryptSecret, GOOGLE_TOKEN } from "@/lib/secrets";
 
@@ -84,6 +89,7 @@ beforeEach(async () => {
   await resetDatabase(prisma());
   mailbox = [];
   sent = [];
+  browserInbox.mails = [];
   vi.stubGlobal("fetch", vi.fn(async (url: string | URL, init?: RequestInit) => fakeGoogle(String(url), init)));
   await prisma().googleAccount.create({ data: { email: "jane@gmail.com", refreshTokenEnc: encryptSecret(GOOGLE_TOKEN, "refresh", "s".repeat(40)), scopes } });
   await prisma().profileField.create({ data: { key: "name", value: "Jane Doe" } });
@@ -104,6 +110,76 @@ beforeEach(async () => {
   });
   provider.current = new MockProvider({
     reply: () => ({ kind: "INTERVIEW", summary: "Invites you to a call.", questions: ["What is your notice period?"], confirmedTime: null }),
+  });
+});
+
+describe("mail backend additions", () => {
+  const browserMail = (id = "m1") => ({ id: `browser:${id}`, threadId: "browser:thread", from: "HR <hr@northwind.example>", to: "jane@gmail.com", subject: "Your application", text: "Can you confirm your interest?", messageId: `<${id}@mail.example>`, references: "", date: new Date("2026-10-30T10:00:00Z"), labels: ["INBOX"], browserMessageId: `<${id}@mail.example>`, browserThreadUrl: "https://mail.google.com/mail/u/0/#all/thread" });
+
+  it("applies scoped exclusion rules before importing or classifying even a known-company message", async () => {
+    await saveSettings({ gmailFilters: [{ id: "news", target: "subject", phrases: ["Jobs for you"] }] });
+    mailbox = [
+      { id: "filtered", threadId: "news", from: "HR <hr@northwind.example>", subject: "JOBS FOR YOU", text: "Newsletter" },
+      { id: "kept", threadId: "real", from: "HR <hr@northwind.example>", subject: "Interview", text: "Could we talk?" },
+    ];
+    expect(await syncInbox()).toMatchObject({ kept: 1, read: 1 });
+    expect(await prisma().emailMessage.findUnique({ where: { gmailId: "filtered" } })).toBeNull();
+    expect((await loadSettings()).gmailLastSkipped).toEqual([{ rules: ["news"], count: 1 }]);
+    expect(mailbox).toHaveLength(2);
+  });
+  it("reads through the browser without an API account and keeps filters active", async () => {
+    await prisma().googleAccount.deleteMany();
+    await saveSettings({ gmailBackend: "browser", gmailBrowserEmail: "jane@gmail.com", gmailFilters: [{ id: "newsletter", target: "body", phrases: ["unsubscribe"] }] });
+    browserInbox.mails = [browserMail(), { ...browserMail("newsletter"), text: "Please UNSUBSCRIBE here" }];
+    expect(await syncInbox()).toMatchObject({ kept: 1, read: 1 });
+    expect(await prisma().emailMessage.count()).toBe(1);
+    expect(vi.mocked(fetch).mock.calls).toHaveLength(0);
+  });
+  it("reconciles RFC identities in both directions when changing mail backends", async () => {
+    mailbox = [{ id: "m1", threadId: "api-thread", from: "HR <hr@northwind.example>", subject: "Your application", text: "Can you confirm your interest?" }];
+    await syncInbox();
+    await saveSettings({ gmailBackend: "browser", gmailBrowserEmail: "jane@gmail.com" });
+    browserInbox.mails = [browserMail()];
+    expect(await syncInbox()).toMatchObject({ kept: 0 });
+    expect(await prisma().emailMessage.findUnique({ where: { gmailId: "m1" } })).toMatchObject({ browserThreadUrl: browserMail().browserThreadUrl });
+    browserInbox.mails.push(browserMail("m2"));
+    await syncInbox();
+    await saveSettings({ gmailBackend: "api" });
+    mailbox.push({ id: "m2", threadId: "api-thread-two", from: "HR <hr@northwind.example>", subject: "Your application", text: "Can you confirm your interest?", history: 250 });
+    await syncInbox();
+    expect(await prisma().emailMessage.count({ where: { direction: "INCOMING" } })).toBe(2);
+    expect(await prisma().emailMessage.findUnique({ where: { gmailId: "m2" } })).toMatchObject({ threadId: "api-thread-two", browserThreadUrl: browserMail().browserThreadUrl });
+  });
+  it("automatically drafts questions for review without sending or answering acknowledgements", async () => {
+    await saveSettings({ gmailAutoDraft: true, replySubmissionMode: "review" });
+    const calls: string[] = [];
+    provider.current = new MockProvider({ reply: (call) => {
+      calls.push(call.json?.name ?? "");
+      if (call.json?.name === "classified_reply") return { kind: call.messages[0].content.includes("received your application") ? "ACKNOWLEDGEMENT" : "QUESTION", summary: "Employer response", questions: [], confirmedTime: null };
+      return { greeting: "Hello", paragraphs: ["Thank you."], signOff: "Regards", gaps: [] };
+    } });
+    mailbox = [
+      { id: "question", threadId: "tq", from: "HR <hr@northwind.example>", subject: "Question", text: "Are you interested?" },
+      { id: "ack", threadId: "ta", from: "HR <hr@northwind.example>", subject: "Confirmation", text: "We received your application" },
+    ];
+    await syncInbox();
+    expect((await prisma().emailMessage.findUniqueOrThrow({ where: { gmailId: "question" } })).replyDraft).toContain("Thank you.");
+    expect((await prisma().emailMessage.findUniqueOrThrow({ where: { gmailId: "ack" } })).replyDraft).toBe("");
+    expect(calls.filter((name) => name === "reply_draft")).toHaveLength(1);
+    expect(sent).toHaveLength(0);
+  });
+  it("records an automatic API reply run before the send and handles it only after confirmation", async () => {
+    await saveSettings({ gmailAutoDraft: true, replySubmissionMode: "automatic" });
+    provider.current = new MockProvider({ reply: (call) => call.json?.name === "classified_reply" ? { kind: "QUESTION", summary: "Asks for a reply", questions: [], confirmedTime: null } : { greeting: "Hello", paragraphs: ["Thank you."], signOff: "Regards", gaps: [] } });
+    mailbox = [{ id: "automatic", threadId: "api-auto", from: "HR <hr@northwind.example>", subject: "Question", text: "Are you interested?" }];
+    await syncInbox();
+    const run = await prisma().browserRun.findFirstOrThrow({ where: { kind: "reply" } });
+    expect(run.status).toBe("QUEUED"); expect(sent).toHaveLength(0);
+    const { browserJob } = await import("@/lib/browser/service");
+    await browserJob.run({ runId: run.id }, { id: "auto-reply-test", step: async () => {}, signal: new AbortController().signal });
+    expect((await prisma().browserRun.findUniqueOrThrow({ where: { id: run.id } })).status).toBe("SUBMITTED");
+    expect(sent).toHaveLength(1);
+    expect((await prisma().emailMessage.findUniqueOrThrow({ where: { gmailId: "automatic" } })).handledAt).not.toBeNull();
   });
 });
 

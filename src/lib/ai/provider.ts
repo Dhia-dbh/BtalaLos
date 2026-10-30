@@ -13,6 +13,7 @@ export type ChatMessage = { role: "user" | "assistant"; content: string };
 export type Effort = "low" | "medium" | "high";
 
 export type CompletionRequest = {
+  thinking?: string | boolean;
   system: string;
   messages: ChatMessage[];
   /** SET-3. A temperature where the model accepts one; prompts word it for the rest. */
@@ -47,6 +48,7 @@ export interface AIProvider {
 
 /** What a provider implementation gets for one call. */
 export type ChatCall = {
+  thinking?: string | boolean;
   model: string;
   system: string;
   messages: ChatMessage[];
@@ -107,6 +109,7 @@ export abstract class BaseProvider implements AIProvider {
           messages,
           temperature: request.creativity && this.acceptsTemperature() ? TEMPERATURES[request.creativity] : undefined,
           effort: request.effort,
+          thinking: request.thinking,
           json: schema ? { schema, name: ("schemaName" in request && request.schemaName) || "result" } : undefined,
           maxTokens: request.maxTokens ?? DEFAULT_MAX_TOKENS,
           signal,

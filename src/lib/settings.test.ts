@@ -31,6 +31,13 @@ describe("stored settings", () => {
   it("reads an empty table as the prototype's defaults", () => {
     expect(settingsFromRows([])).toEqual({
       ...DEFAULT_GENERATION_PROMPTS,
+      browserEnabled: false,
+      browserAi: { source: "cli", provider: "codex", baseUrl: "", model: "", effort: "medium" },
+      browserAiKeyEnc: null,
+      applicationSubmissionMode: "review", replySubmissionMode: "review",
+      gmailBackend: "api", gmailReadingMode: "scheduled", gmailAutoDraft: false,
+      gmailFilters: [], gmailBrowserEmail: "", gmailBrowserLastSync: null,
+      gmailBrowserProblem: null, gmailLastSkipped: [],
       provider: null,
       baseUrl: null,
       model: null,
