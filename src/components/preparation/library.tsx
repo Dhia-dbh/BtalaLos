@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useState } from "react";
+import { Check, Pencil, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -74,7 +75,7 @@ export function PreparationLibrary({
           keep their original files.
         </p>
         <form
-          className="flex flex-wrap items-end gap-3"
+          className="grid gap-x-3 gap-y-[7px] sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]"
           onSubmit={(event) => {
             event.preventDefault();
             const form = new FormData(event.currentTarget);
@@ -87,43 +88,66 @@ export function PreparationLibrary({
             });
           }}
         >
-          <Input label="Document name" name="name" required maxLength={200} hint="Used in export filenames, without .pdf." />
+          <Input className="min-w-0 sm:row-span-3 sm:grid sm:grid-rows-subgrid" label="Document name" name="name" required maxLength={200} hint="Used in export filenames, without .pdf." />
           <Input
+            className="min-w-0 sm:row-span-3 sm:grid sm:grid-rows-subgrid"
             label="PDF file"
             name="file"
             type="file"
             accept="application/pdf,.pdf"
             required
           />
-          <Button type="submit" disabled={busy}>
+          <Button type="submit" className="h-10 self-start sm:col-start-3 sm:row-start-2" disabled={busy}>
             Upload PDF
           </Button>
         </form>
-        <ul className="divide-y divide-line">
+        <ul className="grid grid-cols-[minmax(0,1fr)_2rem_auto_auto_2rem] gap-x-2 divide-y divide-line">
           {data.documents.map((document) => (
             <li
               key={document.id}
-              className="flex flex-wrap items-center gap-3 py-3"
+              className="col-span-5 grid grid-cols-subgrid items-center py-3"
             >
-              <a
-                href={`/api/artifacts/${document.versions[0].id}`}
-                className="min-w-0 flex-1 break-words underline"
-              >
-                {document.name}
-              </a>
               {renaming === document.id ? (
-                <form className="flex flex-wrap items-end gap-2" onSubmit={(event) => {
+                <form className="flex min-w-0 flex-1 items-center gap-2" onSubmit={(event) => {
                   event.preventDefault();
                   void work(async () => {
                     await preparationRequest("rename-document", { id: document.id, name: documentName, previousName: document.name });
                     setRenaming(null);
                   });
                 }}>
-                  <Input label="New document name" value={documentName} required maxLength={200} onChange={(event) => setDocumentName(event.target.value)} />
-                  <Button size="sm" type="submit" disabled={busy}>Save name</Button>
-                  <Button size="sm" variant="text" type="button" onClick={() => setRenaming(null)}>Cancel</Button>
+                  <Input
+                    aria-label="New document name"
+                    className="min-w-0 flex-1"
+                    value={documentName}
+                    required
+                    maxLength={200}
+                    autoFocus
+                    disabled={busy}
+                    onChange={(event) => setDocumentName(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Escape" && !busy) {
+                        event.preventDefault();
+                        setRenaming(null);
+                      }
+                    }}
+                  />
+                  <Button size="sm" type="submit" className="size-8 shrink-0 p-0" disabled={busy} aria-label="Confirm rename" title="Confirm rename">
+                    <Check size={16} aria-hidden="true" />
+                  </Button>
+                  <Button size="sm" variant="secondary" className="size-8 shrink-0 p-0" disabled={busy} onClick={() => setRenaming(null)} aria-label="Cancel rename" title="Cancel rename">
+                    <X size={16} aria-hidden="true" />
+                  </Button>
                 </form>
-              ) : <Button size="sm" variant="text" disabled={busy} onClick={() => { setRenaming(document.id); setDocumentName(document.name); }}>Rename</Button>}
+              ) : (
+                <a href={`/api/artifacts/${document.versions[0].id}`} className="min-w-0 break-words underline">
+                  {document.name}
+                </a>
+              )}
+              {renaming === document.id ? <span /> : (
+                <Button size="sm" variant="text" className="size-8" disabled={busy} aria-label={`Edit ${document.name}`} title="Edit document name" onClick={() => { setRenaming(document.id); setDocumentName(document.name); }}>
+                  <Pencil size={16} aria-hidden="true" />
+                </Button>
+              )}
               <span className="text-meta text-muted">
                 Version {document.versions[0].version} ·{" "}
                 {document.versions[0].pages} pages
@@ -158,7 +182,10 @@ export function PreparationLibrary({
               </label>
               <Button
                 size="sm"
-                variant="text"
+                variant="danger-text"
+                className="size-8"
+                aria-label={`Delete ${document.name}`}
+                title="Delete document"
                 disabled={busy}
                 onClick={() =>
                   void work(() =>
@@ -166,7 +193,7 @@ export function PreparationLibrary({
                   )
                 }
               >
-                Delete
+                <Trash2 size={16} aria-hidden="true" />
               </Button>
             </li>
           ))}
