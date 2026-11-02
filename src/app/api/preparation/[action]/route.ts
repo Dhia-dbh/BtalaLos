@@ -14,6 +14,7 @@ import {
 import { preparationLibrary, loadProject } from "@/lib/preparation/data";
 import {
   bundleSchema,
+  documentNameSchema,
   documentModeSchema,
   cliOptionsSchema,
   projectSchema,
@@ -135,7 +136,7 @@ export const POST = route<RouteContext<"/api/preparation/[action]">>(
         if (Number(request.headers.get("content-length")) > 26 * 1024 * 1024)
           throw new RangeError("Upload exceeds 25 MiB.");
         const form = await request.formData();
-        const name = z.string().trim().min(1).max(200).parse(form.get("name"));
+        const name = documentNameSchema.parse(form.get("name"));
         const file = form.get("file");
         if (
           !(file instanceof File) ||
@@ -239,6 +240,10 @@ export const POST = route<RouteContext<"/api/preparation/[action]">>(
             provider,
           }),
         );
+      } else if (action === "rename-document") {
+        const { id, name, previousName } = z.object({ id: z.string().min(1), name: documentNameSchema, previousName: z.string() }).parse(input);
+        const result = await prisma.supportingDocument.updateMany({ where: { id, name: previousName, deletedAt: null }, data: { name } });
+        if (!result.count) throw new ActionError("The document changed. Refresh before renaming it.");
       } else if (action === "profile") {
         const { id, name, items, version } = z
           .object({
@@ -248,6 +253,8 @@ export const POST = route<RouteContext<"/api/preparation/[action]">>(
             version: z.number().optional(),
           })
           .parse(input);
+        if (await prisma.applicationProfile.findFirst({ where: { name: { equals: name, mode: "insensitive" }, ...(id ? { id: { not: id } } : {}) } }))
+          throw new ActionError("A profile with this name already exists. Choose a different name.");
         const ids = items.flatMap((item) =>
           item.role === "supporting" ? [item.documentId] : [],
         );
@@ -257,6 +264,7 @@ export const POST = route<RouteContext<"/api/preparation/[action]">>(
           })) !== new Set(ids).size
         )
           throw new ActionError("A selected supporting document is missing.");
+        let savedId = id;
         if (id) {
           const result = await prisma.applicationProfile.updateMany({
             where: { id, version },
@@ -264,8 +272,10 @@ export const POST = route<RouteContext<"/api/preparation/[action]">>(
           });
           if (!result.count)
             throw new ActionError("Profile changed. Refresh before saving.");
-        } else
-          await prisma.applicationProfile.create({ data: { name, items } });
+        } else {
+          savedId = (await prisma.applicationProfile.create({ data: { name, items } })).id;
+        }
+        return NextResponse.json({ ok: true, id: savedId });
       } else if (action === "delete-profile") {
         const { id } = z.object({ id: z.string() }).parse(input);
         if (await prisma.application.count({ where: { packageProfileId: id } }))

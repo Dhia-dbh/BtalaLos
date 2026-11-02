@@ -41,10 +41,13 @@ export const EMPTY_PROJECT: Project = {
   contextDocumentIds: [],
   fileName: "BenHamouda_Dhia.pdf",
 };
+export const documentNameSchema = z.string().trim().min(1).max(200)
+  .refine((name) => !/[/\\\x00-\x1f\x7f]/.test(name) && !name.startsWith("."), "Use a document name without path separators or control characters.")
+  .refine((name) => !/\.pdf$/i.test(name), "Enter the name without the .pdf extension.");
 export const bundleItemSchema = z.discriminatedUnion("role", [
-  z.object({ role: z.literal("cv") }),
-  z.object({ role: z.literal("letter") }),
-  z.object({ role: z.literal("supporting"), documentId: z.string().min(1) }),
+  z.object({ role: z.literal("cv"), name: documentNameSchema.optional() }),
+  z.object({ role: z.literal("letter"), name: documentNameSchema.optional() }),
+  z.object({ role: z.literal("supporting"), documentId: z.string().min(1), name: documentNameSchema.optional() }),
 ]);
 export const bundleSchema = z
   .array(bundleItemSchema)

@@ -141,11 +141,13 @@ export async function queuePreparation(
   const items = await Promise.all(
     bundleSchema
       .parse(application.packageProfile.items)
-      .map(async (item) =>
-        item.role === "supporting"
-          ? { ...item, source: await source(item.documentId) }
-          : item,
-      ),
+      .map(async (item) => {
+        if (item.role === "supporting") {
+          const document = await source(item.documentId);
+          return { ...item, name: item.name ?? document.name, source: document };
+        }
+        return { ...item, name: item.name ?? (item.role === "cv" ? "CV" : "Cover letter") };
+      }),
   );
   const [otherRelevantInformation, settings] = await Promise.all([loadFactTexts(null), loadSettings()]);
   const snapshot: Snapshot = {
@@ -671,8 +673,9 @@ async function runPreparation(
                 role: item.role,
                 id: stored.id,
                 checksum: stored.checksum,
+                name: item.name ?? (item.role === "cv" ? "CV" : item.role === "letter" ? "Cover letter" : item.source!.name),
                 ...(item.source
-                  ? { name: item.source.name, version: item.source.version }
+                  ? { version: item.source.version }
                   : {}),
               });
             }

@@ -29,6 +29,9 @@ export function PreparationLibrary({
   const [busy, setBusy] = useState(false);
   const [profileId, setProfileId] = useState("");
   const [name, setName] = useState("");
+  const [clonedFrom, setClonedFrom] = useState("");
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const [documentName, setDocumentName] = useState("");
   const [items, setItems] = useState<BundleItem[]>([
     { role: "cv" },
     { role: "letter" },
@@ -84,7 +87,7 @@ export function PreparationLibrary({
             });
           }}
         >
-          <Input label="Document name" name="name" required maxLength={200} />
+          <Input label="Document name" name="name" required maxLength={200} hint="Used in export filenames, without .pdf." />
           <Input
             label="PDF file"
             name="file"
@@ -108,6 +111,19 @@ export function PreparationLibrary({
               >
                 {document.name}
               </a>
+              {renaming === document.id ? (
+                <form className="flex flex-wrap items-end gap-2" onSubmit={(event) => {
+                  event.preventDefault();
+                  void work(async () => {
+                    await preparationRequest("rename-document", { id: document.id, name: documentName, previousName: document.name });
+                    setRenaming(null);
+                  });
+                }}>
+                  <Input label="New document name" value={documentName} required maxLength={200} onChange={(event) => setDocumentName(event.target.value)} />
+                  <Button size="sm" type="submit" disabled={busy}>Save name</Button>
+                  <Button size="sm" variant="text" type="button" onClick={() => setRenaming(null)}>Cancel</Button>
+                </form>
+              ) : <Button size="sm" variant="text" disabled={busy} onClick={() => { setRenaming(document.id); setDocumentName(document.name); }}>Rename</Button>}
               <span className="text-meta text-muted">
                 Version {document.versions[0].version} ·{" "}
                 {document.versions[0].pages} pages
@@ -164,6 +180,7 @@ export function PreparationLibrary({
           onChange={(event) => {
             const id = event.target.value;
             setProfileId(id);
+            setClonedFrom("");
             const profile = data.profiles.find((entry) => entry.id === id);
             setName(profile?.name ?? "");
             setItems(
@@ -180,6 +197,13 @@ export function PreparationLibrary({
             </option>
           ))}
         </Select>
+        {profileId && <Button variant="secondary" disabled={busy} onClick={() => {
+          setItems(items.map((item) => ({ ...item })));
+          setClonedFrom(name);
+          setProfileId("");
+          setName("");
+        }}>Clone profile</Button>}
+        {clonedFrom && <p role="status" className="text-sm text-muted">Cloning {clonedFrom}. Enter a new name, then edit the documents and their order before saving.</p>}
         <Input
           label="Profile name"
           value={name}
@@ -217,6 +241,19 @@ export function PreparationLibrary({
                   </option>
                 ))}
               </Select>
+              <Input
+                label={`Document ${index + 1} export name`}
+                className="min-w-40 flex-1"
+                value={item.name ?? ""}
+                placeholder={item.role === "cv" ? "CV" : item.role === "letter" ? "Cover letter" : data.documents.find((document) => document.id === item.documentId)?.name}
+                hint="Without .pdf; leave blank to use the document's name."
+                maxLength={200}
+                onChange={(event) => setItems(items.map((entry, position) => {
+                  if (position !== index) return entry;
+                  const { name: _name, ...rest } = entry;
+                  return event.target.value ? { ...rest, name: event.target.value } : rest;
+                }))}
+              />
               <Button
                 size="sm"
                 variant="secondary"
@@ -272,13 +309,13 @@ export function PreparationLibrary({
             disabled={busy || !name.trim()}
             onClick={() =>
               void work(() =>
-                preparationRequest("profile", {
+                preparationRequest<{ id: string }>("profile", {
                   ...(profileId
                     ? { id: profileId, version: selected?.version }
                     : {}),
                   name,
                   items,
-                }),
+                }).then((saved) => { setProfileId(saved.id); setName(name.trim()); setClonedFrom(""); }),
               )
             }
           >
