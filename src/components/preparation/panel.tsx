@@ -89,14 +89,6 @@ export function PreparationPanel({
   const [manualCompose, setManualCompose] = useState(false);
   const [editEmail, setEditEmail] = useState(false),
     [parts, setParts] = useState({ to: "", subject: "", body: "" });
-  const [editMetadata, setEditMetadata] = useState(false),
-    [metadata, setMetadata] = useState({
-      company: "",
-      role: "",
-      deadline: "",
-      recruiterEmail: "",
-      postingText: "",
-    });
   const load = useCallback(async () => {
     const response = await fetch(
       `/api/preparation/application?applicationId=${applicationId}`,
@@ -177,19 +169,6 @@ export function PreparationPanel({
   const recruiterEmail = data.extracted?.manualMetadata?.recruiterEmail ??
     data.extracted?.recruiterEmail;
   const portalOnly = Boolean(applicationUrl && !recruiterEmail && !email?.to);
-  const showMetadata = () => {
-    setMetadata({
-      company: data.company,
-      role: data.role,
-      deadline: data.deadline?.slice(0, 10) ?? "",
-      recruiterEmail:
-        data.extracted?.manualMetadata?.recruiterEmail ??
-        data.extracted?.recruiterEmail ??
-        "",
-      postingText: data.postingText,
-    });
-    setEditMetadata(!editMetadata);
-  };
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-6 overflow-auto bg-canvas p-5 sm:p-8">
       <BrowserRuns applicationId={applicationId} />
@@ -407,110 +386,11 @@ export function PreparationPanel({
           )}
         </Card>
       )}
-      {latex && (
-        <Card className="flex flex-col gap-4">
-          <div className="flex flex-wrap justify-between gap-3">
-            <h2 className="font-serif text-section">Job details</h2>
-            <Button variant="text" disabled={active} onClick={showMetadata}>
-              {editMetadata ? "Close editing" : "Edit details"}
-            </Button>
-          </div>
-          {data.extracted?.keywords?.length ? (
-            <p className="text-sm text-muted">
-              Keywords: {data.extracted.keywords.join(", ")}
-            </p>
-          ) : null}
-          {data.extracted?.applicationMethod && (
-            <p className="text-sm">
-              Application method: {data.extracted.applicationMethod}
-            </p>
-          )}
-          {data.extracted?.applicationInstructions && (
-            <p className="whitespace-pre-wrap text-sm">
-              {data.extracted.applicationInstructions}
-            </p>
-          )}
-          {applicationUrl && (
-            <div className="flex flex-col items-start gap-2">
-              <a
-                className={buttonClassName("primary", "md")}
-                href={applicationUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Continue application
-              </a>
-              <p className="break-all text-meta text-muted">{applicationUrl}</p>
-              {portalOnly && (
-                <p className="text-sm text-muted">
-                  Submit your prepared documents through this link.
-                </p>
-              )}
-            </div>
-          )}
-          {data.extracted?.warnings?.map((warning) => (
-            <p key={warning} role="status" className="text-sm text-muted">
-              {warning}
-            </p>
-          ))}
-          {editMetadata ? (
-            <form
-              className="grid gap-3 sm:grid-cols-2"
-              onSubmit={(event) => {
-                event.preventDefault();
-                void work("metadata", { applicationId, ...metadata }).then(() =>
-                  setEditMetadata(false),
-                );
-              }}
-            >
-              {(["company", "role", "deadline", "recruiterEmail"] as const).map(
-                (key) => (
-                  <Input
-                    key={key}
-                    label={
-                      {
-                        company: "Company",
-                        role: "Role",
-                        deadline: "Deadline",
-                        recruiterEmail: "Recruiter email",
-                      }[key]
-                    }
-                    type={
-                      key === "deadline"
-                        ? "date"
-                        : key === "recruiterEmail"
-                          ? "email"
-                          : "text"
-                    }
-                    value={metadata[key]}
-                    onChange={(event) =>
-                      setMetadata({ ...metadata, [key]: event.target.value })
-                    }
-                  />
-                ),
-              )}
-              <Textarea
-                className="sm:col-span-2"
-                label="Original posting"
-                rows={7}
-                value={metadata.postingText}
-                onChange={(event) =>
-                  setMetadata({ ...metadata, postingText: event.target.value })
-                }
-              />
-              <Button type="submit" disabled={busy}>
-                Save job details
-              </Button>
-            </form>
-          ) : (
-            <p className="text-sm text-muted">
-              {data.role || "Role not extracted"} ·{" "}
-              {data.company || "Company not extracted"}
-              {data.deadline ? ` · Deadline ${data.deadline.slice(0, 10)}` : ""}
-            </p>
-          )}
-        </Card>
-      )}
+      {latex && data.extracted?.warnings?.map((warning) => <p key={warning} role="status" className="text-sm text-muted">{warning}</p>)}
+      {latex && applicationUrl && <Card className="flex flex-col gap-3">
+        <a className={buttonClassName("primary", "md")} href={applicationUrl} target="_blank" rel="noopener noreferrer">Continue application</a>
+        <p className="whitespace-pre-wrap text-sm">{data.extracted?.applicationInstructions}</p>
+      </Card>}
       {latex && portalOnly && !email && !manualCompose && <Button variant="secondary" disabled={active} onClick={() => setManualCompose(true)}>Draft email manually</Button>}
       {latex && (!portalOnly || email || manualCompose) && (
         <section aria-label="Application email">

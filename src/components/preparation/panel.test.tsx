@@ -1,3 +1,4 @@
+import { Overview } from "./overview";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, it, vi } from "vitest";
@@ -182,4 +183,26 @@ it("saves a per-application email policy override", async () => {
   render(<PreparationPanel applicationId="app1" latex />);
   await user.selectOptions(await screen.findByLabelText("Automatic email drafting"), "DISABLE");
   expect(preparationRequest).toHaveBeenCalledWith("email-policy", { applicationId: "app1", emailDraftMode: "DISABLE" });
+});
+
+it("edits job details while retaining native structured requirements", async () => {
+  vi.stubGlobal("fetch", vi.fn(async () => Response.json({ ...view, documentMode: "NATIVE", extracted: { externalJobId: "W2935", requirements: [] } })));
+  const user = userEvent.setup();
+  render(<Overview applicationId="app1" />);
+  await user.click(await screen.findByRole("button", { name: "Edit details" }));
+  await user.clear(screen.getByRole("textbox", { name: "externalJobId" }));
+  await user.type(screen.getByRole("textbox", { name: "externalJobId" }), "W3000");
+  await user.click(screen.getAllByRole("button", { name: "Add entry" }).at(-1)!);
+  await user.click(screen.getByRole("button", { name: "Save changes" }));
+  expect(preparationRequest).toHaveBeenCalledWith("overview", expect.objectContaining({ applicationId: "app1", values: expect.objectContaining({ externalJobId: "W3000" }) }));
+});
+it("keeps entered values after a rejected save", async () => {
+  vi.mocked(preparationRequest).mockRejectedValue(new Error("Save failed"));
+  vi.stubGlobal("fetch", vi.fn(async () => Response.json({ ...view, documentMode: "NATIVE", extracted: { externalJobId: "W2935", requirements: [] } })));
+  const user = userEvent.setup();
+  render(<Overview applicationId="app1" />);
+  await user.click(await screen.findByRole("button", { name: "Edit details" }));
+  await user.click(screen.getByRole("button", { name: "Save changes" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("Save failed");
+  expect(screen.getByRole("textbox", { name: "externalJobId" })).toHaveValue("W2935");
 });

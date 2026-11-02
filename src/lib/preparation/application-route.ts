@@ -47,7 +47,7 @@ export function verifyApplicationRoute<T extends RouteFields>(
   }
   if (result.applicationUrl) {
     const url = applicationLinks(result.applicationUrl)[0];
-    if (url && applicationLinks(posting, baseUrl).includes(url)) {
+    if (url && (manualMetadata?.applicationUrl === result.applicationUrl || applicationLinks(posting, baseUrl).includes(url))) {
       result.applicationUrl = url;
     } else {
       result.applicationUrl = null;
@@ -55,7 +55,7 @@ export function verifyApplicationRoute<T extends RouteFields>(
     }
   }
   if (
-    result.applicationInstructions &&
+    result.applicationInstructions && !manualMetadata?.applicationInstructions &&
     !posting.replace(/\s+/g, " ").includes(
       result.applicationInstructions.replace(/\s+/g, " "),
     )

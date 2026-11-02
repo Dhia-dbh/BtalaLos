@@ -13,6 +13,7 @@ export const EXTRACT_POSTING_VERSION = "extract-posting@3";
 // code, since models like to answer "15 Oct" rather than an ISO date. Small
 // models leave out the keys of a requirement that don't apply, so those read as null.
 const answerSchema = z.object({
+  externalJobId: z.string().nullable().optional(),
   submissionMethod: submissionMethodSchema.default("UNKNOWN"),
   recruiterEmail: z.email().nullable().default(null),
   applicationUrl: z.string().nullable().default(null),
@@ -39,6 +40,7 @@ const answerSchema = z.object({
 const INSTRUCTIONS = `You read job postings and pull out their details as JSON.
 
 - Use only what the posting says; use null for anything it doesn't mention. Keep the posting's own wording for work mode and salary, e.g. "Hybrid · 3 days in office" or "€75,000–€90,000".
+- externalJobId: the advertised vacancy reference, or null if absent.
 - location: the city or region only, e.g. "Amsterdam".
 - company and role: the employer and the position as the posting names them, often in its heading or first lines; null only when it names none.
 - title: "{role} · {company}", or null when either is missing.

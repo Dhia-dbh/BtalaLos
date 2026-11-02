@@ -62,6 +62,7 @@ export const GET = route<RouteContext<"/api/preparation/[action]">>(
           documentMode: true,
           emailDraftMode: true,
           packageProfileId: true,
+          location: true, mode: true, salary: true, language: true, postingUrl: true, sentAt: true, createdAt: true,
           company: true,
           role: true,
           postingText: true,
@@ -487,6 +488,28 @@ export const POST = route<RouteContext<"/api/preparation/[action]">>(
           where: { applicationId_kind: { applicationId, kind: "EMAIL" } },
           data: { units, versions: { create: { units, cause: "REFINED" } } },
         });
+      } else if (action === "overview") {
+        const { applicationId, values } = z.object({ applicationId: z.string(), values: z.record(z.string(), z.unknown()) }).parse(input);
+        if (await prisma.preparationRun.count({ where: { activeKey: applicationId } })) throw new ActionError("Cancel preparation before editing its inputs.");
+        const previous = await prisma.application.findUniqueOrThrow({ where: { id: applicationId } });
+        const url = z.union([z.literal(""), z.url().refine((value) => /^https?:\/\//i.test(value))]);
+        const core = z.object({ title: z.string().max(500), company: z.string().max(200), role: z.string().max(200), location: z.string().max(500), mode: z.string().max(500), salary: z.string().max(500), language: z.string().max(200), deadline: z.union([z.literal(""), z.iso.date(), z.iso.datetime()]).nullable(), postingUrl: url, postingText: z.string().max(100_000) }).parse(values);
+        const old = (previous.extracted ?? {}) as Record<string, unknown>;
+        const edits = Object.fromEntries(Object.entries(values).filter(([key]) => !["active", "native", "sentAt", "createdAt", "postingText", "postingUrl", "manualMetadata", "warnings", "channel"].includes(key)));
+        for (const key of ["applicationUrl"]) if (edits[key]) url.parse(edits[key]);
+        if (edits.recruiterEmail) z.email().parse(edits.recruiterEmail);
+        if (edits.contactEmails) z.array(z.email()).parse(edits.contactEmails);
+        if (edits.requirements) z.array(previous.documentMode === "LATEX" ? z.string() : z.object({ text: z.string(), kind: z.enum(["skill", "years", "language", "other"]), skill: z.string().nullable(), years: z.number().nullable(), language: z.string().nullable() })).parse(edits.requirements);
+        if (edits.keywords) z.array(z.string()).max(100).parse(edits.keywords);
+        for (const [key, value] of Object.entries(edits)) {
+          if (["requirements", "keywords", "contactEmails", "asksForReferences", "deadline"].includes(key)) continue;
+          z.string().max(100_000).nullable().parse(value);
+        }
+        if (edits.asksForReferences !== undefined) z.boolean().parse(edits.asksForReferences);
+        const deadline = core.deadline?.slice(0, 10) || null;
+        edits.deadline = deadline;
+        for (const key of Object.keys(edits)) if (edits[key] === "") edits[key] = null;
+        await prisma.application.update({ where: { id: applicationId }, data: { ...core, deadline: deadline ? new Date(`${deadline}T00:00:00Z`) : null, extracted: JSON.parse(JSON.stringify({ ...old, ...edits, manualMetadata: { ...(old.manualMetadata as object), ...edits } })) } });
       } else if (action === "metadata") {
         const {
           applicationId,

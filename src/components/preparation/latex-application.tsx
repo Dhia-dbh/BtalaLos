@@ -1,4 +1,5 @@
 "use client";
+import { Overview } from "./overview";
 import { useState, type ReactNode } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ApplicationHeader } from "@/app/(app)/applications/[id]/application-header";
@@ -64,6 +65,7 @@ export function LatexApplication({
         }
       >
         <TabsList aria-label="Application">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="preparation">Preparation and email</TabsTrigger>
           {showConversation && (
             <TabsTrigger value="conversation">Conversation</TabsTrigger>
@@ -71,6 +73,7 @@ export function LatexApplication({
           <TabsTrigger value="notes">Notes and activity</TabsTrigger>
         </TabsList>
       </ApplicationHeader>
+      <TabsContent value="overview" className="overflow-auto"><Overview applicationId={application.id} /></TabsContent>
       <TabsContent value="preparation" className="flex min-h-0 flex-1">
         <PreparationPanel applicationId={application.id} latex gmail={gmail} />
       </TabsContent>

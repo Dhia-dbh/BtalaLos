@@ -339,3 +339,14 @@ it("saves and clears an application email override without launching preparation
   expect((await db.application.findUniqueOrThrow({ where: { id: application.id } })).emailDraftMode).toBeNull();
   expect(await db.preparationRun.count()).toBe(0);
 });
+
+it("saves overview columns and structured native overrides without changing document mode", async () => {
+  const application = await db.application.create({ data: { documentMode: "NATIVE", extracted: { asksForReferences: false } } });
+  const requirements = [{ text: "Python", kind: "skill", skill: "Python", years: null, language: null }];
+  const response = await request("overview", { applicationId: application.id, values: { title: "Researcher", company: "Institute", role: "Researcher", location: "Tunis", mode: "Remote", salary: "", language: "English", deadline: "2026-12-01", postingUrl: "https://example.org/job", postingText: "Description", externalJobId: "W2935", requirements, asksForReferences: false } });
+  expect(response.status).toBe(200);
+  const saved = await db.application.findUniqueOrThrow({ where: { id: application.id } });
+  expect(saved).toMatchObject({ company: "Institute", documentMode: "NATIVE", postingUrl: "https://example.org/job" });
+  expect(saved.extracted).toMatchObject({ externalJobId: "W2935", requirements, manualMetadata: { externalJobId: "W2935" } });
+  expect((await request("overview", { applicationId: application.id, values: { postingUrl: "javascript:bad" } })).status).toBe(422);
+});
