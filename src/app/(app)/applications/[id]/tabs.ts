@@ -5,6 +5,7 @@ export type Tab = (typeof TABS)[number];
 
 /** The tab a ?tab= value asks for; the resume when it's missing or unknown. */
 export function tabFrom(value: string | string[] | undefined): Tab {
+  if (value === "overview") return "posting";
   return TABS.find((tab) => tab === value) ?? "resume";
 }
 

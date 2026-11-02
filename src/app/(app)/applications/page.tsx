@@ -14,12 +14,12 @@ export default async function ApplicationsPage({ searchParams }: PageProps<"/app
   // The URL wins; without it, the view, filter and sort last used (LST-7).
   const params = resolveListParams(await searchParams, await loadSettings());
 
-  const [all, archived] = await Promise.all([
+  const [all, searched, archived] = await Promise.all([
     loadApplicationRows({ archived: params.archived, sort: params.sort }),
+    loadApplicationRows({ archived: params.archived, sort: params.sort, q: params.q, fields: params.fields }),
     prisma.application.count({ where: { archivedAt: { not: null }, awaitingReview: false } }),
   ]);
-  const q = params.q.toLocaleLowerCase();
-  const found = q ? all.filter((row) => `${row.company} ${row.role}`.toLocaleLowerCase().includes(q)) : all;
+  const found = searched;
   const counts = {
     all: all.length,
     active: all.filter((row) => statusesIn("active").includes(row.status)).length,

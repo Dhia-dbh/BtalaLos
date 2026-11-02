@@ -39,6 +39,8 @@ export function Board({
   statuses: ApplicationStatus[];
   onMove: (row: ApplicationRow, to: ApplicationStatus) => void;
 }) {
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const toggle = (id: string) => setExpandedIds((current) => { const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); return next; });
   const [dragging, setDragging] = useState<ApplicationRow | null>(null);
   // A drag ends with a click on some browsers; it mustn't open the card.
   const draggedAt = useRef(0);
@@ -89,6 +91,8 @@ export function Board({
                   <Card
                     key={row.id}
                     row={row}
+                    expanded={expandedIds.has(row.id)}
+                    onToggle={() => toggle(row.id)}
                     dimmed={dragging?.id === row.id}
                     onOpen={(event) => Date.now() - draggedAt.current < 300 && event.preventDefault()}
                     onMove={(to) => onMove(row, to)}
@@ -99,7 +103,7 @@ export function Board({
           })}
         </div>
       </div>
-      <DragOverlay dropAnimation={null}>{dragging && <CardFace row={dragging} lifted />}</DragOverlay>
+      <DragOverlay dropAnimation={null}>{dragging && <CardFace row={dragging} expanded={expandedIds.has(dragging.id)} lifted />}</DragOverlay>
     </DndContext>
   );
 }
@@ -137,11 +141,15 @@ function Column({ status, count, children }: { status: ApplicationStatus; count:
 
 function Card({
   row,
+  expanded,
+  onToggle,
   dimmed,
   onOpen,
   onMove,
 }: {
   row: ApplicationRow;
+  expanded: boolean;
+  onToggle: () => void;
   dimmed: boolean;
   onOpen: (event: React.MouseEvent) => void;
   onMove: (to: ApplicationStatus) => void;
@@ -149,7 +157,7 @@ function Card({
   const { setNodeRef, listeners } = useDraggable({ id: row.id });
   return (
     <li ref={setNodeRef} {...listeners} className={cn("relative touch-manipulation", dimmed && "opacity-40")}>
-      <CardFace row={row} onOpen={onOpen} />
+      <CardFace row={row} expanded={expanded} onToggle={onToggle} onOpen={onOpen} />
       <div className="absolute top-2 right-2">
         <RowMenu row={row} onMove={onMove} />
       </div>
@@ -158,16 +166,17 @@ function Card({
 }
 
 /** What a card shows; also the copy that follows the pointer while dragging. */
-function CardFace({ row, lifted = false, onOpen }: { row: ApplicationRow; lifted?: boolean; onOpen?: (event: React.MouseEvent) => void }) {
+function CardFace({ row, lifted = false, expanded = false, onToggle, onOpen }: { row: ApplicationRow; lifted?: boolean; expanded?: boolean; onToggle?: () => void; onOpen?: (event: React.MouseEvent) => void }) {
   const place = [row.location, row.mode].filter(Boolean).join(" · ");
   return (
     <div
       className={cn(
-        "group flex cursor-grab flex-col gap-1.5 rounded-[10px] border border-line-card bg-card p-3.5 pr-9 shadow-control hover:border-line-strong",
+        "group flex cursor-grab flex-col gap-1.5 rounded-[10px] border border-line-card bg-card shadow-control hover:border-line-strong motion-safe:transition-[padding] motion-safe:duration-200",
+        expanded ? "p-3.5 pr-14" : "p-2 pr-14",
         lifted && "cursor-grabbing shadow-menu",
       )}
     >
-      <p className="flex items-baseline justify-between gap-2 text-label text-muted">
+      <p className="flex items-baseline justify-between gap-2 min-w-0 truncate text-label text-muted">
         {row.company || "No company"}
         {row.archived && <span className="rounded-[6px] bg-track px-1.5 text-xs">Archived</span>}
       </p>
@@ -176,10 +185,12 @@ function CardFace({ row, lifted = false, onOpen }: { row: ApplicationRow; lifted
         href={`/applications/${row.id}`}
         onClick={onOpen}
         draggable={false}
-        className="text-field leading-[1.35] font-medium text-pretty text-ink after:absolute after:inset-0 after:rounded-[10px] focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-primary"
+        className={cn("text-field leading-[1.35] font-medium text-ink after:absolute after:inset-0 after:rounded-[10px] focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-primary", expanded ? "text-pretty" : "truncate")}
       >
         {row.role}
       </Link>
+      <button type="button" aria-expanded={expanded} aria-label={`${expanded ? "Collapse" : "Expand"} ${row.role}`} onMouseDown={(event) => event.stopPropagation()} onTouchStart={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); onToggle?.(); }} className="absolute top-2 right-9 z-10 rounded px-1 text-muted hover:bg-hover">{expanded ? "−" : "+"}</button>
+      <div className="grid motion-safe:transition-[grid-template-rows] motion-safe:duration-200" style={{ gridTemplateRows: expanded ? "1fr" : "0fr" }}><div className="min-h-0 overflow-hidden" inert={!expanded}>
       {place && <p className="text-label text-muted">{place}</p>}
       {row.packageId && <PackageFolderButton applicationId={row.id} />}
       {row.preparation && <p className="text-meta text-muted">Preparation: {row.preparation.toLowerCase()}</p>}
@@ -192,6 +203,7 @@ function CardFace({ row, lifted = false, onOpen }: { row: ApplicationRow; lifted
         <span>{row.match ? `${row.match.hit}/${row.match.total} match` : "Not matched"}</span>
         <span>{row.updated}</span>
       </p>
+      </div></div>
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import { parseFieldFilters, type FieldFilter } from "./application-search";
 import { ApplicationStatus } from "@/generated/prisma/enums";
 import { STATUSES, statusInfo } from "@/lib/status";
 
@@ -43,7 +44,7 @@ export const NATURAL_ORDER: Record<SortKey, "ascending" | "descending"> = {
 
 export const DEFAULT_SORT: Sort = { key: "updated", reversed: false };
 
-export type ListParams = { view: View; filter: Filter; q: string; sort: Sort; archived: boolean };
+export type ListParams = { view: View; filter: Filter; q: string; sort: Sort; archived: boolean; fields?: FieldFilter[] };
 
 const one = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
 
@@ -58,7 +59,8 @@ export function parseListParams(params: Record<string, string | string[] | undef
     ...(filter ? { filter } : {}),
     ...(key ? { sort: { key, reversed: rawSort.startsWith("-") } } : {}),
     ...(one(params.archived) === "1" ? { archived: true } : {}),
-    q: (one(params.q) ?? "").trim().slice(0, 200),
+    ...(one(params.fields) ? { fields: parseFieldFilters(one(params.fields)) } : {}),
+    q: (one(params.q) ?? "").trim().slice(0, 2000),
   };
 }
 
@@ -79,11 +81,12 @@ export function resolveListParams(
 }
 
 /** The URL for a state; defaults are left out, so the plain page is `/applications`. */
-export function listHref({ view, filter, q, sort, archived }: ListParams): string {
+export function listHref({ view, filter, q, sort, archived, fields }: ListParams): string {
   const params = new URLSearchParams();
   if (view !== "board") params.set("view", view);
   if (filter !== "all") params.set("filter", filter);
   if (q) params.set("q", q);
+  if (fields?.length) params.set("fields", JSON.stringify(fields));
   if (sort.key !== DEFAULT_SORT.key || sort.reversed) params.set("sort", sortParam(sort));
   if (archived) params.set("archived", "1");
   const query = params.toString();

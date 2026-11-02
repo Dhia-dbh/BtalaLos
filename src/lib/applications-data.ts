@@ -1,3 +1,5 @@
+import { matchesApplication, type FieldFilter } from "./application-search";
+import { userTimeZone } from "./time-zone";
 import "server-only";
 
 import type { ApplicationStatus } from "@/generated/prisma/enums";
@@ -30,12 +32,13 @@ export type ApplicationRow = {
 };
 
 /** Every application, archived ones only when asked for, sorted for the table; agent drafts once approved (#195). */
-export async function loadApplicationRows({ archived, sort }: { archived: boolean; sort: Sort }, now = new Date()) {
+export async function loadApplicationRows({ archived, sort, q = "", fields = [] }: { archived: boolean; sort: Sort; q?: string; fields?: FieldFilter[] }, now = new Date()) {
   const applications = await prisma.application.findMany({
     where: { awaitingReview: false, ...(archived ? {} : { archivedAt: null }) },
     select: {
       id: true,
       title: true,
+      postingUrl: true, postingText: true, extracted: true, salary: true, language: true, createdAt: true,
       company: true,
       role: true,
       location: true,
@@ -50,7 +53,13 @@ export async function loadApplicationRows({ archived, sort }: { archived: boolea
       artifacts: { where: { role: "package" }, orderBy: { version: "desc" }, take: 1, select: { id: true } },
     },
   });
-  const rows = applications.map((application) => {
+  const timeZone = await userTimeZone();
+  const day = (date: Date | null, calendar = false) => {
+    if (!date) return "";
+    const parts = new Intl.DateTimeFormat("en-CA", { timeZone: calendar ? "UTC" : timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(date);
+    return ["year", "month", "day"].map((key) => parts.find((part) => part.type === key)?.value).join("-");
+  };
+  const rows = applications.filter((app) => matchesApplication({ ...app.extracted as object, ...app, extracted: app.extracted, sentAt: day(app.sentAt), deadline: day(app.deadline, true), createdAt: day(app.createdAt), updatedAt: day(app.updatedAt) }, q, fields)).map((application) => {
     const match = matchSchema.safeParse(application.match);
     return {
       id: application.id,

@@ -60,6 +60,7 @@ import type { GmailSender } from "./send-with-gmail";
 
 import { JobWatcher } from "./job-watcher";
 import { NotesTab } from "./notes-tab";
+import { Overview } from "@/components/preparation/overview";
 import { PostingTab, type PostingData } from "./posting-tab";
 import { RefinePanel, type ChatEntry } from "./refine-panel";
 import { StatusControl } from "./status-control";
@@ -652,7 +653,7 @@ export function ApplicationView({
               {waiting > 0 ? `Conversation · ${waiting} new` : gmail.emails.length > 0 ? `Conversation · ${gmail.emails.length}` : "Conversation"}
             </TabsTrigger>
           )}
-          <TabsTrigger value="posting">{score ? `Job posting · ${score.hit}/${score.total} match` : "Job posting"}</TabsTrigger>
+          <TabsTrigger value="posting">{score ? `Overview · ${score.hit}/${score.total} match` : "Overview"}</TabsTrigger>
           <TabsTrigger value="preparation">Preparation</TabsTrigger>
           <TabsTrigger value="notes">{notes > 0 ? `Notes · ${notes}` : "Notes"}</TabsTrigger>
         </TabsList>
@@ -748,7 +749,7 @@ export function ApplicationView({
         </TabsContent>
 
         <TabsContent value="posting" className="flex min-h-0 min-w-0 flex-[999_1_480px]">
-          <PostingTab
+          <div className="flex flex-1 flex-col overflow-auto"><Overview applicationId={application.id} /><PostingTab
             applicationId={application.id}
             posting={posting}
             match={match}
@@ -756,7 +757,7 @@ export function ApplicationView({
             onAddSkill={(index) => addSkill(index)}
             facts={facts}
             setFacts={setFacts}
-          />
+          /></div>
         </TabsContent>
 
         <TabsContent value="preparation" className="flex min-h-0 min-w-0 flex-[999_1_480px]"><PreparationPanel applicationId={application.id} /></TabsContent>

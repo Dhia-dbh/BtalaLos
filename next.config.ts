@@ -46,6 +46,7 @@ const nextConfig: NextConfig = {
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()" },
         ],
       },
+      { source: "/api/artifacts/:id", headers: [{ key: "X-Frame-Options", value: "SAMEORIGIN" }] },
       // Browsers ignore COOP over plain HTTP (except on localhost) and say so
       // in the console, so it's only sent behind HTTPS.
       {

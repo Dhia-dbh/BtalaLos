@@ -62,7 +62,7 @@ export default async function ApplicationPage({ params, searchParams }: PageProp
     application={{ id, title: application.title, status: application.status, archived: application.archivedAt !== null, nextInterviewAt: application.nextInterviewAt }}
     meta={metaLine(application)} timeZone={timeZone}
     gmail={google.status === "connected" ? google.canSend ? { from: google.email, backend: settings.gmailBackend } : { from: null, reason: "no-permission", backend: settings.gmailBackend } : google.status === "not-configured" ? undefined : { from: null, reason: "not-connected", backend: settings.gmailBackend }}
-    initialTab={tab === "notes" || tab === "conversation" ? tab : "preparation"}
+    initialTab={tab === "posting" ? "overview" : tab === "overview" || tab === "notes" || tab === "conversation" ? tab : "preparation"}
     notes={<NotesTab applicationId={id} activity={activityTimeline({ notes: application.notes, events: application.events, createdAt: application.createdAt })} />}
     conversation={<ConversationTab emails={emails} aiReady={aiReady} timeZone={timeZone} reading={google.status === "connected" && google.canRead && settings.gmailRead} composeLocation="Preparation and email" />}
     showConversation={emails.length > 0 || (google.status === "connected" && google.canRead && settings.gmailRead)}

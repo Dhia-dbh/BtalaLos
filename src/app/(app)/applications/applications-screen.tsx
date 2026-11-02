@@ -15,6 +15,7 @@ import { FILTERS, listHref, statusesIn, type Filter, type ListParams, type View 
 import { cn } from "@/lib/cn";
 
 import { rememberListView } from "./actions";
+import { SearchFilters } from "./search-filters";
 import { Board } from "./board";
 import { Table } from "./table";
 
@@ -124,7 +125,7 @@ export function ApplicationsScreen({ params, rows, counts, summary, empty, archi
             <input
               type="search"
               aria-label="Search applications"
-              placeholder="Search company or role"
+              placeholder="Search all job and application details"
               value={query}
               onChange={(event) => search(event.target.value)}
               onKeyDown={(event) => event.key === "Enter" && go({ q: query.trim() }, { replace: true })}
@@ -161,6 +162,7 @@ export function ApplicationsScreen({ params, rows, counts, summary, empty, archi
             <span className="ml-auto text-meta text-muted">{HINTS[params.view]}</span>
           </div>
 
+          <SearchFilters filters={params.fields ?? []} onChange={(fields) => go({ fields })} />
           <div className={cn("flex min-h-0 flex-1 flex-col motion-safe:transition-opacity", pending && "opacity-60")} aria-busy={pending || undefined}>
             {rows.length === 0 ? (
               <Nothing>{params.q ? `No applications match “${params.q}”.` : "Nothing in this view yet."}</Nothing>
