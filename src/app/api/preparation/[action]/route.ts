@@ -1,3 +1,5 @@
+import { exportOptions, previewExports, writeExports, revealExports } from "@/lib/preparation/exports";
+import { exportSelectionSchema, exportWriteSchema } from "@/lib/preparation/export-types";
 import { emailDraftModeSchema } from "@/lib/email-drafting";
 import { loadSettings } from "@/lib/settings-data";
 import { NextResponse } from "next/server";
@@ -192,7 +194,15 @@ export const POST = route<RouteContext<"/api/preparation/[action]">>(
       if (Number(request.headers.get("content-length")) > 1024 * 1024)
         throw new RangeError("Request exceeds 1 MiB.");
       const input = await request.json();
-      if (action === "document-mode") {
+      if (action === "export-options" || action === "reveal-export") {
+        const { applicationId, packageId } = z.object({ applicationId: z.string().min(1), packageId: z.string().min(1) }).parse(input);
+        if (action === "export-options") return NextResponse.json(await exportOptions(applicationId, packageId));
+        await revealExports(applicationId, packageId);
+      } else if (action === "export-preview") {
+        return NextResponse.json(await previewExports(exportSelectionSchema.parse(input)));
+      } else if (action === "export-files") {
+        return NextResponse.json(await writeExports(exportWriteSchema.parse(input)));
+      } else if (action === "document-mode") {
         const { documentMode } = z
           .object({ documentMode: documentModeSchema })
           .parse(input);

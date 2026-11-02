@@ -1,3 +1,4 @@
+import { exportFiles } from "./exports.mjs";
 import {
   readFile,
   writeFile,
@@ -132,6 +133,7 @@ export async function execute(config, input, signal, operationId) {
 }
 
 async function executeOperation(config, input, signal, operationId, temporary) {
+  if (input.kind === "export-files") return exportFiles(config, input, signal, operationId);
   if (["capabilities", "generate"].includes(input.kind)) {
     if (config.hostUrl) return hostOperation(config, input, signal, operationId);
     return input.kind === "capabilities"

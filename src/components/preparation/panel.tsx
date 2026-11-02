@@ -1,4 +1,5 @@
 "use client";
+import { ExportFiles } from "./export-files";
 import { EmailDraftingSelect } from "./email-drafting-select";
 import type { EmailDraftMode } from "@/lib/email-drafting";
 import { GenerationProgress } from "./generation-progress";
@@ -373,6 +374,7 @@ export function PreparationPanel({
           </span>
         </div>
       )}
+      {pack && <ExportFiles applicationId={applicationId} packages={data.artifacts.filter((file) => file.role === "package").sort((a, b) => b.version - a.version)} disabled={active || busy} />}
       {data.artifacts.length > 0 && (
         <Card className="flex flex-col gap-4">
           <Select

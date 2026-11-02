@@ -6,7 +6,9 @@ import { preparationRequest } from "./client";
 import { emailUnits } from "@/lib/application-email";
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock("@/components/browser/runs", () => ({ BrowserRuns: () => null }));
-vi.mock("./client", () => ({ preparationRequest: vi.fn(async () => ({})) }));
+vi.mock("./client", () => ({ preparationRequest: vi.fn(async (action: string) => action === "export-options"
+  ? { version: 1, documents: [{ index: 0, name: "CV", pages: 1 }], exports: [] }
+  : {}) }));
 vi.mock("@/components/toast", () => ({ toast: vi.fn() }));
 vi.mock("@/lib/google/actions", () => ({ sendWithGmail: vi.fn() }));
 const view = {
@@ -86,7 +88,7 @@ it("shows package readiness, durable downloads, source review and copy buttons w
   expect(
     screen.getByRole("button", { name: "Copy message" }),
   ).toBeInTheDocument();
-  expect(preparationRequest).not.toHaveBeenCalled();
+  expect(vi.mocked(preparationRequest).mock.calls.every(([action]) => action === "export-options")).toBe(true);
 });
 it("requests merge-only regeneration separately from AI document preparation", async () => {
   const user = userEvent.setup();

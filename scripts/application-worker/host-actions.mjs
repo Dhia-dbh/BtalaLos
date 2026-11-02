@@ -137,7 +137,9 @@ export async function revealExport(config, input, signal) {
     "Invalid package filename.",
   );
   const root = await realpath(config.exports);
-  const file = await inside(root, `${id(input.folder)}/${input.fileName}`);
+  if (input.versionDirectory !== undefined)
+    requireValue(Number.isSafeInteger(input.versionDirectory) && input.versionDirectory > 0, "Invalid version directory.");
+  const file = await inside(root, `${id(input.folder)}/${input.versionDirectory !== undefined ? `v${input.versionDirectory}/` : ""}${input.fileName}`);
   requireValue(digest(await readFile(file)) === input.checksum, "Export checksum mismatch.");
   await command("gdbus", [
     "call", "--session", "--dest", "org.freedesktop.FileManager1",
