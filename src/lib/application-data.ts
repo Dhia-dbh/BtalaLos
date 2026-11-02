@@ -1,3 +1,4 @@
+import { submissionMethodSchema } from "@/lib/email-drafting";
 import { z } from "zod";
 
 import { DocumentKind } from "@/generated/prisma/enums";
@@ -54,6 +55,7 @@ export type Requirement = z.infer<typeof requirementSchema>;
 
 /** Application.extracted: what the AI read from the posting (NEW-3). Missing fields are null. */
 export const extractedSchema = z.object({
+  submissionMethod: submissionMethodSchema.optional(),
   recruiterEmail: z.email().nullable().optional(),
   applicationUrl: z.string().nullable().optional(),
   applicationInstructions: z.string().nullable().optional(),

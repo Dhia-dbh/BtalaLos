@@ -1,4 +1,6 @@
 "use client";
+import { EmailDraftingSelect } from "./email-drafting-select";
+import type { EmailDraftMode } from "@/lib/email-drafting";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -17,14 +19,17 @@ export function NewLatex({
   initialUrl = "",
   initialCli = EMPTY_PROJECT,
   configured,
+  globalEmailDraftMode = "AUTO",
 }: {
   profiles: { id: string; name: string }[];
   initialPosting?: string;
   initialUrl?: string;
   initialCli?: CliOptions;
   configured: boolean;
+  globalEmailDraftMode?: EmailDraftMode;
 }) {
   const router = useRouter();
+  const [emailDraftMode, setEmailDraftMode] = useState<EmailDraftMode | null>(null);
   const [cli, setCli] = useState<CliOptions>(initialCli);
   const [posting, setPosting] = useState(initialPosting),
     [postingUrl, setPostingUrl] = useState(initialUrl),
@@ -43,6 +48,7 @@ export function NewLatex({
             posting,
             postingUrl,
             profileId,
+            emailDraftMode,
             instructions,
             ...(cli.model ? { cli } : {}),
           });
@@ -99,6 +105,7 @@ export function NewLatex({
             </option>
           ))}
         </Select>
+        <EmailDraftingSelect value={emailDraftMode} globalMode={globalEmailDraftMode} onChange={setEmailDraftMode} disabled={busy} />
         <CliPicker value={cli} onChange={setCli} disabled={busy} />
         <Textarea
           label="Tailoring instructions (optional)"
@@ -109,7 +116,7 @@ export function NewLatex({
         />
         <p className="text-sm text-muted">
           Preparation runs automatically through analysis, one-page CV and cover
-          letter, merged PDF, and an editable email draft.
+          letter, merged PDF, and email drafting according to your selected policy.
         </p>
         <div className="flex flex-wrap items-center gap-4">
           <Button

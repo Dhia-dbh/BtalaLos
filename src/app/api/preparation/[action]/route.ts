@@ -1,3 +1,5 @@
+import { emailDraftModeSchema } from "@/lib/email-drafting";
+import { loadSettings } from "@/lib/settings-data";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { route } from "@/lib/route";
@@ -55,6 +57,7 @@ export const GET = route<RouteContext<"/api/preparation/[action]">>(
         select: {
           id: true,
           documentMode: true,
+          emailDraftMode: true,
           packageProfileId: true,
           company: true,
           role: true,
@@ -95,6 +98,7 @@ export const GET = route<RouteContext<"/api/preparation/[action]">>(
       return NextResponse.json({
         ...application,
         profiles,
+        globalEmailDraftMode: (await loadSettings()).emailDraftMode,
         cli: {
           provider: currentProject?.provider ?? project.provider,
           model: currentProject?.model ?? project.model,
@@ -289,10 +293,15 @@ export const POST = route<RouteContext<"/api/preparation/[action]">>(
           where: { id },
           data: { deletedAt: new Date() },
         });
+      } else if (action === "email-policy") {
+        const { applicationId, emailDraftMode } = z.object({ applicationId: z.string().min(1), emailDraftMode: emailDraftModeSchema.nullable() }).parse(input);
+        if (await prisma.preparationRun.count({ where: { activeKey: applicationId } })) throw new ActionError("Wait for preparation to finish before changing its email policy.");
+        await prisma.application.update({ where: { id: applicationId }, data: { emailDraftMode } });
       } else if (action === "create") {
         const data = z
           .object({
             posting: z.string().trim().min(1).max(100_000),
+            emailDraftMode: emailDraftModeSchema.nullable().default(null),
             profileId: z.string().min(1),
             instructions: z.string().max(4000),
             cli: cliOptionsSchema.optional(),
@@ -307,6 +316,7 @@ export const POST = route<RouteContext<"/api/preparation/[action]">>(
         const application = await prisma.application.create({
           data: {
             documentMode: "LATEX",
+            emailDraftMode: data.emailDraftMode,
             packageProfileId: profile.id,
             postingText: data.posting,
             postingUrl: data.postingUrl,

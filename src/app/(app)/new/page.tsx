@@ -57,6 +57,7 @@ export default async function NewApplicationPage({
       aiReady={aiReady}
       writeInClaude={writeInClaude}
       defaultTone={settings.defaultTone}
+      globalEmailDraftMode={settings.emailDraftMode}
       fresh={fresh !== undefined}
       fromPosting={
         fromFindJobs

@@ -1,3 +1,4 @@
+import { emailDraftModeSchema } from "@/lib/email-drafting";
 import "server-only";
 
 import { z } from "zod";
@@ -42,9 +43,9 @@ import { appVersion } from "@/lib/version";
 
 export const EXPORT_FORMAT = "dossier-export";
 /** Bump when the file's shape changes; imports refuse versions they don't know. 2 added Find jobs' postings and keys (E14-9), 3 projects (PRO-13) and the job agent (E16), 4 facts (PRO-14, APP-15), 5 publications (#218), the profile photo's theme and application options (#224) and Startups (#222); 6 application preparation, profiles, supporting PDFs and artifact manifests. */
-export const EXPORT_SCHEMA_VERSION = 8;
+export const EXPORT_SCHEMA_VERSION = 9;
 /** The versions imports can read. */
-export const EXPORT_SCHEMA_VERSIONS: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 8];
+export const EXPORT_SCHEMA_VERSIONS: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
 /** The setting that holds the encrypted API key, which only this server can read. */
 const API_KEY_SETTING = "apiKeyEnc";
@@ -188,6 +189,7 @@ const note = z.object({ id: text, body: text, createdAt: date, updatedAt: date }
 const application = z.object({
   documentMode: z.enum(["NATIVE", "LATEX"]).default("NATIVE"),
   packageProfileId: z.string().nullable().default(null),
+  emailDraftMode: emailDraftModeSchema.nullable().default(null),
   id: text,
   title: text,
   company: text,
@@ -341,7 +343,7 @@ const generationTrace = z.object({ id: text, applicationId: text.nullable(), typ
 /** An export file as read back (E10-6). */
 export const exportSchema = z.object({
   format: z.literal(EXPORT_FORMAT),
-  schemaVersion: z.literal([1, 2, 3, 4, 5, 6, 7, 8]),
+  schemaVersion: z.literal([1, 2, 3, 4, 5, 6, 7, 8, 9]),
   appVersion: text,
   exportedAt: date,
   profile: z.object({
@@ -479,7 +481,7 @@ export async function buildExport(
       settings: settings.filter((setting) => !SECRET_SETTINGS.includes(setting.key) && !INSTALL_SETTINGS.includes(setting.key)),
       ...(apiKey ? { apiKey } : {}),
       ...(Object.keys(jobSourceKeys).length > 0 ? { jobSourceKeys } : {}),
-      applications,
+      applications: applications.map((application) => ({ ...application, emailDraftMode: emailDraftModeSchema.nullable().parse(application.emailDraftMode) })),
       postings,
       searches,
       agentCandidates,

@@ -254,3 +254,22 @@ describe("createApplication", () => {
     expect(fitResumeToPages).not.toHaveBeenCalled();
   });
 });
+
+it("persists a new application's explicit policy and snapshots enabled automatic drafting", async () => {
+  await finishedJobs();
+  const result = await createApplication({ writeJobId: "write-job", details, postingUrl: "", emailDraftMode: "ENABLE" });
+  expect(result.ok).toBe(true);
+  if (!result.ok) return;
+  expect((await prisma().application.findUniqueOrThrow({ where: { id: result.data } })).emailDraftMode).toBe("ENABLE");
+  expect(startJob).toHaveBeenCalledWith(expect.objectContaining({ type: "write-email" }), { applicationId: result.data, automaticPolicy: "ENABLE" }, expect.objectContaining({ id: `automatic-email-${result.data}` }));
+});
+
+it("keeps a null override so subsequent preparations inherit the global policy", async () => {
+  await finishedJobs();
+  await prisma().setting.create({ data: { key: "emailDraftMode", value: "DISABLE" } });
+  const result = await createApplication({ writeJobId: "write-job", details, postingUrl: "", emailDraftMode: null });
+  expect(result.ok).toBe(true);
+  if (!result.ok) return;
+  expect((await prisma().application.findUniqueOrThrow({ where: { id: result.data } })).emailDraftMode).toBeNull();
+  expect(startJob).not.toHaveBeenCalled();
+});

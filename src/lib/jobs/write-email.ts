@@ -1,3 +1,4 @@
+import { emailDraftModeSchema } from "@/lib/email-drafting";
 import "server-only";
 
 import { z } from "zod";
@@ -32,7 +33,7 @@ export const emailJobKey = (applicationId: string) => `email:${applicationId}`;
  */
 export const writeEmailJob = defineJob({
   type: "write-email",
-  input: z.object({ applicationId: z.string().min(1) }),
+  input: z.object({ applicationId: z.string().min(1), automaticPolicy: emailDraftModeSchema.optional() }),
   result: z.object({
     /** The email as written. */
     units: unitsSchema,

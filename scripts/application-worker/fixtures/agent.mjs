@@ -94,6 +94,7 @@ if (args[0] === "app-server") {
       externalJobId: "42",
       recruiterName: null,
       recruiterEmail: "hr@example.org",
+      submissionMethod: applicationUrl || prompt.includes("PORTAL_WITHOUT_URL") ? "PORTAL" : /Apply[^\n]*to hr@example.org/.test(prompt) ? "EMAIL" : "UNKNOWN",
       applicationMethod: applicationUrl ? "Online portal" : "email",
       applicationUrl,
       applicationInstructions: applicationUrl ? `Apply here: ${applicationUrl}` : null,

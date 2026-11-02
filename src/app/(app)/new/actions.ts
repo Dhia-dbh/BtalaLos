@@ -1,4 +1,6 @@
 "use server";
+import { emailDraftModeSchema } from "@/lib/email-drafting";
+import { queueAutomaticEmail } from "@/lib/automatic-email";
 
 import { z } from "zod";
 
@@ -120,6 +122,7 @@ export const createApplication = action(
   z.object({
     writeJobId: z.string().min(1),
     profileId: z.string().min(1).optional(),
+    emailDraftMode: emailDraftModeSchema.nullable().optional(),
     details: detailsSchema,
     postingUrl: z.string().max(2000),
     /** The Find jobs posting it was started from (E14-8). */
@@ -127,7 +130,7 @@ export const createApplication = action(
     /** The startup it was started from on Startups (#222). */
     startupId: z.string().min(1).max(100).nullish(),
   }),
-  async ({ writeJobId, profileId, details, postingUrl, postingId, startupId }) => {
+  async ({ writeJobId, profileId, emailDraftMode, details, postingUrl, postingId, startupId }) => {
     const job = await prisma.job.findUnique({ where: { id: writeJobId } });
     if (!job || job.type !== writeDocumentsJob.type || job.status !== JobStatus.DONE) {
       throw new ActionError("Those documents aren't ready. Try creating the application again.");
@@ -147,6 +150,8 @@ export const createApplication = action(
       note: input.note,
       claim: { kind: "manual", writeJobId, readJobId: input.readJobId, postingId: postingId ?? null, startupId: startupId ?? null },
     });
+    if (emailDraftMode !== undefined) await prisma.application.update({ where: { id }, data: { emailDraftMode } });
+    if (!profileId) await queueAutomaticEmail(id);
     if (profileId && !(await prisma.preparationRun.count({ where: { applicationId: id } }))) {
       await prisma.application.update({ where: { id }, data: { packageProfileId: profileId } });
       try { const { queuePreparation } = await import("@/lib/preparation/service"); await queuePreparation(id); }

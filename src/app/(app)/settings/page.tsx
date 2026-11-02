@@ -1,3 +1,4 @@
+import { EmailDraftingSection } from "./email-drafting-section";
 import { BrowserSettings } from "@/components/browser/settings";
 import type { Metadata } from "next";
 import { CREATIVITY, languageRule, NO_EM_DASHES, truthfulness, UNTRUSTED_POSTING } from "@/lib/ai/tasks/prompt-parts";
@@ -52,7 +53,9 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
 
   return (
     <SettingsScreen section={section}>
-      {section === "prompts" ? (
+      {section === "email" ? (
+        <EmailDraftingSection initial={settings.emailDraftMode} />
+      ) : section === "prompts" ? (
         <PromptsSection
           initial={{ cvPrompt: settings.cvPrompt, letterPrompt: settings.letterPrompt, emailPrompt: settings.emailPrompt, latexCvPrompt: settings.latexCvPrompt, latexLetterPrompt: settings.latexLetterPrompt, latexEmailPrompt: settings.latexEmailPrompt, routingPrompt: settings.routingPrompt, browserPrompt: settings.browserPrompt, classificationPrompt: settings.classificationPrompt, replyPrompt: settings.replyPrompt, outreachPrompt: settings.outreachPrompt }}
           initialMode={await loadDocumentMode()}

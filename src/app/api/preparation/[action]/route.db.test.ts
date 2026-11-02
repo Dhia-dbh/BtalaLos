@@ -330,3 +330,12 @@ it("exports the verified merged package for the folder action and keeps the file
   );
   await rm(directory, { recursive: true, force: true });
 });
+
+it("saves and clears an application email override without launching preparation", async () => {
+  const application = await db.application.create({ data: {} });
+  expect((await request("email-policy", { applicationId: application.id, emailDraftMode: "DISABLE" })).status).toBe(200);
+  expect((await db.application.findUniqueOrThrow({ where: { id: application.id } })).emailDraftMode).toBe("DISABLE");
+  expect((await request("email-policy", { applicationId: application.id, emailDraftMode: null })).status).toBe(200);
+  expect((await db.application.findUniqueOrThrow({ where: { id: application.id } })).emailDraftMode).toBeNull();
+  expect(await db.preparationRun.count()).toBe(0);
+});

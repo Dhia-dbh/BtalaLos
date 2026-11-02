@@ -1,3 +1,4 @@
+import { loadSettings } from "@/lib/settings-data";
 import { PageHeader } from "@/components/page-header";
 import { NewLatex } from "@/components/preparation/new-latex";
 import { loadProject } from "@/lib/preparation/data";
@@ -29,6 +30,7 @@ export default async function NewLatexPage({
       />
       <NewLatex
         profiles={profiles}
+        globalEmailDraftMode={(await loadSettings()).emailDraftMode}
         initialCli={project}
         configured={projectSchema.safeParse(project).success}
         initialPosting={

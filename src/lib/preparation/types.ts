@@ -1,3 +1,4 @@
+import { submissionMethodSchema } from "@/lib/email-drafting";
 import { z } from "zod";
 
 export const documentModeSchema = z.enum(["NATIVE", "LATEX"]);
@@ -77,6 +78,7 @@ export type Step = {
   };
 };
 export const analysisSchema = z.object({
+  submissionMethod: submissionMethodSchema.default("UNKNOWN"),
   title: z.string().nullable(),
   company: z.string().nullable(),
   role: z.string().nullable(),

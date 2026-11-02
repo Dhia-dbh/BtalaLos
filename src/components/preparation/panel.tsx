@@ -1,4 +1,6 @@
 "use client";
+import { EmailDraftingSelect } from "./email-drafting-select";
+import type { EmailDraftMode } from "@/lib/email-drafting";
 import { GenerationProgress } from "./generation-progress";
 import { progressSegments, type Trace } from "@/lib/generation-progress";
 import Link from "next/link";
@@ -25,6 +27,8 @@ type View = {
   id: string;
   cli: CliOptions;
   documentMode: string;
+  emailDraftMode?: EmailDraftMode | null;
+  globalEmailDraftMode?: EmailDraftMode;
   company: string;
   role: string;
   deadline: string | null;
@@ -33,6 +37,8 @@ type View = {
     recruiterEmail?: string | null;
     applicationUrl?: string | null;
     applicationMethod?: string | null;
+    submissionMethod?: string;
+    emailDraftDecision?: { draft: boolean; reason: string };
     applicationInstructions?: string | null;
     warnings?: string[];
     keywords?: string[];
@@ -79,6 +85,7 @@ export function PreparationPanel({
     [instructions, setInstructions] = useState("");
   const [busy, setBusy] = useState(false),
     [preview, setPreview] = useState("");
+  const [manualCompose, setManualCompose] = useState(false);
   const [editEmail, setEditEmail] = useState(false),
     [parts, setParts] = useState({ to: "", subject: "", body: "" });
   const [editMetadata, setEditMetadata] = useState(false),
@@ -215,6 +222,10 @@ export function PreparationPanel({
             Manage profiles and documents
           </Link>
         </div>
+        <EmailDraftingSelect value={data.emailDraftMode ?? null} globalMode={data.globalEmailDraftMode ?? "AUTO"} disabled={active || busy}
+          onChange={(emailDraftMode) => void work("email-policy", { applicationId, emailDraftMode })} />
+        <Link href="/settings?section=email" className="text-sm underline">Global email drafting settings</Link>
+        {data.extracted?.emailDraftDecision && <p className="text-sm text-muted">{data.extracted.emailDraftDecision.draft ? "Last preparation, automatic email drafting: " : "Last preparation, email drafting skipped: "}{data.extracted.emailDraftDecision.reason}</p>}
         {latex && (
           <CliPicker
             value={cli ?? data.cli}
@@ -498,7 +509,8 @@ export function PreparationPanel({
           )}
         </Card>
       )}
-      {latex && !portalOnly && (
+      {latex && portalOnly && !email && !manualCompose && <Button variant="secondary" disabled={active} onClick={() => setManualCompose(true)}>Draft email manually</Button>}
+      {latex && (!portalOnly || email || manualCompose) && (
         <section aria-label="Application email">
           <EmailTab
             applicationId={applicationId}

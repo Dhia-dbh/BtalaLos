@@ -1,4 +1,6 @@
 "use client";
+import { EmailDraftingSelect } from "@/components/preparation/email-drafting-select";
+import type { EmailDraftMode } from "@/lib/email-drafting";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -48,6 +50,7 @@ export type Details = {
 /** Everything the flow knows so far; nothing reaches the server as an application until the end. */
 export type Draft = {
   packageProfileId?: string;
+  emailDraftMode?: EmailDraftMode | null;
   step: "paste" | "reading" | "review" | "creating";
   posting: string;
   postingUrl: string;
@@ -143,6 +146,7 @@ export type NewApplicationProps = {
   /** Settings → default cover letter tone (SET-6). */
   defaultTone: Tone;
   profiles?: { id: string; name: string }[];
+  globalEmailDraftMode?: EmailDraftMode;
   /** "+ New application": start over, whatever the tab kept. */
   fresh?: boolean;
   /** "Start application" on Find jobs: start over from this posting. */
@@ -150,7 +154,7 @@ export type NewApplicationProps = {
 };
 
 /** The new application flow (E7): paste → read → review → create. */
-export function NewApplication({ aiReady, writeInClaude = false, samplePosting, defaultTone, fresh = false, fromPosting = null, profiles = [] }: NewApplicationProps) {
+export function NewApplication({ aiReady, writeInClaude = false, samplePosting, defaultTone, fresh = false, fromPosting = null, profiles = [], globalEmailDraftMode = "AUTO" }: NewApplicationProps) {
   const [initial] = useState<Draft>(() => ({
     step: "paste",
     posting: "",
@@ -292,6 +296,7 @@ export function NewApplication({ aiReady, writeInClaude = false, samplePosting, 
     const result = await createApplication({
       writeJobId,
       profileId: draft.packageProfileId || undefined,
+      emailDraftMode: draft.emailDraftMode ?? null,
       details: draft.details,
       postingUrl: draft.postingUrl,
       postingId: draft.postingId ?? null,
@@ -352,6 +357,7 @@ export function NewApplication({ aiReady, writeInClaude = false, samplePosting, 
       <div className="flex max-w-[816px] flex-col gap-6 px-10 pb-20">
         {draft.step === "paste" && <Select label="Document mode" value="NATIVE" onChange={() => router.push(`/new/latex${window.location.search}`)}><option value="NATIVE">Dossier documents</option><option value="LATEX">LaTeX project</option></Select>}
         {draft.step === "paste" && profiles.length > 0 && <Select label="Application package (optional)" value={draft.packageProfileId ?? ""} onChange={(event) => update({ packageProfileId: event.target.value })}><option value="">Individual PDFs</option>{profiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name}</option>)}</Select>}
+        {draft.step === "paste" && !writeInClaude && <EmailDraftingSelect value={draft.emailDraftMode ?? null} globalMode={globalEmailDraftMode} onChange={(emailDraftMode) => update({ emailDraftMode })} />}
         <Stepper
           steps={STEPS}
           current={draft.step === "creating" ? 2 : draft.step === "review" ? 1 : 0}

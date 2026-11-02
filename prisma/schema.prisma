@@ -453,6 +453,7 @@ model Application {
   /// Its background jobs, deleted with it (their inputs and results hold the posting and the documents).
   jobs                Job[]
   documentMode        DocumentMode          @default(NATIVE)
+  emailDraftMode      String?
   packageProfileId    String?
   packageProfile      ApplicationProfile?   @relation(fields: [packageProfileId], references: [id], onDelete: SetNull)
   generationTraces    GenerationTrace[]

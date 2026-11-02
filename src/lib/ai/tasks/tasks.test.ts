@@ -63,10 +63,17 @@ const sent = (provider: MockProvider): ChatCall => provider.calls[0];
 const prompt = (provider: MockProvider) => [sent(provider).system, ...sent(provider).messages.map((message) => message.content)].join("\n");
 
 describe("extractPosting", () => {
+  it("records portal submission even without a usable URL", async () => {
+    const provider = model({ ...extracted, submissionMethod: "PORTAL", applicationUrl: null, applicationInstructions: "Apply through the recruitment portal." });
+    const { data } = await extractPosting(provider, { posting: "Apply through the recruitment portal.", today }, options);
+    expect(data.submissionMethod).toBe("PORTAL");
+    expect(data.applicationUrl).toBeNull();
+    expect(prompt(provider)).toContain("A contact or questions email is not an accepted email application route");
+  });
   it("reads the posting as data and returns typed requirements with an ISO deadline (NEW-3)", async () => {
     const provider = model({ ...extracted, title: null, deadline: "15 October 2026", requirements: [...extracted.requirements, { text: " ", kind: "other", skill: null, years: null, language: null }] });
     const { data, promptVersion } = await extractPosting(provider, { posting: sample.ledgerly.posting, today }, options);
-    expect(promptVersion).toBe("extract-posting@2");
+    expect(promptVersion).toBe("extract-posting@3");
     expect(data).toMatchObject({ title: "Senior Product Designer · Ledgerly", deadline: "2026-10-15", asksForReferences: false, language: "English" });
     expect(data.requirements).toHaveLength(7);
     expect(sent(provider).messages[0].content).toMatch(/^<posting>\nLedgerly: Senior Product Designer/);

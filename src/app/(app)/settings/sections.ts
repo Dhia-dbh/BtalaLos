@@ -4,6 +4,7 @@ export const SETTINGS_SECTIONS = [
   { id: "prompts", label: "Prompts" },
   { id: "jobs", label: "Job search" },
   { id: "agent", label: "Job agent" },
+  { id: "email", label: "Email drafting" },
   { id: "documents", label: "Documents" },
   { id: "latex", label: "LaTeX project" },
   { id: "profiles", label: "Job profiles and bundles" },

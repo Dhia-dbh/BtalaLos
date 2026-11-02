@@ -1,3 +1,4 @@
+import { emailDraftModeSchema } from "@/lib/email-drafting";
 import { browserAiSchema, mailFilterSchema, submissionModeSchema } from "@/lib/browser/types";
 import { z } from "zod";
 
@@ -104,6 +105,7 @@ export type AgentRun = z.infer<typeof agentRunSchema>;
 export const AGENT_RUNS_KEPT = 10;
 
 export const settingsSchema = z.object({
+  emailDraftMode: emailDraftModeSchema.catch("AUTO"),
   browserEnabled: flag(false),
   browserAi: json(browserAiSchema).catch({ source: "cli", provider: "codex", baseUrl: "", model: "", effort: "medium" }),
   browserAiKeyEnc: z.string().nullable().catch(null),

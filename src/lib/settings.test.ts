@@ -31,6 +31,7 @@ describe("stored settings", () => {
   it("reads an empty table as the prototype's defaults", () => {
     expect(settingsFromRows([])).toEqual({
       ...DEFAULT_GENERATION_PROMPTS,
+      emailDraftMode: "AUTO",
       browserEnabled: false,
       browserAi: { source: "cli", provider: "codex", baseUrl: "", model: "", effort: "medium" },
       browserAiKeyEnc: null,

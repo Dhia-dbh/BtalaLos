@@ -1,4 +1,5 @@
 "use server";
+import { emailDraftModeSchema } from "@/lib/email-drafting";
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -205,6 +206,7 @@ export const updateSettings = action(
     paper: z.enum(PaperSize).optional(),
     dateFormat: z.enum(DateFormat).optional(),
     defaultTone: z.enum(Tone).optional(),
+    emailDraftMode: emailDraftModeSchema.optional(),
     /** A language name, or null for the posting's language. */
     docLanguage: z.string().trim().min(1).max(60).nullable().optional(),
     /** One of the built-in languages, or null for English. */
@@ -222,6 +224,11 @@ export const updateSettings = action(
   }),
   async (changes) => {
     await saveSettings(changes);
+    if (changes.emailDraftMode !== undefined) {
+      revalidatePath("/settings");
+      revalidatePath("/new");
+      revalidatePath("/new/latex");
+    }
     return null;
   },
 );

@@ -174,3 +174,10 @@ it("keeps polling and actions disabled until usage finalization completes", asyn
   render(<PreparationPanel applicationId="app1" latex />);
   expect(await screen.findByRole("button", { name: "Prepare with AI" })).toBeDisabled();
 });
+
+it("saves a per-application email policy override", async () => {
+  const user = userEvent.setup();
+  render(<PreparationPanel applicationId="app1" latex />);
+  await user.selectOptions(await screen.findByLabelText("Automatic email drafting"), "DISABLE");
+  expect(preparationRequest).toHaveBeenCalledWith("email-policy", { applicationId: "app1", emailDraftMode: "DISABLE" });
+});

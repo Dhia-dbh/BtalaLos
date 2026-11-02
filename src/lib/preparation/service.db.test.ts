@@ -1,3 +1,4 @@
+import { saveSettings } from "@/lib/settings-data";
 import {
   afterAll,
   beforeAll,
@@ -308,7 +309,7 @@ describe("application preparation integration", () => {
     expect((run.steps as { name: string }[]).map((step) => step.name)).not.toContain("Draft application email");
     expect(await db.document.count({ where: { applicationId: application.id, kind: "EMAIL" } })).toBe(0);
   }, 50_000);
-  it("finishes preparation with an empty recipient when no submission destination is given", async () => {
+  it("skips automatic email when no submission destination is given", async () => {
     const { application } = await createApplication();
     await db.application.update({
       where: { id: application.id },
@@ -316,8 +317,7 @@ describe("application preparation integration", () => {
     });
     const run = await finished(await queuePreparation(application.id));
     expect(run.status, run.error ?? "").toBe("READY");
-    const email = await db.document.findUniqueOrThrow({ where: { applicationId_kind: { applicationId: application.id, kind: "EMAIL" } } });
-    expect(email.units).toEqual(expect.arrayContaining([expect.objectContaining({ id: "to", text: "" })]));
+    expect(await db.document.count({ where: { applicationId: application.id, kind: "EMAIL" } })).toBe(0);
     expect(await latestPackage(application.id)).not.toBeNull();
   }, 50_000);
   it("stops after two unsuccessful shortening rounds without publishing a package or email", async () => {
@@ -380,3 +380,31 @@ describe("application preparation integration", () => {
     expect(recovered.steps).toEqual(run.steps);
   });
 });
+
+it("skips portal instructions without a URL, while an explicit Enable override still drafts", async () => {
+  const { application } = await createApplication();
+  await db.application.update({ where: { id: application.id }, data: { postingText: "Researcher at Example. PORTAL_WITHOUT_URL: Apply through the recruitment portal." } });
+  const skipped = await finished(await queuePreparation(application.id));
+  expect(skipped.status, skipped.error ?? "").toBe("READY");
+  expect(await db.document.count({ where: { applicationId: application.id, kind: "EMAIL" } })).toBe(0);
+  await db.application.update({ where: { id: application.id }, data: { emailDraftMode: "ENABLE" } });
+  const enabled = await finished(await queuePreparation(application.id));
+  expect(enabled.status, enabled.error ?? "").toBe("READY");
+  expect(await db.document.count({ where: { applicationId: application.id, kind: "EMAIL" } })).toBe(1);
+}, 50_000);
+
+it("snapshots inherited policy and leaves existing drafts untouched when a later run skips drafting", async () => {
+  const { application } = await createApplication();
+  await saveSettings({ emailDraftMode: "ENABLE" });
+  const id = await queuePreparation(application.id);
+  await saveSettings({ emailDraftMode: "DISABLE" });
+  const enabled = await finished(id);
+  expect(enabled.status, enabled.error ?? "").toBe("READY");
+  expect(enabled.snapshot).toMatchObject({ emailDraftMode: "ENABLE" });
+  const email = await db.document.findUniqueOrThrow({ where: { applicationId_kind: { applicationId: application.id, kind: "EMAIL" } } });
+  const disabled = await finished(await queuePreparation(application.id));
+  expect(disabled.status, disabled.error ?? "").toBe("READY");
+  expect(disabled.snapshot).toMatchObject({ emailDraftMode: "DISABLE" });
+  expect((disabled.steps as { name: string }[]).some((step) => step.name === "Draft application email")).toBe(false);
+  expect((await db.document.findUniqueOrThrow({ where: { id: email.id } })).units).toEqual(email.units);
+}, 50_000);
