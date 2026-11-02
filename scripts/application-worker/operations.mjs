@@ -202,7 +202,7 @@ async function executeOperation(config, input, signal, operationId, temporary) {
         "rev-parse",
         "--verify",
         "--end-of-options",
-        `${input.baseRef}^{commit}`,
+        "refs/heads/master^{commit}",
       ],
       { signal },
     );
@@ -279,7 +279,9 @@ async function executeOperation(config, input, signal, operationId, temporary) {
         })) === branch,
         "Existing worktree has a different branch.",
       );
-    } else
+    } else {
+      const master = await command("git", ["-C", repository, "rev-parse", "--verify", "refs/heads/master^{commit}"], { signal });
+      requireValue(input.commit === master, "Master changed after launch. Start a fresh preparation from master.");
       await command(
         "git",
         [
@@ -294,6 +296,7 @@ async function executeOperation(config, input, signal, operationId, temporary) {
         ],
         { signal },
       );
+    }
     return { branch };
   }
   if (input.kind === "apply") {
@@ -307,13 +310,10 @@ async function executeOperation(config, input, signal, operationId, temporary) {
     );
     const prepared = [];
     for (const file of input.files) {
-      requireValue(
-        allowed.includes(file.path) &&
-          file.path.endsWith(".tex") &&
-          typeof file.content === "string" &&
-          Buffer.byteLength(file.content) <= 1024 * 1024,
-        "Unauthorized or oversized replacement.",
-      );
+      requireValue(allowed.includes(file.path), `Unauthorized replacement path: ${JSON.stringify(file.path)}. Return the exact authorized paths: ${allowed.join(", ")}.`);
+      requireValue(file.path.endsWith(".tex"), `Replacement must be a .tex file: ${file.path}.`);
+      requireValue(typeof file.content === "string", `Replacement content must be a string: ${file.path}.`);
+      requireValue(Buffer.byteLength(file.content) <= 1024 * 1024, `Replacement exceeds 1 MiB: ${file.path}.`);
       const location = await inside(root, file.path);
       requireValue(
         digest(await readFile(location)) === input.expected[file.path],
@@ -333,6 +333,21 @@ async function executeOperation(config, input, signal, operationId, temporary) {
         input.files.map((file) => [file.path, file.content]),
       ),
     };
+  }
+  if (input.kind === "commit") {
+    const root = await workspace(config, input.applicationId);
+    const paths = Object.keys(input.expected);
+    requireValue(paths.length > 0, "Commit needs a source snapshot.");
+    for (const relative of paths) {
+      requireValue(relative.endsWith(".tex"), "Commit only authorized LaTeX sources.");
+      requireValue(digest(await readFile(await inside(root, relative))) === input.expected[relative], `${relative} changed before commit. Start a fresh revision.`);
+    }
+    requireValue(!(await command("git", ["-C", root, "diff", "--cached", "--name-only"], { signal })), "The application branch already has staged changes. Review them before committing.");
+    await command("git", ["-C", root, "add", "--", ...paths], { signal });
+    if (await command("git", ["-C", root, "diff", "--cached", "--name-only"], { signal })) {
+      await command("git", ["-C", root, "commit", "-m", "Update application CV and cover letter"], { signal });
+    }
+    return { commit: await command("git", ["-C", root, "rev-parse", "HEAD"], { signal }) };
   }
   if (input.kind === "compile") {
     const root = await workspace(config, input.applicationId);

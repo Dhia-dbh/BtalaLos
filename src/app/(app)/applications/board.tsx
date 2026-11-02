@@ -176,7 +176,7 @@ function CardFace({ row, lifted = false, expanded = false, onToggle, onOpen }: {
         lifted && "cursor-grabbing shadow-menu",
       )}
     >
-      <p className="flex items-baseline justify-between gap-2 min-w-0 truncate text-label text-muted">
+      <p className={cn("flex min-w-0 items-baseline justify-between gap-2 truncate", expanded ? "text-label text-muted" : "text-control font-semibold text-ink")}>
         {row.company || "No company"}
         {row.archived && <span className="rounded-[6px] bg-track px-1.5 text-xs">Archived</span>}
       </p>
@@ -185,13 +185,14 @@ function CardFace({ row, lifted = false, expanded = false, onToggle, onOpen }: {
         href={`/applications/${row.id}`}
         onClick={onOpen}
         draggable={false}
-        className={cn("text-field leading-[1.35] font-medium text-ink after:absolute after:inset-0 after:rounded-[10px] focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-primary", expanded ? "text-pretty" : "truncate")}
+        className={cn("leading-[1.35] after:absolute after:inset-0 after:rounded-[10px] focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-primary", expanded ? "text-field font-medium text-ink text-pretty" : "truncate text-label text-muted")}
       >
         {row.role}
       </Link>
+      {!expanded && place && <p className="truncate text-label text-muted">{place}</p>}
       <button type="button" aria-expanded={expanded} aria-label={`${expanded ? "Collapse" : "Expand"} ${row.role}`} onMouseDown={(event) => event.stopPropagation()} onTouchStart={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); onToggle?.(); }} className="absolute top-2 right-9 z-10 rounded px-1 text-muted hover:bg-hover">{expanded ? "−" : "+"}</button>
       <div className="grid motion-safe:transition-[grid-template-rows] motion-safe:duration-200" style={{ gridTemplateRows: expanded ? "1fr" : "0fr" }}><div className="min-h-0 overflow-hidden" inert={!expanded}>
-      {place && <p className="text-label text-muted">{place}</p>}
+      {expanded && place && <p className="text-label text-muted">{place}</p>}
       {row.packageId && <PackageFolderButton applicationId={row.id} />}
       {row.preparation && <p className="text-meta text-muted">Preparation: {row.preparation.toLowerCase()}</p>}
       {row.status === "DRAFT" && row.deadline && (

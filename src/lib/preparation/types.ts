@@ -30,7 +30,7 @@ export const projectSchema = z.object({
 export type Project = z.infer<typeof projectSchema>;
 export const EMPTY_PROJECT: Project = {
   repository: "",
-  baseRef: "HEAD",
+  baseRef: "master",
   cvPath: "",
   letterPath: "",
   editablePaths: [],

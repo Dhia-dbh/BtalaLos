@@ -20,7 +20,7 @@ async function fixture(t) {
   const root = await mkdtemp(path.join(tmpdir(), "dossier-worker-test-"));
   t.after(() => rm(root, { recursive: true, force: true }));
   const repo = path.join(root, "repo");
-  await command("git", ["init", repo]);
+  await command("git", ["init", "--initial-branch=master", repo]);
   for (const name of ["cv.tex", "letter.tex"])
     await writeFile(path.join(repo, name), tex);
   await command("git", ["-C", repo, "add", "."]);
@@ -377,4 +377,37 @@ test("discovers nested TeX sources and uses the selected repository rather than 
     ),
     /belongs to another repository/,
   );
+});
+
+test("new applications use master and revisions commit on the same branch", async (t) => {
+  const { config, repo, operation } = await fixture(t);
+  await command("git", ["-C", repo, "branch", "-M", "master"]);
+  await command("git", ["-C", repo, "config", "user.name", "Fixture"]);
+  await command("git", ["-C", repo, "config", "user.email", "test@example.org"]);
+  const master = await command("git", ["-C", repo, "rev-parse", "master"]);
+  await command("git", ["-C", repo, "checkout", "-b", "other"]);
+  await writeFile(path.join(repo, "cv.tex"), "Other branch");
+  await command("git", ["-C", repo, "commit", "-am", "Other"]);
+  const project = { repository: repo, baseRef: "HEAD", cvPath: "cv.tex", letterPath: "letter.tex", editablePaths: ["cv.tex", "letter.tex"] };
+  const inspected = await operation({ kind: "inspect", ...project });
+  assert.equal(inspected.commit, master);
+  assert.equal(inspected.files["cv.tex"], tex);
+  await assert.rejects(operation({ kind: "worktree", repository: repo, applicationId: "stale", commit: await command("git", ["-C", repo, "rev-parse", "HEAD"]) }), /Master changed after launch/);
+  await operation({ kind: "worktree", repository: repo, applicationId: "revision", commit: inspected.commit });
+  let previous = tex;
+  let parent = master;
+  for (const content of [tex.replace("CV", "First CV"), tex.replace("CV", "Second CV")]) {
+    await operation({ kind: "apply", applicationId: "revision", expected: { "cv.tex": digest(previous) }, files: [{ path: "cv.tex", content }] });
+    const result = await operation({ kind: "commit", applicationId: "revision", expected: { "cv.tex": digest(content) } });
+    const worktree = path.join(config.data, "worktrees", "revision");
+    assert.equal(await command("git", ["-C", worktree, "rev-parse", "HEAD^"]), parent);
+    assert.equal(await command("git", ["-C", worktree, "status", "--porcelain"]), "");
+    const revision = await operation({ kind: "inspect", ...project, applicationId: "revision" });
+    assert.equal(revision.files["cv.tex"], content);
+    parent = result.commit;
+    previous = content;
+  }
+  assert.equal(await command("git", ["-C", repo, "rev-parse", "master"]), master);
+  assert.equal(await command("git", ["-C", repo, "branch", "--show-current"]), "other");
+  await assert.rejects(operation({ kind: "apply", applicationId: "revision", expected: { "cv.tex": digest(previous) }, files: [{ path: "cv-company.tex", content: tex }] }), /Unauthorized replacement path.*cv-company.tex/);
 });

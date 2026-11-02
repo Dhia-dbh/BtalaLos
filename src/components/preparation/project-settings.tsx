@@ -143,7 +143,8 @@ export function ProjectSettings({
             <Input
               key={key}
               label={label}
-              value={project[key]}
+              value={key === "baseRef" ? "master" : project[key]}
+              readOnly={key === "baseRef"}
               onChange={(event) =>
                 setProject({ ...project, [key]: event.target.value })
               }

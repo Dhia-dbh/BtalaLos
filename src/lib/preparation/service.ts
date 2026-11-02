@@ -19,7 +19,6 @@ import {
   bundleSchema,
   draftSchema,
   projectSchema,
-  replacementsSchema,
   type BundleItem,
   type PdfResult,
   type Project,
@@ -202,6 +201,7 @@ export async function queuePreparation(
     }>(`inspect-${applicationId}-${Date.now()}`, {
       kind: "inspect",
       ...project,
+      baseRef: "master",
       ...(prior && !(prior.manifest as { restored?: boolean }).restored
         ? { applicationId }
         : {}),
@@ -501,7 +501,7 @@ async function runPreparation(
         const replacements = await step(`${name}: generate`, () =>
           generate(
             name,
-            replacementsSchema,
+            z.object({ files: z.array(z.object({ path: z.enum(allowed as [string, ...string[]]), content: z.string().max(1_048_576) })).length(allowed.length) }),
             `${LATEX_DOCUMENT_RULES}\nCV INSTRUCTIONS:\n${snapshot.prompts?.latexCvPrompt ?? DEFAULT_GENERATION_PROMPTS.latexCvPrompt}\nMOTIVATION LETTER INSTRUCTIONS:\n${snapshot.prompts?.latexLetterPrompt ?? DEFAULT_GENERATION_PROMPTS.latexLetterPrompt}\nAPPLICATION INSTRUCTIONS:\n${instruction}\nJOB DATA:\n${JSON.stringify(analysis)}\nPOSTING:\n${snapshot.posting}\nOTHER RELEVANT INFORMATION:\n${JSON.stringify(snapshot.otherRelevantInformation)}\nSELECTED CONTEXT:\n${JSON.stringify(contextText)}\nSOURCE FILES:\n${JSON.stringify(Object.fromEntries(allowed.map((file) => [file, files[file]])))}`,
           ),
         );
@@ -574,6 +574,13 @@ async function runPreparation(
           );
         return true;
       });
+      await step("Commit CV and letter", () =>
+        operation("commit", {
+          kind: "commit",
+          applicationId,
+          expected: Object.fromEntries(Object.entries(files).map(([name, content]) => [name, checksum(content)])),
+        }),
+      );
     } else {
       const current = await prisma.application.findUniqueOrThrow({ where: { id: applicationId } });
       const native = current.extracted as { recruiterEmail?: string | null; applicationUrl?: string | null; applicationInstructions?: string | null; applicationMethod?: string | null; submissionMethod?: string } | null;
