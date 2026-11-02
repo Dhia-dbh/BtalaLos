@@ -62,7 +62,7 @@ export class LmStudioProvider extends OpenAICompatibleProvider {
           model: call.model, system_prompt: call.json ? withJsonSchema(call.system, call.json.schema) : call.system,
           input: JSON.stringify(call.messages), reasoning, stream: false, store: false, integrations: [], max_output_tokens: call.maxTokens,
         }) as { output: { type: string; content?: string }[] };
-        return { text: answer.output.filter((item) => item.type === "message").map((item) => item.content ?? "").join("\n"), cutOff: false };
+        return { text: answer.output.filter((item) => item.type === "message").map((item) => item.content ?? "").join("\n"), cutOff: false, effort: String(reasoning) };
       }
       const thinking = this.reasoningEffort(call) === "none" ? 0 : THINKING_TOKENS;
       return await super.chat({ ...call, maxTokens: call.maxTokens + thinking });

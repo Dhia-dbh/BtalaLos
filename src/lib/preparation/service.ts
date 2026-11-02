@@ -1,3 +1,4 @@
+import { recordGenerationCall, type TokenUsage } from "@/lib/generation-telemetry";
 import "server-only";
 import { z } from "zod";
 import type { Prisma } from "@/generated/prisma/client";
@@ -342,9 +343,16 @@ async function runPreparation(
       where: { id: runId },
       data: { steps: json(steps) },
     });
-    return schema.parse(
-      await operation(name, { kind: "generate", ...entry.request }),
-    );
+    const startedAt = new Date().toISOString();
+    let result: { data: unknown; provider: string; model: string; effort: string; usage: TokenUsage | null };
+    try {
+      result = await operation(name, { kind: "generate", includeUsage: true, ...entry.request });
+    } catch (error) {
+      await recordGenerationCall({ provider: entry.request.provider, model: entry.request.model, effort: null, usage: null, startedAt, finishedAt: new Date().toISOString() });
+      throw error;
+    }
+    await recordGenerationCall({ id: `${runId}-${name}`, provider: result.provider, model: result.model, effort: result.effort, usage: result.usage, startedAt, finishedAt: new Date().toISOString() });
+    return schema.parse(result.data);
   };
   async function artifact(
     role: string,

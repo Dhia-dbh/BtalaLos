@@ -1,3 +1,4 @@
+import { withGenerationTelemetry, type GenerationStage } from "@/lib/generation-telemetry";
 import "server-only";
 
 import type { z } from "zod";
@@ -225,7 +226,7 @@ async function execute(id: string, controller: AbortController): Promise<void> {
     const job = await prisma.job.update({
       where: { id },
       data: { status: JobStatus.RUNNING, startedAt: new Date() },
-      select: { type: true, input: true },
+      select: { type: true, input: true, applicationId: true },
     });
     await notify(id);
     // Job types register when their module loads; make sure they all have.
@@ -233,16 +234,43 @@ async function execute(id: string, controller: AbortController): Promise<void> {
     const definition = state.definitions.get(job.type);
     if (!definition) throw new Error(`No job type "${job.type}" is defined.`);
 
-    const result = await definition.run(definition.input.parse(job.input), {
-      id,
-      signal: controller.signal,
-      step: async (name) => {
-        // Deleted meanwhile: there's no one left to do it for.
-        const { count } = await prisma.job.updateMany({ where: { id }, data: { step: name } });
-        if (count === 0) controller.abort();
-        else await notify(id);
-      },
-    });
+    const tracked = ["read-posting", "write-documents", "prepare-application", "write-email", "agent-draft", "connector-draft"].includes(job.type);
+    const trace = tracked ? await prisma.generationTrace.upsert({ where: { id }, create: { id, type: job.type, applicationId: job.applicationId }, update: {} }) : null;
+    const stages = (trace?.stages ?? []) as unknown as GenerationStage[];
+    const saveTrace = async () => {
+      if (tracked) await prisma.generationTrace.update({ where: { id }, data: { stages: JSON.parse(JSON.stringify(stages)) } });
+    };
+    const closeStage = (status: GenerationStage["status"]) => {
+      const current = stages.at(-1);
+      if (current?.status === "RUNNING") { current.status = status; current.finishedAt = new Date().toISOString(); }
+    };
+    const result = await withGenerationTelemetry(async (call) => {
+      if (!tracked || (call.id && stages.some((stage) => stage.calls.some((prior) => prior.id === call.id)))) return;
+      stages.at(-1)?.calls.push(call);
+      await saveTrace();
+    }, async () => {
+      try {
+        const result = await definition.run(definition.input.parse(job.input), {
+          id,
+          signal: controller.signal,
+          step: async (name) => {
+            closeStage("DONE");
+            stages.push({ name, status: "RUNNING", startedAt: new Date().toISOString(), calls: [] });
+            await saveTrace();
+            const { count } = await prisma.job.updateMany({ where: { id }, data: { step: name } });
+            if (count === 0) controller.abort();
+            else await notify(id);
+          },
+        });
+        closeStage("DONE");
+        await saveTrace();
+        return result;
+      } catch (error) {
+        closeStage(controller.signal.aborted ? "CANCELLED" : "FAILED");
+        await saveTrace();
+        throw error;
+      }
+    }, id);
     await finish(id, { status: JobStatus.DONE, result: definition.result.parse(result) as Prisma.InputJsonValue });
   } catch (error) {
     // AI failures already say what to do; anything else is logged and kept vague.
@@ -261,8 +289,18 @@ async function execute(id: string, controller: AbortController): Promise<void> {
  * can't finish, so they're marked failed and the page offers Retry.
  */
 export async function recoverInterruptedJobs(): Promise<number> {
+  const interrupted = await prisma.job.findMany({ where: { status: { in: [JobStatus.QUEUED, JobStatus.RUNNING] } }, select: { id: true } });
+  const traces = await prisma.generationTrace.findMany({ where: { id: { in: interrupted.map((job) => job.id) } } });
+  for (const trace of traces) {
+    const stages = trace.stages as unknown as GenerationStage[];
+    for (const stage of stages) if (stage.status === "RUNNING") {
+      stage.status = "FAILED";
+      stage.finishedAt = stage.calls.at(-1)?.finishedAt ?? stage.startedAt;
+    }
+    await prisma.generationTrace.update({ where: { id: trace.id }, data: { stages: JSON.parse(JSON.stringify(stages)) } });
+  }
   const { count } = await prisma.job.updateMany({
-    where: { status: { in: [JobStatus.QUEUED, JobStatus.RUNNING] } },
+    where: { id: { in: interrupted.map((job) => job.id) } },
     data: { status: JobStatus.FAILED, error: JOB_MESSAGES.interrupted, finishedAt: new Date() },
   });
   return count;

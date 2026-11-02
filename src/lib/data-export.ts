@@ -42,9 +42,9 @@ import { appVersion } from "@/lib/version";
 
 export const EXPORT_FORMAT = "dossier-export";
 /** Bump when the file's shape changes; imports refuse versions they don't know. 2 added Find jobs' postings and keys (E14-9), 3 projects (PRO-13) and the job agent (E16), 4 facts (PRO-14, APP-15), 5 publications (#218), the profile photo's theme and application options (#224) and Startups (#222); 6 application preparation, profiles, supporting PDFs and artifact manifests. */
-export const EXPORT_SCHEMA_VERSION = 7;
+export const EXPORT_SCHEMA_VERSION = 8;
 /** The versions imports can read. */
-export const EXPORT_SCHEMA_VERSIONS: readonly number[] = [1, 2, 3, 4, 5, 6, 7];
+export const EXPORT_SCHEMA_VERSIONS: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 8];
 
 /** The setting that holds the encrypted API key, which only this server can read. */
 const API_KEY_SETTING = "apiKeyEnc";
@@ -326,10 +326,22 @@ const preparation = z.object({ id: text, applicationId: text, kind: text, status
 const browserRun = z.object({ id: text, applicationId: text.nullable(), kind: text, status: text, revision: int, snapshot: z.unknown(), error: text.nullable(), createdAt: date, updatedAt: date, finishedAt: optionalDate, events: z.array(z.object({ id: text, kind: text, data: z.unknown(), createdAt: date })) });
 const artifact = z.object({ id: text, applicationId: text, runId: text, role: text, version: int, path: text, checksum: text, pages: int.nullable(), manifest: z.unknown(), createdAt: date });
 
+const generationTrace = z.object({ id: text, applicationId: text.nullable(), type: text, stages: z.array(z.object({
+    name: text,
+    startedAt: z.iso.datetime(),
+    finishedAt: z.iso.datetime().optional(),
+    status: z.enum(["RUNNING", "DONE", "FAILED", "CANCELLED"]),
+    calls: z.array(z.object({
+      id: text.optional(), provider: text, model: text, effort: text.nullable(),
+      startedAt: z.iso.datetime(), finishedAt: z.iso.datetime(),
+      usage: z.object({ input: int.nonnegative(), output: int.nonnegative(), cachedInput: int.nonnegative().optional() }).nullable(),
+    })),
+  })), createdAt: date });
+
 /** An export file as read back (E10-6). */
 export const exportSchema = z.object({
   format: z.literal(EXPORT_FORMAT),
-  schemaVersion: z.literal([1, 2, 3, 4, 5, 6, 7]),
+  schemaVersion: z.literal([1, 2, 3, 4, 5, 6, 7, 8]),
   appVersion: text,
   exportedAt: date,
   profile: z.object({
@@ -358,6 +370,7 @@ export const exportSchema = z.object({
   preparations: z.array(preparation).default([]),
   artifacts: z.array(artifact).default([]),
   browserRuns: z.array(browserRun).default([]),
+  generationTraces: z.array(generationTrace).default([]),
   /** Saved and dismissed postings (E14-9); absent in version 1 files. */
   postings: z.array(posting).default([]),
   /** Past searches with what they found (E14-10); absent in version 1 files. */
@@ -388,7 +401,7 @@ export async function buildExport(
   { includeApiKey = false, now = new Date() }: { includeApiKey?: boolean; now?: Date } = {},
 ): Promise<DossierExport> {
   return db.$transaction(async (tx) => {
-    const [fields, skills, languages, experience, projects, education, publications, references, facts, themes, settings, applications, postings, searches, agentCandidates, startups, startupBlocks, packageProfiles, supportingDocuments, preparations, artifacts, browserRuns] = await Promise.all([
+    const [fields, skills, languages, experience, projects, education, publications, references, facts, themes, settings, applications, postings, searches, agentCandidates, startups, startupBlocks, packageProfiles, supportingDocuments, preparations, artifacts, browserRuns, generationTraces] = await Promise.all([
       tx.profileField.findMany({ select: { key: true, value: true }, orderBy: { key: "asc" } }),
       tx.skill.findMany({ select: { id: true, name: true, sort: true, createdAt: true }, orderBy: { createdAt: "asc" } }),
       tx.language.findMany({ select: { id: true, name: true, level: true, sort: true, createdAt: true }, orderBy: { createdAt: "asc" } }),
@@ -426,6 +439,7 @@ export async function buildExport(
       tx.preparationRun.findMany({ omit: { activeKey: true, jobId: true } }),
       tx.applicationArtifact.findMany(),
       tx.browserRun.findMany({ where: { applicationId: { not: null } }, omit: { activeKey: true, approvedHash: true, jobId: true }, include: { events: { omit: { runId: true }, orderBy: { createdAt: "asc" } } } }),
+      tx.generationTrace.findMany({ where: { applicationId: { not: null } } }),
     ]);
 
     // Keys only when asked for, decrypted; one that's unreadable here too (DOSSIER_SECRET changed) has nothing to export.
@@ -471,7 +485,7 @@ export async function buildExport(
       agentCandidates,
       startups,
       startupBlocks,
-      packageProfiles: packageProfiles.map((entry) => ({ ...entry, items: bundleSchema.parse(entry.items) })), supportingDocuments, preparations, artifacts, browserRuns,
+      packageProfiles: packageProfiles.map((entry) => ({ ...entry, items: bundleSchema.parse(entry.items) })), supportingDocuments, preparations, artifacts, browserRuns, generationTraces: generationTraces.map((trace) => generationTrace.parse({ ...trace, createdAt: trace.createdAt.toISOString() })),
     };
   });
 }

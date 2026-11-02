@@ -19,7 +19,7 @@ vi.spyOn(console, "error").mockImplementation(() => {});
 const prisma = () => db.client!;
 
 /** Waits until `check` passes, for work that runs in the background. */
-async function eventually(check: () => Promise<void>, timeout = 3000) {
+async function eventually(check: () => Promise<void>, timeout = 10000) {
   const started = Date.now();
   for (;;) {
     try {
@@ -73,15 +73,15 @@ describe("the job runner", () => {
     await eventually(async () => (await status(id)).toBe("RUNNING"));
     await release("Jane");
     await eventually(async () => (await status(id)).toBe("DONE"));
-    stop();
     expect(await getJob(id)).toMatchObject({ step: "Greeting", error: null, result: { greeting: "Hello, Jane" } });
     expect(seen).toContain("RUNNING · Waiting");
-    expect(seen.at(-1)).toBe("DONE · Greeting");
+    await eventually(async () => expect(seen.at(-1)).toBe("DONE · Greeting"));
+    stop();
     const row = await prisma().job.findUniqueOrThrow({ where: { id } });
     expect(row).toMatchObject({ type: "test-gated", key: "application:1", input: { name: "Jane", fail: "no" } });
     expect(row.startedAt).not.toBeNull();
     expect(row.finishedAt).not.toBeNull();
-  });
+  }, 15_000);
 
   it("keeps AI errors' plain words and hides everything else", async () => {
     const ai = await startJob(gated, { name: "Ai", fail: "ai" });

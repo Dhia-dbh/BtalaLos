@@ -28,6 +28,10 @@ export async function sweepFinishedJobs(now = new Date(), hours?: number): Promi
       OR: [{ finishedAt: { lt: cutoff } }, { finishedAt: null, updatedAt: { lt: cutoff } }],
     },
   });
+  const orphanTraces = await prisma.generationTrace.findMany({ where: { applicationId: null, createdAt: { lt: cutoff } }, select: { id: true } });
+  const retainedJobs = await prisma.job.findMany({ where: { id: { in: orphanTraces.map((trace) => trace.id) } }, select: { id: true } });
+  const retainedIds = new Set(retainedJobs.map((job) => job.id));
+  await prisma.generationTrace.deleteMany({ where: { applicationId: null, id: { in: orphanTraces.filter((trace) => !retainedIds.has(trace.id)).map((trace) => trace.id) } } });
   await removeOldZips(now.getTime());
   await prisma.claudePaste.deleteMany({ where: { expiresAt: { lte: now } } });
   return count;

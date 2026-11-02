@@ -46,6 +46,14 @@ test("container operations use the host's two CLI adapters without a worker-loca
       effort: "medium", schema: { type: "object" }, prompt: "Write an email.",
     }, new AbortController().signal, `generate-${provider}`);
     assert.equal(result.subject, "Application for Researcher");
+    const measured = await execute(config, {
+      kind: "generate", provider, model: catalog.models[0].id,
+      effort: "medium", schema: { type: "object" }, prompt: "Write an email.", includeUsage: true,
+    }, new AbortController().signal, `measured-${provider}`);
+    assert.equal(measured.data.subject, result.subject);
+    assert.equal(measured.effort, "medium");
+    assert.equal(measured.usage.input, 10);
+    assert.equal(measured.usage.output, 10);
   }
   assert.deepEqual(await readdir(path.join(config.data, "operations")), []);
 });

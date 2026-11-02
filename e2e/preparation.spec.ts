@@ -249,6 +249,9 @@ test("prepares a LaTeX application and a native package through the interface", 
   await expect(
     page.getByRole("button", { name: "Copy message" }),
   ).toBeVisible();
+  await expect(page.getByRole("progressbar", { name: "Application generation" })).toBeVisible();
+  await expect(page.getByText("Generation tasks", { exact: true }).locator("..")).not.toHaveAttribute("open", "");
+  await expect(page.getByText("Generation usage details", { exact: true }).locator("..")).not.toHaveAttribute("open", "");
   const id = page.url().split("/applications/")[1].split("?")[0];
   const result = await page.request.get(
     `/api/preparation/application?applicationId=${id}`,
@@ -348,6 +351,7 @@ test("prepares a LaTeX application and a native package through the interface", 
   await expect(
     page.getByRole("button", { name: "Regenerate merged PDF" }),
   ).toBeVisible();
+  await page.getByRole("progressbar", { name: "Application generation" }).scrollIntoViewIfNeeded();
   await page.screenshot({
     path: "/tmp/dossier-preparation-mobile.png",
     animations: "disabled",

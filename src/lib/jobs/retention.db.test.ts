@@ -72,3 +72,13 @@ describe("sweepFinishedJobs", () => {
     expect(await readdir(downloads)).toEqual(["new.zip"]);
   });
 });
+
+it("retains application usage after job cleanup and removes abandoned traces", async () => {
+  const application = await prisma().application.create({ data: {} });
+  await prisma().generationTrace.createMany({ data: [
+    { id: "import-old", type: "read-posting", applicationId: application.id, createdAt: hoursAgo(30), stages: [] },
+    { id: "read-old", type: "read-posting", createdAt: hoursAgo(30), stages: [] },
+  ] });
+  await sweepFinishedJobs(now);
+  expect(await prisma().generationTrace.findMany({ select: { id: true } })).toEqual([{ id: "import-old" }]);
+});

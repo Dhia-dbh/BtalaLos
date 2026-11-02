@@ -205,6 +205,10 @@ describe("application preparation integration", () => {
     expect(documentPrompt).toContain("LETTER_CUSTOM");
     expect(emailPrompt).toContain("EMAIL_CUSTOM");
     for (const prompt of [documentPrompt, emailPrompt]) expect(prompt).toContain("Studied graph algorithms at university.");
+    const trace = await db.generationTrace.findUniqueOrThrow({ where: { id: run.jobId! } });
+    const calls = (trace.stages as unknown as import("@/lib/generation-telemetry").GenerationStage[]).flatMap((stage) => stage.calls);
+    expect(calls.length).toBeGreaterThanOrEqual(3);
+    expect(calls.every((call) => call.usage?.input === 10 && call.usage.output === 10)).toBe(true);
     expect(run.error).toBeNull();
     expect(run.status).toBe("READY");
     const pack = await latestPackage(application.id);

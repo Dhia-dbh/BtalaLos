@@ -60,6 +60,8 @@ export class AnthropicProvider extends BaseProvider {
     }
     return {
       text: message.content.flatMap((block) => (block.type === "text" ? [block.text] : [])).join(""),
+      effort: effort ?? null,
+      usage: { input: message.usage.input_tokens + (message.usage.cache_read_input_tokens ?? 0) + (message.usage.cache_creation_input_tokens ?? 0), output: message.usage.output_tokens, cachedInput: message.usage.cache_read_input_tokens ?? 0 },
       cutOff: message.stop_reason === "max_tokens" || message.stop_reason === "model_context_window_exceeded",
     };
   }

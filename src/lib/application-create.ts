@@ -1,3 +1,4 @@
+import { generationTraceId } from "@/lib/generation-telemetry";
 import "server-only";
 
 import { AgentCandidateStatus, ApplicationOrigin, type Tone } from "@/generated/prisma/enums";
@@ -163,9 +164,12 @@ export async function createApplicationFromDocuments({ reading, documents, match
       select: { id: true },
     });
 
+    const traceId = generationTraceId();
+    if (traceId) await tx.generationTrace.updateMany({ where: { id: traceId }, data: { applicationId: application.id } });
     if (claim.kind === "manual") {
       const key = `${CLAIMED}${application.id}`;
       await tx.job.updateMany({ where: { id: { in: [claim.writeJobId, claim.readJobId] } }, data: { key, applicationId: application.id } });
+      await tx.generationTrace.updateMany({ where: { id: { in: [claim.writeJobId, claim.readJobId] } }, data: { applicationId: application.id } });
       // The posting it came from shows it as applied for (E14-8); one already linked keeps its application.
       if (claim.postingId) {
         await tx.posting.updateMany({ where: { id: claim.postingId, applicationId: null }, data: { applicationId: application.id } });

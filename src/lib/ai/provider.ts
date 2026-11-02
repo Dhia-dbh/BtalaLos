@@ -1,3 +1,4 @@
+import { recordGenerationCall, type TokenUsage } from "@/lib/generation-telemetry";
 import { prettifyError, toJSONSchema, type z } from "zod";
 
 import type { AiProvider as AiProviderKind, Creativity } from "@/generated/prisma/enums";
@@ -62,7 +63,7 @@ export type ChatCall = {
 };
 
 /** What one chat call got back; `cutOff` when the model hit its token limit mid-answer. */
-export type ChatAnswer = { text: string; cutOff: boolean };
+export type ChatAnswer = { text: string; cutOff: boolean; usage?: TokenUsage; effort?: string | null };
 
 /** SET-3 creativity as a sampling temperature. */
 export const TEMPERATURES: Record<Creativity, number> = {
@@ -102,19 +103,28 @@ export abstract class BaseProvider implements AIProvider {
     const model = this.requireModel();
     const schema = "schema" in request ? request.schema : undefined;
     const call = (messages: ChatMessage[]) =>
-      this.guard(model, request.signal, (signal) =>
-        this.chat({
-          model,
-          system: request.system,
-          messages,
-          temperature: request.creativity && this.acceptsTemperature() ? TEMPERATURES[request.creativity] : undefined,
-          effort: request.effort,
-          thinking: request.thinking,
-          json: schema ? { schema, name: ("schemaName" in request && request.schemaName) || "result" } : undefined,
-          maxTokens: request.maxTokens ?? DEFAULT_MAX_TOKENS,
-          signal,
-        }),
-      );
+      this.guard(model, request.signal, async (signal) => {
+        const startedAt = new Date().toISOString();
+        let answer: ChatAnswer;
+        try {
+          answer = await this.chat({
+            model,
+            system: request.system,
+            messages,
+            temperature: request.creativity && this.acceptsTemperature() ? TEMPERATURES[request.creativity] : undefined,
+            effort: request.effort,
+            thinking: request.thinking,
+            json: schema ? { schema, name: ("schemaName" in request && request.schemaName) || "result" } : undefined,
+            maxTokens: request.maxTokens ?? DEFAULT_MAX_TOKENS,
+            signal,
+          });
+        } catch (error) {
+          await recordGenerationCall({ provider: this.kind, model, effort: null, usage: null, startedAt, finishedAt: new Date().toISOString() });
+          throw error;
+        }
+        await recordGenerationCall({ provider: this.kind, model, effort: answer.effort ?? null, usage: answer.usage ?? null, startedAt, finishedAt: new Date().toISOString() });
+        return answer;
+      });
 
     const answer = await call(request.messages);
     if (!schema) return answer.text;

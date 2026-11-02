@@ -119,5 +119,5 @@ if (args[0] === "app-server") {
       }),
     );
   } else
-    console.log(JSON.stringify({ structured_output: answer, is_error: false }));
+    console.log(JSON.stringify({ structured_output: answer, is_error: false, usage: { input_tokens: 10, output_tokens: 10 } }));
 }

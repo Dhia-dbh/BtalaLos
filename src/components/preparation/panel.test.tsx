@@ -163,3 +163,14 @@ it("shows a failed step and offers explicit retry while preserving the previous 
   await user.click(screen.getByRole("button", { name: "Retry failed step" }));
   expect(preparationRequest).toHaveBeenCalledWith("retry", { runId: "run1" });
 });
+
+it("keeps polling and actions disabled until usage finalization completes", async () => {
+  vi.stubGlobal("fetch", vi.fn(async () => Response.json({
+    ...view,
+    generationTraces: [{ id: "trace", type: "prepare-application", stages: [{
+      name: "Draft application email", status: "RUNNING", startedAt: new Date().toISOString(), calls: [],
+    }] }],
+  })));
+  render(<PreparationPanel applicationId="app1" latex />);
+  expect(await screen.findByRole("button", { name: "Prepare with AI" })).toBeDisabled();
+});

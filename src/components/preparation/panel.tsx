@@ -1,4 +1,6 @@
 "use client";
+import { GenerationProgress } from "./generation-progress";
+import { progressSegments, type Trace } from "@/lib/generation-progress";
 import Link from "next/link";
 import { BrowserRuns } from "@/components/browser/runs";
 import { useRouter } from "next/navigation";
@@ -39,7 +41,11 @@ type View = {
   packageProfileId: string | null;
   emailThreadId: string | null;
   profiles: { id: string; name: string }[];
+  generationTraces?: Trace[];
   preparations: {
+    kind?: string;
+    jobId?: string;
+    documentMode?: string;
     id: string;
     status: string;
     error: string | null;
@@ -103,7 +109,7 @@ export function PreparationPanel({
   const active =
     data?.preparations.some((run) =>
       ["QUEUED", "RUNNING"].includes(run.status),
-    ) ?? false;
+    ) || data?.generationTraces?.some((trace) => trace.stages.some((stage) => stage.status === "RUNNING")) || false;
   useEffect(() => {
     if (!active) return;
     const timer = setInterval(
@@ -278,11 +284,14 @@ export function PreparationPanel({
             {run.error}
           </p>
         )}
+        <GenerationProgress segments={run ? progressSegments(run.documentMode ?? data.documentMode, run.kind ?? "prepare", run.status, run.steps) : []} traces={data.generationTraces ?? []} active={active} currentCli={latex ? data.cli : undefined} incompleteHistory={data.preparations.some((preparation) => !data.generationTraces?.some((trace) => trace.id === preparation.jobId))} />
         {run && (
+          <details>
+          <summary className="cursor-pointer text-sm">Generation tasks</summary>
           <ol className="divide-y divide-line">
             {run.steps.map((step) => (
               <li key={step.name} className="py-3">
-                <details open={step.status !== "DONE"}>
+                <details>
                   <summary className="cursor-pointer text-sm">
                     <span className="mr-3 text-muted">
                       {step.status.toLowerCase()}
@@ -310,6 +319,7 @@ export function PreparationPanel({
               </li>
             ))}
           </ol>
+          </details>
         )}
         {data.preparations.length > 1 && (
           <details>

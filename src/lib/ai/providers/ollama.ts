@@ -45,7 +45,7 @@ export class OllamaProvider extends BaseProvider {
       format: call.json ? z.toJSONSchema(call.json.schema) : undefined,
       options: { temperature: call.temperature, num_predict: call.maxTokens, num_ctx: CONTEXT_TOKENS },
     });
-    return { text: response.message.content, cutOff: response.done_reason === "length" };
+    return { text: response.message.content, cutOff: response.done_reason === "length", effort: call.thinking === true ? "on" : call.thinking || "off", ...(typeof response.prompt_eval_count === "number" && typeof response.eval_count === "number" ? { usage: { input: response.prompt_eval_count, output: response.eval_count } } : {}) };
   }
 
   protected async fetchModels(signal: AbortSignal): Promise<string[]> {

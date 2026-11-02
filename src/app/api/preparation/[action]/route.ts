@@ -65,6 +65,7 @@ export const GET = route<RouteContext<"/api/preparation/[action]">>(
           title: true,
           emailThreadId: true,
           documents: { where: { kind: "EMAIL" }, select: { units: true } },
+          generationTraces: { orderBy: { createdAt: "asc" } },
           preparations: { orderBy: { createdAt: "desc" }, take: 20 },
           artifacts: {
             orderBy: { createdAt: "desc" },
@@ -102,6 +103,8 @@ export const GET = route<RouteContext<"/api/preparation/[action]">>(
         preparations: application.preparations.map((run) => ({
           id: run.id,
           kind: run.kind,
+          jobId: run.jobId,
+          documentMode: (run.snapshot as { mode?: string }).mode ?? application.documentMode,
           status: run.status,
           error: run.error,
           createdAt: run.createdAt,

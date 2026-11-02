@@ -123,7 +123,7 @@ export class OpenAICompatibleProvider extends BaseProvider {
     const choice = completion.choices[0];
     // Mistral says `model_length` when the context ran out instead.
     const finish: string | undefined = choice?.finish_reason;
-    return { text: answerText(choice?.message?.content), cutOff: finish === "length" || finish === "model_length" };
+    return { text: answerText(choice?.message?.content), cutOff: finish === "length" || finish === "model_length", effort: effort ?? null, ...(completion.usage ? { usage: { input: completion.usage.prompt_tokens, output: completion.usage.completion_tokens, cachedInput: completion.usage.prompt_tokens_details?.cached_tokens ?? 0 } } : {}) };
   }
 
   protected async fetchModels(signal: AbortSignal): Promise<string[]> {

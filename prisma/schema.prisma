@@ -455,6 +455,7 @@ model Application {
   documentMode        DocumentMode          @default(NATIVE)
   packageProfileId    String?
   packageProfile      ApplicationProfile?   @relation(fields: [packageProfileId], references: [id], onDelete: SetNull)
+  generationTraces    GenerationTrace[]
   preparations        PreparationRun[]
   artifacts           ApplicationArtifact[]
   browserRuns         BrowserRun[]
@@ -1038,5 +1039,16 @@ model Job {
 
   @@index([key, createdAt])
   @@index([status])
+  @@index([applicationId])
+}
+
+model GenerationTrace {
+  id            String       @id
+  applicationId String?
+  application   Application? @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  type          String
+  stages        Json         @default("[]")
+  createdAt     DateTime     @default(now())
+
   @@index([applicationId])
 }

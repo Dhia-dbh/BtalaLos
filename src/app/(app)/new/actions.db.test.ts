@@ -74,6 +74,10 @@ async function finishedJobs() {
       },
     },
   });
+  await prisma().generationTrace.createMany({ data: [
+    { id: "read-job", type: "read-posting", stages: [] },
+    { id: "write-job", type: "write-documents", stages: [] },
+  ] });
 }
 
 beforeEach(async () => {
@@ -108,6 +112,7 @@ describe("createApplication", () => {
   it("creates the draft, both documents in the base theme and the first message, in one go (E7-6)", async () => {
     await finishedJobs();
     const result = await createApplication({ writeJobId: "write-job", details, postingUrl: "jobs.ledgerly.example/42" });
+    if (result.ok) expect(await prisma().generationTrace.count({ where: { applicationId: result.data } })).toBe(2);
     expect(result.ok).toBe(true);
     const id = result.ok ? result.data : "";
     const application = await prisma().application.findUniqueOrThrow({ where: { id }, include: { documents: { orderBy: { kind: "asc" } }, messages: true } });

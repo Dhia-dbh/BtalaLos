@@ -88,7 +88,8 @@ export async function generate(config, input, signal) {
       { binary: config.codex },
       signal,
     );
-    return JSON.parse(answer.text);
+    const data = JSON.parse(answer.text);
+    return input.includeUsage ? { data, provider: input.provider, model: input.model, effort, usage: answer.usage ? { input: answer.usage.input_tokens, output: answer.usage.output_tokens, cachedInput: answer.usage.cached_input_tokens ?? 0 } : null } : data;
   }
   const temporary = await mkdtemp(path.join(tmpdir(), "btalalos-claude-"));
   try {
@@ -122,7 +123,7 @@ export async function generate(config, input, signal) {
       !answer.is_error && answer.structured_output,
       "Claude did not return structured output.",
     );
-    return answer.structured_output;
+    return input.includeUsage ? { data: answer.structured_output, provider: input.provider, model: input.model, effort, usage: answer.usage ? { input: answer.usage.input_tokens + (answer.usage.cache_read_input_tokens ?? 0) + (answer.usage.cache_creation_input_tokens ?? 0), output: answer.usage.output_tokens, cachedInput: answer.usage.cache_read_input_tokens ?? 0 } : null } : answer.structured_output;
   } finally {
     await rm(temporary, { recursive: true, force: true });
   }

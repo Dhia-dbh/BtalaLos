@@ -1,3 +1,4 @@
+import type { GenerationStage } from "@/lib/generation-telemetry";
 import "server-only";
 
 import { Prisma, type PrismaClient } from "@/generated/prisma/client";
@@ -77,7 +78,7 @@ const jsonList = (value: unknown) => (Array.isArray(value) ? value : []) as Pris
  * install's own settings (the usage ping's) stay as they are.
  */
 export async function importExport(db: PrismaClient, data: DossierExport): Promise<void> {
-  const { profile, themes, settings, applications, postings, searches, agentCandidates, startups, startupBlocks, apiKey, jobSourceKeys, packageProfiles, supportingDocuments, preparations, artifacts, browserRuns } = data;
+  const { profile, themes, settings, applications, postings, searches, agentCandidates, startups, startupBlocks, apiKey, jobSourceKeys, packageProfiles, supportingDocuments, preparations, artifacts, browserRuns, generationTraces } = data;
   const fromFile: Record<string, string | null> = {
     apiKeyEnc: apiKey ? encryptApiKey(apiKey) : null,
     jsearchKeyEnc: jobSourceKeys?.jsearch ? encryptSecret(JOB_SOURCE_KEY, jobSourceKeys.jsearch) : null,
@@ -89,6 +90,7 @@ export async function importExport(db: PrismaClient, data: DossierExport): Promi
       // Out with the old. Applications take their history, documents, chat,
       // notes and jobs along; the other jobs (a resume import, postings read
       // for applications never created) hold the old data too.
+      await tx.generationTrace.deleteMany();
       await tx.job.deleteMany();
       await tx.posting.deleteMany();
       await tx.postingSearch.deleteMany();
@@ -150,6 +152,7 @@ export async function importExport(db: PrismaClient, data: DossierExport): Promi
           match: json(application.match),
         })),
       });
+      await tx.generationTrace.createMany({ data: generationTraces.filter((entry) => applications.some((application) => application.id === entry.applicationId)).map((entry) => ({ ...entry, stages: (entry.stages as GenerationStage[]).map((stage) => stage.status === "RUNNING" ? { ...stage, status: "FAILED", finishedAt: stage.calls.at(-1)?.finishedAt ?? stage.startedAt } : stage) as unknown as Prisma.InputJsonValue })) });
       await tx.preparationRun.createMany({ data: preparations.map((entry) => ({ ...entry, snapshot: { ...(entry.snapshot as object ?? {}), restored: true }, steps: (entry.steps ?? []) as Prisma.InputJsonValue, status: ["QUEUED", "RUNNING"].includes(entry.status) ? "FAILED" : entry.status, activeKey: null, jobId: null })) });
       await tx.applicationArtifact.createMany({ data: artifacts.map((entry) => ({ ...entry, manifest: { ...(entry.manifest as object), restored: true } })) });
       for (const entry of browserRuns) {
