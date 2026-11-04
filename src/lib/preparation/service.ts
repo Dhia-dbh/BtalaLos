@@ -28,6 +28,7 @@ import {
 import { checksum, workerOperation } from "./worker";
 import { saveBytes, verifiedBytes } from "./storage";
 import { applicationLinks, verifyApplicationRoute } from "./application-route";
+import { changedCvHeading } from "./cv-headings";
 
 const json = (value: unknown) =>
   JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
@@ -54,6 +55,7 @@ type Snapshot = {
   company: string;
   role: string;
   files?: Record<string, string>;
+  masterCv?: string;
   commit?: string;
   nativeContextHash?: string;
   nativeHashes: Record<string, string>;
@@ -208,6 +210,16 @@ export async function queuePreparation(
     });
     snapshot.files = inspected.files;
     snapshot.commit = inspected.commit;
+    if (prior && !(prior.manifest as { restored?: boolean }).restored) {
+      const master = await workerOperation<{ files: Record<string, string> }>(`inspect-master-${applicationId}-${Date.now()}`, {
+        kind: "inspect",
+        ...project,
+        baseRef: "master",
+      });
+      snapshot.masterCv = master.files[project.cvPath];
+    } else {
+      snapshot.masterCv = inspected.files[project.cvPath];
+    }
   }
   let run;
   try {
@@ -502,10 +514,16 @@ async function runPreparation(
           generate(
             name,
             z.object({ files: z.array(z.object({ path: z.enum(allowed as [string, ...string[]]), content: z.string().max(1_048_576) })).length(allowed.length) }),
-            `${LATEX_DOCUMENT_RULES}\nCV INSTRUCTIONS:\n${snapshot.prompts?.latexCvPrompt ?? DEFAULT_GENERATION_PROMPTS.latexCvPrompt}\nMOTIVATION LETTER INSTRUCTIONS:\n${snapshot.prompts?.latexLetterPrompt ?? DEFAULT_GENERATION_PROMPTS.latexLetterPrompt}\nAPPLICATION INSTRUCTIONS:\n${instruction}\nJOB DATA:\n${JSON.stringify(analysis)}\nPOSTING:\n${snapshot.posting}\nOTHER RELEVANT INFORMATION:\n${JSON.stringify(snapshot.otherRelevantInformation)}\nSELECTED CONTEXT:\n${JSON.stringify(contextText)}\nSOURCE FILES:\n${JSON.stringify(Object.fromEntries(allowed.map((file) => [file, files[file]])))}`,
+            `${LATEX_DOCUMENT_RULES}\nCV INSTRUCTIONS:\n${snapshot.prompts?.latexCvPrompt ?? DEFAULT_GENERATION_PROMPTS.latexCvPrompt}\nMOTIVATION LETTER INSTRUCTIONS:\n${snapshot.prompts?.latexLetterPrompt ?? DEFAULT_GENERATION_PROMPTS.latexLetterPrompt}\nAPPLICATION INSTRUCTIONS:\n${instruction}\nJOB DATA:\n${JSON.stringify(analysis)}\nPOSTING:\n${snapshot.posting}\nOTHER RELEVANT INFORMATION:\n${JSON.stringify(snapshot.otherRelevantInformation)}\nSELECTED CONTEXT:\n${JSON.stringify(contextText)}\nMASTER CV REFERENCE:\n${JSON.stringify(snapshot.masterCv ?? files[snapshot.project.cvPath])}\nSOURCE FILES:\n${JSON.stringify(Object.fromEntries(allowed.map((file) => [file, files[file]])))}`,
           ),
         );
         const applied = await step(`${name}: apply`, async () => {
+          const cv = replacements.files.find((file) => file.path === snapshot.project.cvPath);
+          if (cv) {
+            const heading = changedCvHeading(`${snapshot.masterCv ?? ""}\n${files[cv.path]}`, cv.content);
+            if (heading !== undefined)
+              throw new ActionError(`CV section heading was changed or added: ${heading}. Keep the original headings and start a fresh revision.`);
+          }
           const result = await operation<{
             files: Record<string, string>;
             diff: string;
