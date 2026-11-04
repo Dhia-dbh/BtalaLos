@@ -7,7 +7,7 @@ import type { JobSource } from "./search";
 // fetching a posting (src/lib/posting-fetch.ts) there's no address to guard;
 // requests are still limited in time and size.
 
-export const REQUEST_TIMEOUT_MS = 10_000;
+export const REQUEST_TIMEOUT_MS = 60_000;
 const MAX_BYTES = 5 * 1024 * 1024;
 
 /** GETs JSON from a source, turning every failure into a JobSearchError. */
