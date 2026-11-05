@@ -75,7 +75,7 @@ export function JobSearchSection({ initial }: { initial: JobSearchSettingsView }
     apply(toastResult(await track(saveJobSearchDetails({ adzunaAppId: appId }))));
   };
 
-  const saveKey = async (keySource: "JSEARCH" | "ADZUNA", change: { action: "set"; value: string } | { action: "clear" }) => {
+  const saveKey = async (keySource: "JSEARCH" | "ADZUNA" | "FREEHIRE", change: { action: "set"; value: string } | { action: "clear" }) => {
     changed();
     return apply(toastResult(await track(saveJobSourceKey({ source: keySource, change }))));
   };
@@ -165,10 +165,22 @@ export function JobSearchSection({ initial }: { initial: JobSearchSettingsView }
                 />
               </div>
             )}
+            {source === "FREEHIRE" && (
+              <>
+                <p className="text-sm text-muted">No key required for personal use. Add an API key for your account limits. Freehire searches cities without a distance radius.</p>
+                <KeyField
+                  label="API key (optional)"
+                  keyState={view.freehire.keyState}
+                  envName="DOSSIER_FREEHIRE_KEY"
+                  getKey={{ href: SOURCE_INFO.FREEHIRE.keyUrl!, text: "Freehire integrations" }}
+                  onSave={(change) => saveKey("FREEHIRE", change)}
+                />
+              </>
+            )}
             {source === "ARBEITSAGENTUR" && (
               <>
                 <ArbeitsagenturNote accepted={Boolean(view.arbeitsagentur.acceptedAt)} onAccept={acceptArbeitsagentur} />
-                <p className="text-sm text-muted">No key needed. The job agent doesn&apos;t search this source; choose JSearch or Adzuna for it.</p>
+                <p className="text-sm text-muted">No key needed. The job agent doesn&apos;t search this source; choose JSearch, Adzuna or Freehire for it.</p>
               </>
             )}
 

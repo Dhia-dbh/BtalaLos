@@ -120,7 +120,7 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
         <ConnectorSection initial={{ on: settings.connectorEnabledAt !== null }} address={mcpUrl(env.DOSSIER_PUBLIC_URL ?? (await requestOrigin()))} />
       ) : section === "data" ? (
         <DataSection
-          hasApiKey={[settings.apiKeyEnc, settings.jsearchKeyEnc, settings.adzunaKeyEnc].some((key) => key !== null)}
+          hasApiKey={[settings.apiKeyEnc, settings.jsearchKeyEnc, settings.adzunaKeyEnc, settings.freehireKeyEnc].some((key) => key !== null)}
           exportName={exportFileName()}
           backups={{
             on: settings.nightlyBackup,

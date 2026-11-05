@@ -7,6 +7,7 @@ import { cached, remember } from "./cache";
 import { JobSearchError, jobSearchError } from "./errors";
 import { adzuna } from "./adzuna";
 import { arbeitsagentur } from "./arbeitsagentur";
+import { freehire } from "./freehire";
 import { jsearch } from "./jsearch";
 import { postingKey, type FoundPosting, type JobSource, type SearchPage, type SearchQuery } from "./search";
 import { sourceCovers } from "./sources";
@@ -22,6 +23,7 @@ export { JobSearchError } from "./errors";
 const ADAPTERS: { [S in JobSource]: JobSourceAdapter<S> } = {
   JSEARCH: jsearch,
   ADZUNA: adzuna,
+  FREEHIRE: freehire,
   ARBEITSAGENTUR: arbeitsagentur,
 };
 

@@ -48,7 +48,7 @@ export function SearchFields({
         onChange={(event) => onChange({ keywords: event.target.value })}
         onBlur={onBlur}
       />
-      <Input label="Where" value={value.place} placeholder="City or region" onChange={(event) => onChange({ place: event.target.value })} onBlur={onBlur} />
+      <Input label="Where" value={value.place} placeholder={source === "FREEHIRE" ? "City" : "City or region"} onChange={(event) => onChange({ place: event.target.value })} onBlur={onBlur} />
       <Select label="Country" value={value.country} error={errors.country ?? uncovered} onChange={(event) => onChange({ country: event.target.value })}>
         <option value="">Choose a country</option>
         {countries.map((country) => (
@@ -60,8 +60,8 @@ export function SearchFields({
       <Select
         label="Within"
         value={String(value.radiusKm)}
-        disabled={!value.place.trim()}
-        hint={value.place.trim() ? undefined : "Add a place first"}
+        disabled={source === "FREEHIRE" || !value.place.trim()}
+        hint={source === "FREEHIRE" ? "Freehire searches cities without a radius" : value.place.trim() ? undefined : "Add a place first"}
         onChange={(event) => onChange({ radiusKm: Number(event.target.value) as RadiusKm })}
       >
         {RADII_KM.map((km) => (

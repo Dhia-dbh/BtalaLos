@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { adzuna } from "./adzuna";
 import { arbeitsagentur } from "./arbeitsagentur";
+import { freehire } from "./freehire";
 import { EMPTY_QUERY } from "./search";
 
 // Checks against the real Adzuna and Arbeitsagentur services, skipped unless
@@ -32,5 +33,20 @@ describe.runIf(live.has("adzuna") && adzunaKey.appId && adzunaKey.key)("Adzuna (
     expect(page.postings.length).toBeGreaterThan(0);
     expect(page.postings.every((posting) => posting.title && !posting.complete)).toBe(true);
     expect((await adzuna.search({ ...query, keywords: "software developer" }, adzunaKey, page.next)).postings.length).toBeGreaterThan(0);
+  });
+});
+
+
+describe.runIf(live.has("freehire"))("Freehire (live)", { timeout: 60_000 }, () => {
+  it("returns full descriptions and a second page without a key", async () => {
+    const search = { ...EMPTY_QUERY, keywords: "engineer", country: "de", remoteOnly: true };
+    const page = await freehire.search(search, { key: null }, null);
+    expect(page.postings.length).toBeGreaterThan(0);
+    expect(page.postings.every((posting) => posting.title && posting.complete && posting.remote)).toBe(true);
+    expect(page.postings[0].description.length).toBeGreaterThan(100);
+    expect(page.next).toBe("offset:20");
+    const second = await freehire.search(search, { key: null }, page.next);
+    expect(second.postings.length).toBeGreaterThan(0);
+    expect(second.postings[0].externalId).not.toBe(page.postings[0].externalId);
   });
 });

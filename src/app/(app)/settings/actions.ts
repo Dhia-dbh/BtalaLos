@@ -166,14 +166,15 @@ export const saveJobSearchDetails = action(
 /** Saves a source's key, encrypted for job sources only, or removes it. The key never comes back to the browser. */
 export const saveJobSourceKey = action(
   z.object({
-    source: z.enum(["JSEARCH", "ADZUNA"]),
+    source: z.enum(["JSEARCH", "ADZUNA", "FREEHIRE"]),
     change: z.discriminatedUnion("action", [
       z.object({ action: z.literal("set"), value: z.string().trim().min(1).max(1000) }),
       z.object({ action: z.literal("clear") }),
     ]),
   }),
   async ({ source, change }) => {
-    const field = source === "JSEARCH" ? "jsearchKeyEnc" : "adzunaKeyEnc";
+    const fields = { JSEARCH: "jsearchKeyEnc", ADZUNA: "adzunaKeyEnc", FREEHIRE: "freehireKeyEnc" } as const;
+    const field = fields[source];
     const current = await loadSettings();
     await saveSettings({ [field]: applySecretChange(JOB_SOURCE_KEY, current[field], change) });
     return loadView();

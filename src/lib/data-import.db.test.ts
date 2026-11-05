@@ -313,10 +313,11 @@ describe("importExport (E10-6)", () => {
     const file = await asFile();
     expect(file.settings.map((setting) => setting.key)).not.toContain("jsearchKeyEnc");
 
-    await importExport(prisma(), { ...file, jobSourceKeys: { jsearch: "ak-from-file" } });
+    await importExport(prisma(), { ...file, jobSourceKeys: { jsearch: "ak-from-file", freehire: "fh-from-file" } });
     const value = async (key: string) => decryptSecret(JOB_SOURCE_KEY, (await prisma().setting.findUniqueOrThrow({ where: { key } })).value, secret);
     expect(await value("jsearchKeyEnc")).toBe("ak-from-file");
     expect(await value("adzunaKeyEnc")).toBe("adz-current");
+    expect(await value("freehireKeyEnc")).toBe("fh-from-file");
     expect(decryptApiKey((await prisma().setting.findUniqueOrThrow({ where: { key: "apiKeyEnc" } })).value, secret)).toBe("sk-current");
   });
 

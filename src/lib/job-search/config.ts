@@ -21,6 +21,7 @@ export type JobSearchConfig = {
   saved: boolean;
   jsearch: { key: string | null; host: JSearchHost; keyState: JobKeyState };
   adzuna: { appId: string; key: string | null; keyState: JobKeyState };
+  freehire: { key: string | null; keyState: JobKeyState };
   /**
    * The Bundesagentur für Arbeit (#223): whether this server offers it, and
    * when its note was accepted. Its searches wait until then.
@@ -28,15 +29,16 @@ export type JobSearchConfig = {
   arbeitsagentur: { offered: boolean; acceptedAt: string | null };
 };
 
-type SavedJobSettings = Pick<SettingsData, "jobSource" | "jsearchKeyEnc" | "jsearchHost" | "adzunaAppId" | "adzunaKeyEnc" | "arbeitsagenturAcceptedAt">;
+type SavedJobSettings = Pick<SettingsData, "jobSource" | "jsearchKeyEnc" | "jsearchHost" | "adzunaAppId" | "adzunaKeyEnc" | "freehireKeyEnc" | "arbeitsagenturAcceptedAt">;
 type JobEnv = Pick<
   Env,
-  "DOSSIER_JOBS_SOURCE" | "DOSSIER_JSEARCH_KEY" | "DOSSIER_JSEARCH_HOST" | "DOSSIER_ADZUNA_APP_ID" | "DOSSIER_ADZUNA_KEY" | "DOSSIER_JOBS_ARBEITSAGENTUR"
+  "DOSSIER_JOBS_SOURCE" | "DOSSIER_JSEARCH_KEY" | "DOSSIER_JSEARCH_HOST" | "DOSSIER_ADZUNA_APP_ID" | "DOSSIER_ADZUNA_KEY" | "DOSSIER_FREEHIRE_KEY" | "DOSSIER_JOBS_ARBEITSAGENTUR"
 >;
 
 const FROM_ENV: Record<NonNullable<Env["DOSSIER_JOBS_SOURCE"]>, JobSource | null> = {
   jsearch: "JSEARCH",
   adzuna: "ADZUNA",
+  freehire: "FREEHIRE",
   arbeitsagentur: "ARBEITSAGENTUR",
   off: null,
 };
@@ -71,6 +73,7 @@ export function resolveJobSearchConfig(saved: SavedJobSettings, source: JobEnv, 
       appId: saved.adzunaAppId ?? source.DOSSIER_ADZUNA_APP_ID ?? "",
       ...keyOf(saved.adzunaKeyEnc, source.DOSSIER_ADZUNA_KEY, secret),
     },
+    freehire: keyOf(saved.freehireKeyEnc, source.DOSSIER_FREEHIRE_KEY, secret),
     arbeitsagentur: { offered, acceptedAt: saved.arbeitsagenturAcceptedAt },
   };
 }
@@ -96,6 +99,7 @@ export function jobSearchView(config: JobSearchConfig): JobSearchSettingsView {
     source: config.source ?? "OFF",
     jsearch: { host: config.jsearch.host, keyState: config.jsearch.keyState },
     adzuna: { appId: config.adzuna.appId, keyState: config.adzuna.keyState },
+    freehire: { keyState: config.freehire.keyState },
     arbeitsagentur: config.arbeitsagentur,
   };
 }
@@ -128,6 +132,11 @@ export function credentialsFor<S extends JobSource>(config: JobSearchConfig, sou
       const { appId, key, keyState } = config.adzuna;
       if (!key || !appId) throw missing(keyState);
       return { appId, key } as SourceCredentials[S];
+    }
+    case "FREEHIRE": {
+      const { key, keyState } = config.freehire;
+      if (keyState === "unreadable") throw missing(keyState);
+      return { key } as SourceCredentials[S];
     }
     case "ARBEITSAGENTUR": {
       if (!config.arbeitsagentur.offered) throw jobSearchError("off", source);

@@ -185,6 +185,7 @@ describe("job search settings (E14-4)", () => {
         source: "JSEARCH",
         jsearch: { host: "openwebninja", keyState: "none" },
         adzuna: { appId: "", keyState: "none" },
+        freehire: { keyState: "none" },
         arbeitsagentur: { offered: true, acceptedAt: null },
       },
     });
@@ -233,6 +234,18 @@ describe("job search settings (E14-4)", () => {
   it("saves where the JSearch key is from", async () => {
     expect(await saveJobSearchDetails({ jsearchHost: "rapidapi" })).toMatchObject({ ok: true, data: { jsearch: { host: "rapidapi" } } });
     expect((await settings()).jsearchHost).toBe("rapidapi");
+  });
+
+  it("saves Freehire and its optional encrypted key independently", async () => {
+    expect(await saveJobSource({ source: "FREEHIRE" })).toMatchObject({ ok: true, data: { source: "FREEHIRE", freehire: { keyState: "none" } } });
+    await saveJobSourceKey({ source: "FREEHIRE", change: { action: "set", value: "fh_secret" } });
+    const stored = (await settings()).freehireKeyEnc!;
+    expect(stored).not.toContain("fh_secret");
+    expect(decryptSecret(JOB_SOURCE_KEY, stored)).toBe("fh_secret");
+    await saveJobSource({ source: "JSEARCH" });
+    expect((await settings()).freehireKeyEnc).toBe(stored);
+    await saveJobSourceKey({ source: "FREEHIRE", change: { action: "clear" } });
+    expect((await settings()).freehireKeyEnc).toBeNull();
   });
 
   it("tests the chosen source with its key", async () => {

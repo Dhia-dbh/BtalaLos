@@ -8,6 +8,7 @@ export type JobSearchSettingsView = {
   source: JobSource | "OFF";
   jsearch: { host: JSearchHost; keyState: JobKeyState };
   adzuna: { appId: string; keyState: JobKeyState };
+  freehire: { keyState: JobKeyState };
   /** Whether this server offers the Bundesagentur für Arbeit, and when its note was accepted (#223). */
   arbeitsagentur: { offered: boolean; acceptedAt: string | null };
 };
@@ -64,6 +65,16 @@ export const SOURCE_INFO: Record<JobSource, SourceInfo> = {
     // Its terms: "Adzuna" on each displayed advert, at least 116 × 23 px, linked to adzuna.co.uk or the local site.
     attributionLink: { home: "https://www.adzuna.co.uk", local: /^www\.adzuna\.(?:[a-z]{2,3}|co\.[a-z]{2}|com\.[a-z]{2})$/ },
     countries: ["at", "au", "be", "br", "ca", "ch", "de", "es", "fr", "gb", "in", "it", "mx", "nl", "nz", "pl", "sg", "us", "za"],
+  },
+  FREEHIRE: {
+    name: "Freehire",
+    description: "Job search with full descriptions from company sites and job boards.",
+    tag: "No key required · optional key for higher limits",
+    keyUrl: "https://freehire.me/my/integrations/api-keys",
+    quotaPeriod: null,
+    attribution: null,
+    attributionLink: null,
+    countries: null,
   },
   ARBEITSAGENTUR: {
     name: "Bundesagentur für Arbeit",

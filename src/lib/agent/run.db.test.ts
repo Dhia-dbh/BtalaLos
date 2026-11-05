@@ -34,7 +34,7 @@ vi.mock("@/lib/profile-data", async () => {
 const fake = vi.hoisted(() => ({
   postings: [] as FoundPosting[],
   searches: 0,
-  source: "JSEARCH" as "JSEARCH" | "ADZUNA" | "ARBEITSAGENTUR" | null,
+  source: "JSEARCH" as "JSEARCH" | "ADZUNA" | "ARBEITSAGENTUR" | "FREEHIRE" | null,
   ai: true,
   failOn: null as string | null,
   onScore: (() => {}) as (title: string) => void,
@@ -128,6 +128,15 @@ describe("runAgentScan (E16-3)", () => {
     expect((await loadSettings()).agentRuns).toEqual([{ at: now.toISOString(), manual: false, message: "2 new postings are waiting for a look." }]);
   });
 
+  it("scans and stores Freehire candidates with the selected source", async () => {
+    fake.source = "FREEHIRE";
+    fake.postings = [posting("freehire-1", "Product Designer", now.toISOString(), { source: "FREEHIRE" })];
+    const result = await runAgentScan({ manual: false }, context(), now);
+    expect(result.found).toBe(1);
+    expect(result.scored).toBe(1);
+    expect(await prisma().agentCandidate.findFirst({ where: { externalId: "freehire-1" } })).toMatchObject({ source: "FREEHIRE" });
+  });
+
   it("scores the newest new postings first, up to the cap", async () => {
     await saveSettings({ agentMaxScores: 2 });
     const scoredTitles: string[] = [];
@@ -178,7 +187,7 @@ describe("runAgentScan (E16-3)", () => {
     expect(await stop()).toBe("Choose a job source in Settings → Job search first.");
     // It never searches the Bundesagentur für Arbeit on its own (#223).
     fake.source = "ARBEITSAGENTUR";
-    expect(await stop()).toBe("The job agent doesn't search the Bundesagentur für Arbeit. Choose JSearch or Adzuna in Settings → Job search for it.");
+    expect(await stop()).toBe("The job agent doesn't search the Bundesagentur für Arbeit. Choose JSearch, Adzuna or Freehire in Settings → Job search for it.");
     fake.source = "JSEARCH";
     expect(fake.searches).toBe(0);
     expect((await loadSettings()).agentRuns).toEqual([]);

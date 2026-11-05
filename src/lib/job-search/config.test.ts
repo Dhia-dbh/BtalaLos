@@ -12,6 +12,7 @@ const nothingSaved = {
   jsearchHost: "openwebninja" as const,
   adzunaAppId: null,
   adzunaKeyEnc: null,
+  freehireKeyEnc: null,
   arbeitsagenturAcceptedAt: null,
 };
 const ACCEPTED = "2026-10-23T09:00:00.000Z";
@@ -25,6 +26,7 @@ describe("resolveJobSearchConfig", () => {
       source: "OFF",
       jsearch: { host: "openwebninja", keyState: "none" },
       adzuna: { appId: "", keyState: "none" },
+      freehire: { keyState: "none" },
       arbeitsagentur: { offered: true, acceptedAt: null },
     });
   });
@@ -53,6 +55,7 @@ describe("resolveJobSearchConfig", () => {
       jsearchHost: "openwebninja" as const,
       adzunaAppId: "app-saved",
       adzunaKeyEnc: encryptSecret(JOB_SOURCE_KEY, "adz-saved"),
+      freehireKeyEnc: null,
       arbeitsagenturAcceptedAt: null,
     };
     const config = resolveJobSearchConfig(saved, { DOSSIER_JOBS_SOURCE: "jsearch", DOSSIER_JSEARCH_KEY: "ak_env", DOSSIER_JSEARCH_HOST: "rapidapi" });
@@ -134,5 +137,23 @@ describe("requestContext", () => {
   it("leaves sources at their own address, unless the end-to-end tests point them at a fake", () => {
     expect(requestContext("JSEARCH", undefined)).toEqual({});
     expect(requestContext("ADZUNA", "http://127.0.0.1:3998/")).toEqual({ baseUrl: "http://127.0.0.1:3998/adzuna" });
+  });
+});
+
+
+describe("Freehire configuration", () => {
+  it("supports saved and environment choices without a key", () => {
+    const config = resolveJobSearchConfig({ ...nothingSaved, jobSource: "FREEHIRE" }, noEnv);
+    expect(config.source).toBe("FREEHIRE");
+    expect(credentialsFor(config, "FREEHIRE")).toEqual({ key: null });
+    expect(resolveJobSearchConfig(nothingSaved, { DOSSIER_JOBS_SOURCE: "freehire" }).source).toBe("FREEHIRE");
+  });
+
+  it("decrypts its own saved key and exposes only its state", () => {
+    const config = resolveJobSearchConfig({ ...nothingSaved, freehireKeyEnc: encryptSecret(JOB_SOURCE_KEY, "fh_saved") }, { DOSSIER_FREEHIRE_KEY: "fh_env" });
+    expect(credentialsFor(config, "FREEHIRE")).toEqual({ key: "fh_saved" });
+    expect(jobSearchView(config).freehire).toEqual({ keyState: "set" });
+    const unreadable = resolveJobSearchConfig({ ...nothingSaved, freehireKeyEnc: encryptSecret(JOB_SOURCE_KEY, "fh", "b".repeat(32)) }, { DOSSIER_FREEHIRE_KEY: "fh_env" });
+    expect(() => credentialsFor(unreadable, "FREEHIRE")).toThrow(/can't be read/);
   });
 });
