@@ -314,6 +314,7 @@ async function executeOperation(config, input, signal, operationId, temporary) {
       requireValue(file.path.endsWith(".tex"), `Replacement must be a .tex file: ${file.path}.`);
       requireValue(typeof file.content === "string", `Replacement content must be a string: ${file.path}.`);
       requireValue(Buffer.byteLength(file.content) <= 1024 * 1024, `Replacement exceeds 1 MiB: ${file.path}.`);
+      requireValue(file.content.split(/\r?\n/).some((line) => line.trim() && !line.trimStart().startsWith("%")), `Replacement contains only comments or whitespace: ${file.path}. ${file.content.trim()}`);
       const location = await inside(root, file.path);
       requireValue(
         digest(await readFile(location)) === input.expected[file.path],

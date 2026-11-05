@@ -187,6 +187,23 @@ test("rejects traversal, symbolic links, unauthorized replacements and modified 
   );
 });
 
+test("rejects comment-only replacements without changing any sources", async (t) => {
+  const { config, repo, operation } = await fixture(t);
+  const commit = await command("git", ["-C", repo, "rev-parse", "HEAD"]);
+  await operation({ kind: "worktree", repository: repo, applicationId: "app1", commit });
+  await assert.rejects(operation({
+    kind: "apply",
+    applicationId: "app1",
+    expected: { "letter.tex": digest(tex), "cv.tex": digest(tex) },
+    files: [
+      { path: "letter.tex", content: tex.replace("CV", "Letter") },
+      { path: "cv.tex", content: "% Cannot meet the one-page requirement.\n" },
+    ],
+  }), /only comments or whitespace: cv\.tex.*Cannot meet the one-page requirement/);
+  assert.equal(await readFile(path.join(config.data, "worktrees", "app1", "letter.tex"), "utf8"), tex);
+  assert.equal(await readFile(path.join(config.data, "worktrees", "app1", "cv.tex"), "utf8"), tex);
+});
+
 test("rejects source or branch changes before compilation", async (t) => {
   const { config, repo, operation } = await fixture(t);
   const commit = await command("git", ["-C", repo, "rev-parse", "HEAD"]);
