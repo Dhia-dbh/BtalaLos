@@ -8,6 +8,7 @@ import { EMPTY_QUERY, type PostingState, type ShownPosting, type StoredSearch } 
 
 import {
   acceptArbeitsagenturNote,
+  clearScoresAndSearchCache,
   dismissFoundPosting,
   loadFullText,
   removeJobSearch,
@@ -26,6 +27,7 @@ vi.mock("next/link", () => ({ default: ({ href, ...props }: ComponentProps<"a">)
 vi.mock("@/components/toast", () => ({ toast: vi.fn(), toastResult: (result: unknown) => result }));
 vi.mock("./actions", () => ({
   acceptArbeitsagenturNote: vi.fn(),
+  clearScoresAndSearchCache: vi.fn(),
   startApplicationFrom: vi.fn(),
   runJobSearch: vi.fn(),
   removeJobSearch: vi.fn(),
@@ -79,6 +81,7 @@ function renderScreen(props: Partial<ComponentProps<typeof JobsScreen>> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(clearScoresAndSearchCache).mockResolvedValue({ ok: true, data: null });
   vi.mocked(runJobSearch).mockResolvedValue({ ok: true, data: { ok: true, id: "run-2" } });
   vi.mocked(removeJobSearch).mockResolvedValue({ ok: true, data: null, toast: "Search removed." });
   vi.mocked(savePostingForLater).mockResolvedValue({ ok: true, data: { postingId: "p1" } });
@@ -476,5 +479,32 @@ describe("the Saved and Dismissed views (E14-7)", () => {
     expect(restorePosting).toHaveBeenCalledWith({ source: "JSEARCH", externalId: "a", saved: false });
     expect(toast).toHaveBeenCalledWith("Brought back. It'll show in your searches again.");
     expect(screen.queryByRole("button", { name: /^Designer a/ })).not.toBeInTheDocument();
+  });
+});
+
+
+describe("clearing job scores and search cache", () => {
+  it("clears from the page header and refreshes without starting a search", async () => {
+    renderScreen();
+    await userEvent.click(screen.getByRole("button", { name: "Clear scores and search cache" }));
+    expect(clearScoresAndSearchCache).toHaveBeenCalledWith({});
+    expect(router.refresh).toHaveBeenCalledOnce();
+    expect(runJobSearch).not.toHaveBeenCalled();
+  });
+
+  it("removes visible scores when the refreshed search arrives", async () => {
+    const scored = posting("a", { state: { ...state, score: { score: 90, reasons: ["Old profile"], redFlags: [] } } });
+    const { rerender } = renderScreen({ search: stored([scored]) });
+    expect(screen.getAllByRole("img", { name: "Score 90 of 100" }).length).toBeGreaterThan(0);
+    await userEvent.click(screen.getByRole("button", { name: "Clear scores and search cache" }));
+    rerender(<JobsScreen {...screenProps} search={stored([posting("a")])} />);
+    expect(screen.queryByRole("img", { name: "Score 90 of 100" })).not.toBeInTheDocument();
+  });
+
+  it("keeps the page when clearing fails", async () => {
+    vi.mocked(clearScoresAndSearchCache).mockResolvedValue({ ok: false, error: "Could not clear scores." });
+    renderScreen();
+    await userEvent.click(screen.getByRole("button", { name: "Clear scores and search cache" }));
+    expect(router.refresh).not.toHaveBeenCalled();
   });
 });

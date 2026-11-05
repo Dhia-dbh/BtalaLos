@@ -24,7 +24,7 @@ import {
 } from "@/lib/job-search/search";
 import { SOURCE_INFO } from "@/lib/job-search/sources";
 
-import { acceptArbeitsagenturNote, runJobSearch } from "./actions";
+import { acceptArbeitsagenturNote, clearScoresAndSearchCache, runJobSearch } from "./actions";
 import { PastSearches } from "./past-searches";
 import { PostingResults } from "./posting-results";
 import { RemoteOnlyField, SearchFields, uncoveredCountry } from "./search-fields";
@@ -75,12 +75,25 @@ export function JobsScreen({
 }: JobsScreenProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [clearing, startClearing] = useTransition();
+  const [resultsVersion, setResultsVersion] = useState(0);
+  const clearScoresAndCache = () => startClearing(async () => {
+    const result = toastResult(await clearScoresAndSearchCache({}));
+    if (!result.ok) return;
+    setResultsVersion((version) => version + 1);
+    router.refresh();
+  });
   // A search that didn't work, with what was asked, for Try again.
   const [failed, setFailed] = useState<{ problem: Problem; query: SearchQuery } | null>(null);
   const header = (
     <>
       <PageHeader
         title="Find jobs"
+        actions={
+          <Button variant="secondary" size="sm" onClick={clearScoresAndCache} disabled={pending || clearing}>
+            {clearing ? "Clearing…" : "Clear scores and search cache"}
+          </Button>
+        }
         description={`Search ${source ? SOURCE_INFO[source].name : "job postings"} for postings near you, then start an application from the one you like.`}
       />
       <ViewTabs view={view} counts={counts} />
@@ -100,7 +113,7 @@ export function JobsScreen({
     return (
       <>
         {header}
-        <PostingResults key={view} mode={view} postings={kept} today={today} scoreInClaude={scoreInClaude} />
+        <PostingResults key={`${view}:${resultsVersion}:${JSON.stringify(kept.map((posting) => posting.state.score))}`} mode={view} postings={kept} today={today} scoreInClaude={scoreInClaude} />
       </>
     );
   }
@@ -147,7 +160,7 @@ export function JobsScreen({
           <SearchProblem problem={failed.problem.problem} message={failed.problem.message} onRetry={() => run(failed.query)} />
         ) : search ? (
           <PostingResults
-            key={search.id}
+            key={`${search.id}:${resultsVersion}:${JSON.stringify(search.postings.map((posting) => posting.state.score))}`}
             mode="search"
             search={search}
             today={today}

@@ -5,6 +5,7 @@ import { z } from "zod";
 import { action, ActionError } from "@/lib/action";
 import { isAiConfigured, isAiUsable } from "@/lib/ai/config";
 import { handOffFoundPosting, handsOffToClaude } from "@/lib/connector/handoff";
+import { clearJobSearchCache } from "@/lib/job-search/cache";
 import { loadJobSearchConfig } from "@/lib/job-search/config";
 import { fullText } from "@/lib/job-search/find";
 import { foundPostingSchema, JOB_SOURCES, searchQuerySchema } from "@/lib/job-search/search";
@@ -12,6 +13,7 @@ import { findUnfinishedJobs, startJob } from "@/lib/jobs/runner";
 import { scoreJobKey, scorePostingJob } from "@/lib/jobs/score-posting";
 import { removeSearch, runSearch, showMoreFor } from "@/lib/posting-searches";
 import { dismissPosting, savePosting, storePosting, unmarkPosting } from "@/lib/postings";
+import { prisma } from "@/lib/prisma";
 import { saveSettings } from "@/lib/settings-data";
 
 // Find jobs (E14-6). Each search is kept with what it found (E14-10).
@@ -39,6 +41,13 @@ export const showMorePostings = action(z.object({ searchId }), ({ searchId }) =>
 export const removeJobSearch = action(z.object({ id: searchId }), async ({ id }, { toast }) => {
   await removeSearch(id);
   toast("Search removed. Saved postings from it stay in Saved.");
+  return null;
+});
+
+export const clearScoresAndSearchCache = action(z.object({}), async (_, { toast }) => {
+  await prisma.postingScore.deleteMany();
+  clearJobSearchCache();
+  toast("Job-fit scores and search cache cleared. Search or score again to retry.");
   return null;
 });
 

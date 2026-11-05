@@ -1,7 +1,7 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { json, stubFetch } from "@/lib/ai/test-http";
-import { clearJobSearchCache } from "@/lib/job-search/cache";
+import { cached, clearJobSearchCache, remember } from "@/lib/job-search/cache";
 import { EMPTY_QUERY, type FoundPosting } from "@/lib/job-search/search";
 import { encryptSecret, JOB_SOURCE_KEY } from "@/lib/secrets";
 import { saveSettings } from "@/lib/settings-data";
@@ -9,6 +9,7 @@ import { createTestClient, resetDatabase } from "@/test/db";
 import { jsearchV2LastPage } from "@/test/job-search-fixtures";
 
 import {
+  clearScoresAndSearchCache,
   dismissFoundPosting,
   loadFullText,
   removeJobSearch,
@@ -66,6 +67,26 @@ afterEach(() => vi.unstubAllGlobals());
 afterAll(() => prisma().$disconnect());
 
 describe("Find jobs actions", () => {
+  it("clears all job-fit scores and cached searches and details while preserving search history and saved postings", async () => {
+    const requests = stubFetch(() => json(jsearchV2LastPage));
+    await runJobSearch({ query });
+    await runJobSearch({ query });
+    expect(requests).toHaveLength(1);
+    await savePostingForLater({ posting });
+    await prisma().postingScore.createMany({ data: [
+      { source: "JSEARCH", externalId: posting.externalId, score: 90, reasons: ["Old profile"], redFlags: [], scoredWith: "test" },
+      { source: "FREEHIRE", externalId: "fh-1", score: 70, reasons: [], redFlags: [], scoredWith: "test" },
+    ] });
+    remember("details:JSEARCH:job-1", "Old description");
+    expect(await clearScoresAndSearchCache({})).toMatchObject({ ok: true });
+    expect(await prisma().postingScore.count()).toBe(0);
+    expect(cached("details:JSEARCH:job-1")).toBeUndefined();
+    expect(await prisma().postingSearch.count()).toBe(2);
+    expect(await prisma().posting.count()).toBe(1);
+    await runJobSearch({ query });
+    expect(requests).toHaveLength(2);
+  });
+
   it("runs a search and keeps it, adds its next page, and removes it (E14-10)", async () => {
     stubFetch(() => json({ ...jsearchV2LastPage, data: { ...jsearchV2LastPage.data, cursor: "MORE" } }));
     const run = await runJobSearch({ query });
