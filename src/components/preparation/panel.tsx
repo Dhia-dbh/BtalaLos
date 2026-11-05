@@ -8,7 +8,7 @@ import Link from "next/link";
 import { BrowserRuns } from "@/components/browser/runs";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { FolderOpen } from "lucide-react";
+import { AlertCircle, FolderOpen } from "lucide-react";
 import { Button, buttonClassName } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -87,6 +87,9 @@ export function PreparationPanel({
   const [busy, setBusy] = useState(false),
     [preview, setPreview] = useState("");
   const [manualCompose, setManualCompose] = useState(false);
+  const [explanation, setExplanation] = useState<{ key: string; text: string } | null>(null);
+  const [explaining, setExplaining] = useState(false);
+  const [explainError, setExplainError] = useState("");
   const [editEmail, setEditEmail] = useState(false),
     [parts, setParts] = useState({ to: "", subject: "", body: "" });
   const load = useCallback(async () => {
@@ -271,9 +274,30 @@ export function PreparationPanel({
           current supporting documents and profile order.
         </p>
         {run?.error && (
-          <p role="alert" className="whitespace-pre-wrap text-sm text-danger">
-            {run.error}
-          </p>
+          <section aria-label="Preparation error" className="rounded-control border border-danger/30 bg-danger/5 p-4">
+            <div className="flex items-start gap-3">
+              <AlertCircle size={20} className="mt-0.5 shrink-0 text-danger" aria-hidden="true" />
+              <div className="min-w-0 flex-1 space-y-3">
+                <div role="alert">
+                  <h3 className="font-medium">Preparation stopped</h3>
+                  <p className="mt-1 break-words text-sm text-muted">{run.error.split("\n")[0]}</p>
+                </div>
+                {/* <p className="text-sm text-muted">Ask your configured AI provider to explain this error and suggest next steps. The error log will be sent to that provider.</p> */}
+                <Button variant="secondary" disabled={explaining} onClick={async () => {
+                  const key = `${run.id}:${run.error}`;
+                  setExplaining(true); setExplainError(""); setExplanation(null);
+                  try {
+                    const result = await preparationRequest<{ explanation: string }>("explain-error", { applicationId, runId: run.id });
+                    setExplanation({ key, text: result.explanation });
+                  } catch (failure) { setExplainError((failure as Error).message); }
+                  finally { setExplaining(false); }
+                }}>{explaining ? "Explaining…" : "Explain error"}</Button>
+                {explainError && <p role="alert" className="text-sm text-danger">{explainError}</p>}
+                {explanation?.key === `${run.id}:${run.error}` && <div className="rounded-control border border-line bg-canvas p-3"><h4 className="text-sm font-medium">AI explanation</h4><p className="mt-2 whitespace-pre-wrap break-words text-sm">{explanation.text}</p></div>}
+                <details><summary className="cursor-pointer text-sm underline">Show error details</summary><pre className="mt-2 max-h-72 overflow-auto whitespace-pre-wrap break-words text-xs">{run.error}</pre></details>
+              </div>
+            </div>
+          </section>
         )}
         <GenerationProgress segments={run ? progressSegments(run.documentMode ?? data.documentMode, run.kind ?? "prepare", run.status, run.steps) : []} traces={data.generationTraces ?? []} active={active} currentCli={latex ? data.cli : undefined} incompleteHistory={data.preparations.some((preparation) => !data.generationTraces?.some((trace) => trace.id === preparation.jobId))} />
         {run && (

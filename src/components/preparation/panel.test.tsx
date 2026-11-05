@@ -160,6 +160,10 @@ it("shows a failed step and offers explicit retry while preserving the previous 
   const user = userEvent.setup();
   render(<PreparationPanel applicationId="app1" latex />);
   expect(await screen.findByRole("alert")).toHaveTextContent("Compiler failed");
+  vi.mocked(preparationRequest).mockResolvedValueOnce({ explanation: "Check the LaTeX source." } as never);
+  await user.click(screen.getByRole("button", { name: "Explain error" }));
+  expect(preparationRequest).toHaveBeenCalledWith("explain-error", { applicationId: "app1", runId: "run1" });
+  expect(await screen.findByText("Check the LaTeX source.")).toBeInTheDocument();
   expect(
     screen.getByRole("link", { name: "Download BenHamouda_Dhia.pdf" }),
   ).toBeInTheDocument();
