@@ -20,6 +20,7 @@ const row = (id: string, extra: Partial<Sortable> = {}): Sortable & { id: string
   match: null,
   location: "",
   sentAt: null,
+  deadlineAt: null,
   updatedAt: new Date(2026, 8, 1),
   ...extra,
 });
@@ -73,6 +74,13 @@ describe("sortRows (E9-3)", () => {
     const rows = [row("draft"), row("aug", { sentAt: new Date(2026, 7, 10) }), row("sep", { sentAt: new Date(2026, 8, 10) })];
     expect(ids(sortRows(rows, { key: "sent", reversed: false }))).toEqual(["sep", "aug", "draft"]);
     expect(ids(sortRows(rows, { key: "sent", reversed: true }))).toEqual(["aug", "sep", "draft"]);
+  });
+
+  it("sorts deadlines chronologically and keeps unknown dates last", () => {
+    const rows = [row("unknown"), row("later", { deadlineAt: new Date("2027-01-02") }), row("earlier", { deadlineAt: new Date("2026-12-31") })];
+    expect(ids(sortRows(rows, { key: "deadline", reversed: false }))).toEqual(["earlier", "later", "unknown"]);
+    expect(ids(sortRows(rows, { key: "deadline", reversed: true }))).toEqual(["later", "earlier", "unknown"]);
+    expect(parseListParams({ sort: "-deadline" }).sort).toEqual({ key: "deadline", reversed: true });
   });
 
   it("sorts roles and locations alphabetically, ignoring case", () => {
