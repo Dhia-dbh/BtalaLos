@@ -69,8 +69,8 @@ describe("the board (E9-2)", () => {
     open();
     const cards = within(column("Sent")).getAllByRole("listitem");
     expect(cards.map((card) => within(card).getByRole("link").textContent)).toEqual(["Product Designer, Onboarding", "Product Designer, Mobile"]);
-    expect(cards[0]).toHaveTextContent("Meridian BankProduct Designer, OnboardingRemote5/7 match2 days ago");
-    expect(cards[1]).toHaveTextContent("Kestrel MapsProduct Designer, MobileAmsterdam · HybridNot matched8 days ago");
+    expect(cards[0]).toHaveTextContent("Meridian BankProduct Designer, OnboardingRemote+5/7 match2 days ago");
+    expect(cards[1]).toHaveTextContent("Kestrel MapsProduct Designer, MobileAmsterdam · Hybrid+Not matched8 days ago");
     expect(within(cards[0]).getByRole("link")).toHaveAttribute("href", "/applications/meridian");
   });
 
