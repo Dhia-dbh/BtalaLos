@@ -19,6 +19,7 @@ const COLUMNS: { key: SortKey; label: string; className: string }[] = [
   { key: "match", label: "Match", className: "w-[76px]" },
   { key: "location", label: "Location", className: "w-[18%]" },
   { key: "sent", label: "Sent", className: "w-[88px]" },
+  { key: "deadline", label: "Deadline", className: "w-[118px]" },
   { key: "updated", label: "Updated", className: "w-[118px]" },
 ];
 
@@ -49,7 +50,7 @@ export function Table({
   return (
     // Relative, so screen-reader-only text is clipped with the table.
     <div className="relative mx-10 mb-16 overflow-x-auto rounded-panel border border-line-card bg-card">
-      <table className="w-full min-w-[820px] table-fixed border-collapse text-left">
+      <table className="w-full min-w-[940px] table-fixed border-collapse text-left">
         <thead>
           <tr className="border-b border-line">
             {COLUMNS.map((column) => {
@@ -119,6 +120,7 @@ export function Table({
               <td className="py-3.5 pr-4 text-sm tabular-nums">{row.match ? `${row.match.hit}/${row.match.total}` : "Not matched"}</td>
               <td className="truncate py-3.5 pr-4 text-sm text-muted">{row.location || "Not given"}</td>
               <td className="py-3.5 pr-4 text-sm text-muted">{row.sent ?? "Not sent"}</td>
+              <td className="py-3.5 pr-4 text-sm text-muted">{row.deadline ?? "No deadline"}</td>
               <td className="py-3.5 pr-4 text-sm text-muted">{row.updated}</td>
               <td className="py-3.5 pr-3 text-right">
                 <RowMenu row={row} onMove={(to) => onMove(row, to)} />

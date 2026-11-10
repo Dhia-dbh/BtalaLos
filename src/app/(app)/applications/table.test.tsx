@@ -28,7 +28,7 @@ const row = (id: string, extra: Partial<ApplicationRow> = {}): ApplicationRow =>
   updatedAt: Date.UTC(2026, 8, 26),
   ...extra,
 });
-const rows = [row("kestrel", { company: "Kestrel Maps", role: "Product Designer, Mobile", match: null }), row("draft", { status: "DRAFT", sent: null, location: "" })];
+const rows = [row("kestrel", { company: "Kestrel Maps", role: "Product Designer, Mobile", match: null, deadline: "31 Dec 2026" }), row("draft", { status: "DRAFT", sent: null, location: "" })];
 const params: ListParams = { view: "table", filter: "all", q: "", sort: DEFAULT_SORT, archived: false };
 const open = (extra: Partial<ListParams> = {}) =>
   render(<ApplicationsScreen params={{ ...params, ...extra }} rows={rows} counts={{ all: 2, active: 2, closed: 0 }} summary="2 applications" empty={false} archivedCount={0} />);
@@ -47,6 +47,7 @@ describe("the table (E9-3)", () => {
       "Match",
       "Location",
       "Sent",
+      "Deadline",
       "Updated ↓",
       "Actions",
     ]);
@@ -65,9 +66,11 @@ describe("the table (E9-3)", () => {
       "Not matched",
       "Amsterdam",
       "20 Sep",
+      "31 Dec 2026",
       "2 days ago",
       "⋯",
     ]);
+    expect(within(draft).getByText("No deadline")).toBeInTheDocument();
     expect(within(draft).getAllByRole("cell").slice(2, 5).map((cell) => cell.textContent)).toEqual(["5/7", "Not given", "Not sent"]);
   });
 
@@ -82,6 +85,18 @@ describe("the table (E9-3)", () => {
     expect(screen.getByRole("columnheader", { name: /Match/ })).toHaveAttribute("aria-sort", "descending");
     await user.click(screen.getByRole("button", { name: "Match" }));
     expect(router.push).toHaveBeenLastCalledWith("/applications?view=table&sort=-match", { scroll: false });
+  });
+
+  it("sorts deadlines in both directions", async () => {
+    const user = userEvent.setup();
+    const { unmount } = open();
+    await user.click(screen.getByRole("button", { name: "Deadline" }));
+    expect(router.push).toHaveBeenLastCalledWith("/applications?view=table&sort=deadline", { scroll: false });
+    unmount();
+    open({ sort: { key: "deadline", reversed: false } });
+    expect(screen.getByRole("columnheader", { name: /Deadline/ })).toHaveAttribute("aria-sort", "ascending");
+    await user.click(screen.getByRole("button", { name: /Deadline/ }));
+    expect(router.push).toHaveBeenLastCalledWith("/applications?view=table&sort=-deadline", { scroll: false });
   });
 
   it("names A to Z ascending", () => {

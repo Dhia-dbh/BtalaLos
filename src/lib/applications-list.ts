@@ -24,14 +24,14 @@ export function statusesIn(filter: Filter): ApplicationStatus[] {
 }
 
 /** The table's sortable columns. */
-export const SORT_KEYS = ["role", "status", "match", "location", "sent", "updated"] as const;
+export const SORT_KEYS = ["role", "status", "match", "location", "sent", "deadline", "updated"] as const;
 export type SortKey = (typeof SORT_KEYS)[number];
 /** A column and whether it's reversed from its natural order, which comes first. */
 export type Sort = { key: SortKey; reversed: boolean };
 
 /**
  * Each column's natural order, the one a first click gives: text A to Z,
- * statuses in pipeline order, and the best match or the latest date first.
+ * statuses in pipeline order, the best match first, and dates by relevance.
  */
 export const NATURAL_ORDER: Record<SortKey, "ascending" | "descending"> = {
   role: "ascending",
@@ -39,6 +39,7 @@ export const NATURAL_ORDER: Record<SortKey, "ascending" | "descending"> = {
   match: "descending",
   location: "ascending",
   sent: "descending",
+  deadline: "ascending",
   updated: "descending",
 };
 
@@ -102,6 +103,7 @@ export type Sortable = {
   match: { hit: number; total: number } | null;
   location: string;
   sentAt: Date | null;
+  deadlineAt: Date | null;
   updatedAt: Date;
 };
 
@@ -110,8 +112,8 @@ const matchRatio = (match: Sortable["match"]) => (match && match.total > 0 ? mat
 const text = (value: string) => value.trim().toLocaleLowerCase();
 
 /**
- * Sorts rows for the table (LST-5). Rows that were never sent stay last
- * under Sent, whichever way it's sorted; ties go to the latest update.
+ * Sorts rows for the table (LST-5). Missing sent dates and deadlines stay last
+ * in either direction; ties go to the latest update.
  */
 export function sortRows<T extends Sortable>(rows: readonly T[], { key, reversed }: Sort): T[] {
   const direction = (NATURAL_ORDER[key] === "ascending" ? 1 : -1) * (reversed ? -1 : 1);
@@ -128,6 +130,9 @@ export function sortRows<T extends Sortable>(rows: readonly T[], { key, reversed
       case "sent":
         if (!a.sentAt || !b.sentAt) return (a.sentAt ? 0 : 1) - (b.sentAt ? 0 : 1);
         return (a.sentAt.getTime() - b.sentAt.getTime()) * direction;
+      case "deadline":
+        if (!a.deadlineAt || !b.deadlineAt) return (a.deadlineAt ? 0 : 1) - (b.deadlineAt ? 0 : 1);
+        return (a.deadlineAt.getTime() - b.deadlineAt.getTime()) * direction;
       case "updated":
         return (a.updatedAt.getTime() - b.updatedAt.getTime()) * direction;
     }

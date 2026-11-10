@@ -149,7 +149,7 @@ describe("the document tabs (E8-2)", () => {
   it("has Resume, Cover letter, Email and the posting with its match", () => {
     render(<ApplicationView {...props} />);
     const tabs = within(screen.getByRole("tablist", { name: "Application" })).getAllByRole("tab");
-    expect(tabs.map((tab) => tab.textContent)).toEqual(["Resume", "Cover letter", "Email", "Job posting · 5/7 match", "Preparation", "Notes"]);
+    expect(tabs.map((tab) => tab.textContent)).toEqual(["Resume", "Cover letter", "Email", "Overview · 5/7 match", "Preparation", "Notes"]);
     expect(screen.getByRole("tab", { name: "Resume" })).toHaveAttribute("aria-selected", "true");
   });
 
@@ -164,7 +164,7 @@ describe("the document tabs (E8-2)", () => {
 
   it("opens on the tab from the URL", () => {
     render(<ApplicationView {...props} initialTab="posting" />);
-    expect(screen.getByRole("tab", { name: /Job posting/ })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: /Overview/ })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByText(/Ledgerly is hiring\./)).toHaveTextContent("Ledgerly is hiring. - Figma");
     // The application's facts for the AI come first (APP-15).
     const facts = screen.getByRole("region", { name: "Facts for this application" });
@@ -275,7 +275,7 @@ describe("the document tabs (E8-2)", () => {
   it("says so when a document is missing", () => {
     render(<ApplicationView {...props} resume={null} score={null} />);
     expect(screen.getByText("This application has no tailored resume.")).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Job posting" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Overview" })).toBeInTheDocument();
   });
 });
 
@@ -522,7 +522,7 @@ describe("the Refine with AI panel (E8-5)", () => {
     await user.click(screen.getByRole("tab", { name: "Cover letter" }));
     expect(within(panel()).getByText(/^Ask for changes to your cover letter/)).toBeInTheDocument();
     expect(within(panel()).getByRole("button", { name: "Make it more formal" })).toBeInTheDocument();
-    await user.click(screen.getByRole("tab", { name: /Job posting/ }));
+    await user.click(screen.getByRole("tab", { name: /Overview/ }));
     expect(within(panel()).getByText("Switch to the resume, cover letter or email to make changes.")).toBeInTheDocument();
     expect(within(panel()).queryByRole("button", { name: /Make/ })).not.toBeInTheDocument();
   });
@@ -730,7 +730,7 @@ describe("downloading PDFs (E8-8)", () => {
     expect(download()).toHaveAttribute("href", "/api/pdf?doc=resume&application=app-1");
     await user.click(screen.getByRole("tab", { name: "Cover letter" }));
     expect(download()).toHaveAttribute("href", "/api/pdf?doc=letter&application=app-1");
-    await user.click(screen.getByRole("tab", { name: /Job posting/ }));
+    await user.click(screen.getByRole("tab", { name: /Overview/ }));
     expect(download()).toHaveAttribute("href", "/api/pdf?doc=resume&application=app-1");
   });
 

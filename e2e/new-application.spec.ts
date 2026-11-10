@@ -34,7 +34,7 @@ test("reads a posting, shows the match and writes tailored documents", async ({ 
   await page.getByRole("tab", { name: "Cover letter" }).click();
   await expect(page.getByText("Payments are where trust is won or lost")).toBeVisible();
   // What you told the AI is the application's first fact (APP-15).
-  await page.getByRole("tab", { name: /Job posting/ }).click();
+  await page.getByRole("tab", { name: /Overview/ }).click();
   await expect(page.getByRole("region", { name: "Facts for this application" }).getByRole("textbox", { name: "Fact 1", exact: true })).toHaveValue("I'm moving to Amsterdam in January.");
 });
 

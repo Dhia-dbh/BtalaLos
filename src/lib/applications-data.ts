@@ -71,14 +71,15 @@ export async function loadApplicationRows({ archived, sort, q = "", fields = [] 
       preparation: application.preparations[0]?.status ?? null,
       packageId: application.artifacts[0]?.id ?? null,
       archived: application.archivedAt !== null,
-      deadline: application.deadline ? formatCalendarDate(application.deadline) : null,
       match: match.success && match.data.items.length > 0 ? matchScore(match.data) : null,
       sentAt: application.sentAt,
+      deadlineAt: application.deadline,
       updatedAt: application.updatedAt,
     };
   });
-  return sortRows(rows, sort).map(({ sentAt, updatedAt, ...row }): ApplicationRow => ({
+  return sortRows(rows, sort).map(({ sentAt, deadlineAt, updatedAt, ...row }): ApplicationRow => ({
     ...row,
+    deadline: deadlineAt ? formatCalendarDate(deadlineAt) : null,
     sent: sentAt ? formatShortDate(sentAt, now) : null,
     updated: updatedAgo(updatedAt, now),
     updatedAt: updatedAt.getTime(),
