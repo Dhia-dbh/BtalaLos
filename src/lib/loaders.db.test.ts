@@ -13,6 +13,8 @@ import { loadProfile } from "./profile-data";
 import { loadTheme, loadThemes } from "./theme-data";
 import { BUILT_IN_THEMES } from "./themes";
 
+vi.mock("@/lib/time-zone", () => ({ userTimeZone: async () => undefined }));
+
 const db = vi.hoisted(() => ({ client: undefined as ReturnType<typeof createTestClient> | undefined }));
 vi.mock("@/lib/prisma", async () => {
   const { createTestClient } = await import("@/test/db");
