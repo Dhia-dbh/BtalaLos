@@ -14,7 +14,7 @@ test.beforeAll(async () => {
 test("adds, edits and removes facts about me, kept after a reload", async ({ page }) => {
   await page.goto("/profile?section=facts");
   const facts = page.getByRole("list", { name: "Facts" });
-  await expect(page.getByRole("link", { name: /Facts about me\s*optional\s*2/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Other relevant information\s*optional\s*2/ })).toBeVisible();
   await expect(facts.getByRole("textbox")).toHaveCount(2);
 
   await page.getByRole("button", { name: "+ Add a fact" }).click();
@@ -31,7 +31,7 @@ test("adds, edits and removes facts about me, kept after a reload", async ({ pag
   await page.reload();
   await expect(page.getByRole("textbox", { name: "Fact 1", exact: true })).toHaveValue("I'd like to stay close to user research and accessibility.");
   await expect(page.getByRole("textbox", { name: "Fact 2", exact: true })).toHaveValue("I spent a year at Klarna before design school.");
-  await expect(page.getByRole("link", { name: /Facts about me\s*optional\s*2/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: /Other relevant information\s*optional\s*2/ })).toBeVisible();
 });
 
 test("adds a fact for one application on its Job posting tab, and the AI gets both kinds", async ({ page }) => {
@@ -45,7 +45,7 @@ test("adds a fact for one application on its Job posting tab, and the AI gets bo
 
   // Kept while switching tabs, which doesn't reload the page.
   await page.getByRole("tab", { name: "Resume" }).click();
-  await page.getByRole("tab", { name: /Job posting/ }).click();
+  await page.getByRole("tab", { name: /Overview/ }).click();
   await expect(card.getByRole("textbox", { name: "Fact 2", exact: true })).toHaveValue("I gave a talk at Config last year.");
 
   await page.getByRole("tab", { name: "Resume" }).click();

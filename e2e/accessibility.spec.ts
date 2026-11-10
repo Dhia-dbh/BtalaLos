@@ -87,7 +87,7 @@ test.describe("dark, with the sidebar collapsed", () => {
   test("axe: an application, on every tab", async ({ page }) => {
     await page.goto(application);
     await expectAccessible(page);
-    for (const tab of ["Cover letter", "Email", /^Job posting/, /^Notes/]) {
+    for (const tab of ["Cover letter", "Email", /^Overview/, /^Notes/]) {
       await page.getByRole("tab", { name: tab }).click();
       await expectAccessible(page);
     }
@@ -116,7 +116,7 @@ test.describe("signed out", () => {
 test("axe: an application, on every tab and with a part being edited", async ({ page }) => {
   await page.goto(application);
   await expectAccessible(page);
-  for (const tab of ["Cover letter", "Email", /^Job posting/, /^Notes/]) {
+  for (const tab of ["Cover letter", "Email", /^Overview/, /^Notes/]) {
     await page.getByRole("tab", { name: tab }).click();
     await expectAccessible(page);
   }

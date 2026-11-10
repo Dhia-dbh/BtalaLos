@@ -67,7 +67,7 @@ export function ExportFiles({ applicationId, packages, disabled }: {
   return (
     <Card className="flex flex-col gap-4">
       <h2 className="font-serif text-section">Separate and grouped PDFs</h2>
-      <p className="text-sm text-muted">Choose the documents and their order in each output file. Exports reuse this package's saved PDFs without AI generation. Files are saved in its application folder under v{options?.version ?? "N"}.</p>
+      <p className="text-sm text-muted">Choose the documents and their order in each output file. Exports reuse this package&apos;s saved PDFs without AI generation. Files are saved in its application folder under v{options?.version ?? "N"}.</p>
       <Select label="Package version to export" value={packageId ?? ""} disabled={locked} onChange={(event) => setSelected(event.target.value)}>
         {packages.map((pack) => <option key={pack.id} value={pack.id}>Version {pack.version}</option>)}
       </Select>

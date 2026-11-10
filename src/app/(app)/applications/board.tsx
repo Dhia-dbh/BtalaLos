@@ -190,7 +190,7 @@ function CardFace({ row, lifted = false, expanded = false, onToggle, onOpen }: {
         {row.role}
       </Link>
       {!expanded && place && <p className="truncate text-label text-muted">{place}</p>}
-      <button type="button" aria-expanded={expanded} aria-label={`${expanded ? "Collapse" : "Expand"} ${row.role}`} onMouseDown={(event) => event.stopPropagation()} onTouchStart={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); onToggle?.(); }} className="absolute top-2 right-9 z-10 rounded px-1 text-muted hover:bg-hover">{expanded ? "−" : "+"}</button>
+      <button type="button" aria-expanded={expanded} aria-label={`${expanded ? "Collapse" : "Expand"} ${row.role}`} onMouseDown={(event) => event.stopPropagation()} onTouchStart={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); onToggle?.(); }} className="absolute top-2 right-9 z-10 grid size-6 place-items-center rounded text-muted hover:bg-hover">{expanded ? "−" : "+"}</button>
       <div className="grid motion-safe:transition-[grid-template-rows] motion-safe:duration-200" style={{ gridTemplateRows: expanded ? "1fr" : "0fr" }}><div className="min-h-0 overflow-hidden" inert={!expanded}>
       {expanded && place && <p className="text-label text-muted">{place}</p>}
       {row.packageId && <PackageFolderButton applicationId={row.id} />}
