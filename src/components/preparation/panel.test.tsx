@@ -218,9 +218,11 @@ it("collapses completed preparation controls while keeping the preview available
   render(<PreparationPanel applicationId="app1" latex />);
   const summary = await screen.findByText("Preparation controls and progress");
   expect(summary.closest("details")).not.toHaveAttribute("open");
+  expect(screen.getByText("Separate and grouped PDFs")).not.toBeVisible();
   expect(screen.getByTitle("package preview")).toBeVisible();
   await user.click(summary);
   expect(summary.closest("details")).toHaveAttribute("open");
+  expect(screen.getByText("Separate and grouped PDFs")).toBeVisible();
   expect(screen.getByRole("button", { name: "Prepare with AI" })).toBeVisible();
   await user.click(summary);
   expect(summary.closest("details")).not.toHaveAttribute("open");
