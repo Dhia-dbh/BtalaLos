@@ -123,7 +123,7 @@ export function Table({
                   </select>
                 </span>
               </td>
-              <td className="py-3.5 pr-4 text-sm tabular-nums">{row.match ? `${row.match.hit}/${row.match.total}` : "Not matched"}</td>
+              <td className="py-3.5 pr-4 text-sm tabular-nums"><Link href={`/applications/${row.id}?tab=overview`} className="underline">{row.match ? `${row.match.hit}/${row.match.total}` : "Not matched"}</Link></td>
               <td className="truncate py-3.5 pr-4 text-sm text-muted">{row.location || "Not given"}</td>
               <td className="py-3.5 pr-4 text-sm text-muted">{row.sent ?? "Not sent"}</td>
               <td className="py-3.5 pr-4 text-sm text-muted">{row.deadline ?? "No deadline"}</td>

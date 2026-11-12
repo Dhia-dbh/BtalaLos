@@ -235,6 +235,7 @@ describe("application preparation integration", () => {
       include: { documents: true },
     });
     expect(saved.status).toBe("DRAFT");
+    expect(saved.match).toMatchObject({ items: [expect.objectContaining({ requirement: "Python", result: "gap" })] });
     expect(saved.deadline?.toISOString()).toBe("2026-12-31T00:00:00.000Z");
     expect(saved.documents.find((doc) => doc.kind === "EMAIL")?.units).toEqual(
       expect.arrayContaining([

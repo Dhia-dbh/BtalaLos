@@ -80,6 +80,8 @@ if (args[0] === "app-server") {
         ...file,
         content: file.content.replaceAll("\\newpage Overflow", ""),
       }));
+  } else if (prompt.includes("You compare a job's requirements")) {
+    answer = { matches: [{ requirement: 0, skill: "Python", language: null }] };
   } else if (prompt.includes("Extract only explicit job facts")) {
     const applicationUrl = prompt.includes("https://careers.example.org/apply/42")
       ? "https://careers.example.org/apply/42" : null;

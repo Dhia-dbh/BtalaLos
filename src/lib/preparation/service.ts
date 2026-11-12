@@ -28,6 +28,7 @@ import {
 import { checksum, workerOperation } from "./worker";
 import { saveBytes, verifiedBytes } from "./storage";
 import { applicationLinks, verifyApplicationRoute } from "./application-route";
+import { assessRequirements } from "./requirements";
 import { changedCvHeading } from "./cv-headings";
 
 const json = (value: unknown) =>
@@ -492,6 +493,12 @@ async function runPreparation(
           },
         });
         return result;
+      });
+      const requirements = analysis.requirements;
+      await step("Match requirements", async () => {
+        const match = await assessRequirements(requirements, (schema, prompt) => generate("requirements", schema, prompt));
+        await prisma.application.update({ where: { id: applicationId }, data: { match: json(match) } });
+        return match;
       });
       await step("Create Git worktree", () =>
         operation("worktree", {

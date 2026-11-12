@@ -10,7 +10,7 @@ export const MATCH_REQUIREMENTS_VERSION = "match-requirements@1";
 // The model only says which profile skill or language each requirement is
 // about; code decides covered, partial or gap from the profile itself, so the
 // match is deterministic and explainable (NEW-4, E7-4).
-const answerSchema = z.object({
+export const requirementMappingSchema = z.object({
   matches: z.array(
     z.object({
       /** The requirement's number in the list. */
@@ -23,7 +23,7 @@ const answerSchema = z.object({
   ),
 });
 
-const INSTRUCTIONS = `You compare a job's requirements with a candidate's skills and languages.
+export const MATCH_REQUIREMENTS_INSTRUCTIONS = `You compare a job's requirements with a candidate's skills and languages.
 
 For each numbered requirement, answer which ONE of the candidate's skills it is about, if any, and which of the candidate's languages, if any. Copy names exactly as they appear in the candidate's lists. Match on meaning ("Strong prototyping skills in Figma" is about "Figma"; "Has built or maintained a design system" is about "Design systems"), but don't stretch: when no skill really fits, answer null. Answer every requirement once.`;
 
@@ -34,7 +34,7 @@ export const matchRequirements: Task<MatchInput, Match> = async (provider, { req
   const needsModel = requirements.some((requirement) => requirement.kind !== "years");
   const answer = needsModel
     ? await provider.complete({
-        system: system(INSTRUCTIONS, UNTRUSTED_POSTING),
+        system: system(MATCH_REQUIREMENTS_INSTRUCTIONS, UNTRUSTED_POSTING),
         messages: [
           {
             role: "user",
@@ -49,7 +49,7 @@ export const matchRequirements: Task<MatchInput, Match> = async (provider, { req
             ),
           },
         ],
-        schema: answerSchema,
+        schema: requirementMappingSchema,
         schemaName: "requirement_matches",
         creativity: "FAITHFUL",
         effort: "low",
@@ -60,7 +60,7 @@ export const matchRequirements: Task<MatchInput, Match> = async (provider, { req
   const mapped = new Map(answer.matches.map((match) => [match.requirement, match]));
   return {
     data: matchSchema.parse({
-      items: requirements.map((requirement, index) => classify(requirement, mapped.get(index), profile, today)),
+      items: requirements.map((requirement, index) => classifyRequirement(requirement, mapped.get(index), profile, today)),
     }),
     promptVersion: MATCH_REQUIREMENTS_VERSION,
   };
@@ -68,7 +68,7 @@ export const matchRequirements: Task<MatchInput, Match> = async (provider, { req
 
 type Item = Match["items"][number];
 
-function classify(
+export function classifyRequirement(
   requirement: Extracted["requirements"][number],
   mapped: { skill: string | null; language: string | null } | undefined,
   profile: ProfileData,

@@ -2,6 +2,7 @@ import { exportOptions, previewExports, writeExports, revealExports } from "@/li
 import { exportSelectionSchema, exportWriteSchema } from "@/lib/preparation/export-types";
 import { emailDraftModeSchema } from "@/lib/email-drafting";
 import { loadSettings } from "@/lib/settings-data";
+import { assessRequirements } from "@/lib/preparation/requirements";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { revalidatePath } from "next/cache";
@@ -9,6 +10,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { route } from "@/lib/route";
 import { ActionError } from "@/lib/action";
+import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { startJob, cancelJob } from "@/lib/jobs/runner";
 import {
@@ -72,6 +74,7 @@ export const GET = route<RouteContext<"/api/preparation/[action]">>(
           role: true,
           postingText: true,
           extracted: true,
+          match: true,
           deadline: true,
           status: true,
           title: true,
@@ -535,6 +538,27 @@ export const POST = route<RouteContext<"/api/preparation/[action]">>(
           where: { applicationId_kind: { applicationId, kind: "EMAIL" } },
           data: { units, versions: { create: { units, cause: "REFINED" } } },
         });
+      } else if (action === "match") {
+        const { applicationId } = applicationIdSchema.parse(input);
+        if (await prisma.preparationRun.count({ where: { activeKey: applicationId } }))
+          throw new ActionError("Wait for preparation to finish before assessing requirements.");
+        const application = await prisma.application.findUniqueOrThrow({ where: { id: applicationId } });
+        const requirements = (application.extracted as { requirements?: unknown } | null)?.requirements;
+        if (!Array.isArray(requirements)) throw new ActionError("Read or prepare the posting before assessing requirements.");
+        const project = application.documentMode === "LATEX" ? await loadProject() : null;
+        const match = await assessRequirements(requirements, async (schema, prompt) => {
+          if (project) {
+            const result = await workerOperation(`match-${randomUUID()}`, { kind: "generate", provider: project.provider, model: project.model, effort: project.effort, schema: z.toJSONSchema(schema), prompt });
+            return schema.parse(result);
+          }
+          return (await getAiProvider()).complete({ system: "Assess requirements using only the supplied profile.", messages: [{ role: "user", content: prompt }], schema });
+        });
+        const current = await prisma.application.findUniqueOrThrow({ where: { id: applicationId } });
+        if (JSON.stringify(current.extracted) !== JSON.stringify(application.extracted)) throw new ActionError("Requirements changed during assessment. Try again.");
+        await prisma.application.update({ where: { id: applicationId }, data: { match: JSON.parse(JSON.stringify(match)) } });
+        revalidatePath("/applications");
+        revalidatePath(`/applications/${applicationId}`);
+        return NextResponse.json({ match });
       } else if (action === "overview") {
         const { applicationId, values } = z.object({ applicationId: z.string(), values: z.record(z.string(), z.unknown()) }).parse(input);
         if (await prisma.preparationRun.count({ where: { activeKey: applicationId } })) throw new ActionError("Cancel preparation before editing its inputs.");
@@ -556,7 +580,7 @@ export const POST = route<RouteContext<"/api/preparation/[action]">>(
         const deadline = core.deadline?.slice(0, 10) || null;
         edits.deadline = deadline;
         for (const key of Object.keys(edits)) if (edits[key] === "") edits[key] = null;
-        await prisma.application.update({ where: { id: applicationId }, data: { ...core, deadline: deadline ? new Date(`${deadline}T00:00:00Z`) : null, extracted: JSON.parse(JSON.stringify({ ...old, ...edits, manualMetadata: { ...(old.manualMetadata as object), ...edits } })) } });
+        await prisma.application.update({ where: { id: applicationId }, data: { ...core, ...(JSON.stringify(old.requirements) !== JSON.stringify(edits.requirements) || previous.postingText !== core.postingText ? { match: Prisma.DbNull } : {}), deadline: deadline ? new Date(`${deadline}T00:00:00Z`) : null, extracted: JSON.parse(JSON.stringify({ ...old, ...edits, manualMetadata: { ...(old.manualMetadata as object), ...edits } })) } });
       } else if (action === "metadata") {
         const {
           applicationId,
