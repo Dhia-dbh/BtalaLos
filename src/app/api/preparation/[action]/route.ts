@@ -2,6 +2,7 @@ import { exportOptions, previewExports, writeExports, revealExports } from "@/li
 import { exportSelectionSchema, exportWriteSchema } from "@/lib/preparation/export-types";
 import { emailDraftModeSchema } from "@/lib/email-drafting";
 import { loadSettings } from "@/lib/settings-data";
+import { applicationTypeSchema, formAnswersSchema, answerRewriteSchema, answerRewritePrompt } from "@/lib/application-type";
 import { assessRequirements } from "@/lib/preparation/requirements";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
@@ -67,6 +68,8 @@ export const GET = route<RouteContext<"/api/preparation/[action]">>(
         select: {
           id: true,
           documentMode: true,
+          applicationType: true,
+          formAnswers: true,
           emailDraftMode: true,
           packageProfileId: true,
           location: true, mode: true, salary: true, language: true, postingUrl: true, sentAt: true, createdAt: true,
@@ -371,6 +374,7 @@ export const POST = route<RouteContext<"/api/preparation/[action]">>(
       } else if (action === "create") {
         const data = z
           .object({
+            applicationType: applicationTypeSchema.default("PHD"),
             posting: z.string().trim().min(1).max(100_000),
             emailDraftMode: emailDraftModeSchema.nullable().default(null),
             profileId: z.string().min(1),
@@ -387,6 +391,7 @@ export const POST = route<RouteContext<"/api/preparation/[action]">>(
         const application = await prisma.application.create({
           data: {
             documentMode: "LATEX",
+            applicationType: data.applicationType,
             emailDraftMode: data.emailDraftMode,
             packageProfileId: profile.id,
             postingText: data.posting,
@@ -538,6 +543,23 @@ export const POST = route<RouteContext<"/api/preparation/[action]">>(
           where: { applicationId_kind: { applicationId, kind: "EMAIL" } },
           data: { units, versions: { create: { units, cause: "REFINED" } } },
         });
+      } else if (action === "form-answers" || action === "rewrite-answer") {
+        const { applicationId } = applicationIdSchema.parse(input);
+        const application = await prisma.application.findUniqueOrThrow({ where: { id: applicationId } });
+        if (application.applicationType !== "JOB") throw new ActionError("Form answers are available for job applications.");
+        if (action === "form-answers") {
+          const { answers } = z.object({ answers: formAnswersSchema }).parse(input);
+          await prisma.application.update({ where: { id: applicationId }, data: { formAnswers: answers } });
+        } else {
+          const data = answerRewriteSchema.parse(input);
+          const prompt = answerRewritePrompt(data);
+          const schema = z.object({ answer: z.string().min(1).max(20000) });
+          if (application.documentMode === "LATEX") {
+            const project = await loadProject();
+            return NextResponse.json(schema.parse(await workerOperation(`answer-${randomUUID()}`, { kind: "generate", provider: project.provider, model: project.model, effort: project.effort, schema: z.toJSONSchema(schema), prompt })));
+          }
+          return NextResponse.json(await (await getAiProvider()).complete({ system: "Edit an application form answer without adding facts.", messages: [{ role: "user", content: prompt }], schema }));
+        }
       } else if (action === "match") {
         const { applicationId } = applicationIdSchema.parse(input);
         if (await prisma.preparationRun.count({ where: { activeKey: applicationId } }))

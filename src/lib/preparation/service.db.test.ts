@@ -409,3 +409,26 @@ it("snapshots inherited policy and leaves existing drafts untouched when a later
   expect((disabled.steps as { name: string }[]).some((step) => step.name === "Draft application email")).toBe(false);
   expect((await db.document.findUniqueOrThrow({ where: { id: email.id } })).units).toEqual(email.units);
 }, 50_000);
+
+it("retains a multi-page base CV for job applications and generates only the letter", async () => {
+  const { application } = await createApplication();
+  await db.application.update({ where: { id: application.id }, data: { applicationType: "JOB" } });
+  const original = tex.replace("\\end{document}", "\\newpage Original second page\\end{document}");
+  await writeFile(path.join(repo, "cv.tex"), original);
+  await command("git", ["-C", repo, "add", "cv.tex"]);
+  await command("git", ["-C", repo, "-c", "user.name=Test", "-c", "user.email=test@example.org", "commit", "-m", "Two-page base CV"]);
+  try {
+    const run = await finished(await queuePreparation(application.id));
+    expect(run.status).toBe("READY");
+    expect(run.error).toBeNull();
+    const sources = (await db.applicationArtifact.findFirstOrThrow({ where: { applicationId: application.id, role: "sources" } }));
+    expect(JSON.parse((await verifiedBytes(sources)).toString())["cv.tex"]).toBe(original);
+    const cv = await db.applicationArtifact.findFirstOrThrow({ where: { applicationId: application.id, role: "cv" } });
+    expect(cv.pages).toBe(2);
+    expect((run.steps as { name: string }[]).some((step) => step.name === "Tailor CV and letter: generate")).toBe(false);
+  } finally {
+    await writeFile(path.join(repo, "cv.tex"), tex);
+    await command("git", ["-C", repo, "add", "cv.tex"]);
+    await command("git", ["-C", repo, "-c", "user.name=Test", "-c", "user.email=test@example.org", "commit", "-m", "Restore base CV"]);
+  }
+}, 50000);

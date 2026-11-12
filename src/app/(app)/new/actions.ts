@@ -1,4 +1,5 @@
 "use server";
+import { applicationTypeSchema } from "@/lib/application-type";
 import { emailDraftModeSchema } from "@/lib/email-drafting";
 import { queueAutomaticEmail } from "@/lib/automatic-email";
 
@@ -29,10 +30,11 @@ export const startReadingPosting = action(
  */
 export const handOffToClaude = action(
   z.object({
+    applicationType: applicationTypeSchema.optional(),
     posting: z.string().trim().min(1, "Paste a job posting first.").max(100_000),
     postingUrl: z.string().trim().max(2000),
   }),
-  async ({ posting, postingUrl }) => ({ url: await handOffPastedPosting({ text: posting, url: /^https?:\/\//i.test(postingUrl) ? postingUrl : "" }) }),
+  async ({ posting, postingUrl, applicationType }) => ({ url: await handOffPastedPosting({ applicationType, text: posting, url: /^https?:\/\//i.test(postingUrl) ? postingUrl : "" }) }),
 );
 
 const detailsSchema = z.object({
@@ -61,12 +63,13 @@ async function finishedReading(id: string) {
 export const startWritingDocuments = action(
   z.object({
     readJobId: z.string().min(1),
+    applicationType: applicationTypeSchema.optional(),
     details: detailsSchema,
     match: matchSchema,
     tone: z.enum(Tone),
     note: z.string().trim().max(2000),
   }),
-  async ({ readJobId, details, match, tone, note }) => {
+  async ({ readJobId, details, match, tone, note, applicationType }) => {
     const reading = await finishedReading(readJobId);
     const orNull = (value: string) => value || null;
     const extracted = {
@@ -79,7 +82,7 @@ export const startWritingDocuments = action(
       salary: orNull(details.salary),
       deadline: orNull(details.deadline),
     };
-    return startJob(writeDocumentsJob, { readJobId, posting: reading.input.posting, extracted, match, tone, note });
+    return startJob(writeDocumentsJob, { readJobId, posting: reading.input.posting, extracted, match, tone, note, applicationType });
   },
 );
 
@@ -143,6 +146,7 @@ export const createApplication = action(
     const id = await createApplicationFromDocuments({
       reading: { posting: reading.input.posting, ...reading.result },
       documents,
+      applicationType: input.applicationType,
       match: input.match,
       details,
       postingUrl: postingLink(postingUrl),

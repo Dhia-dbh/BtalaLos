@@ -39,3 +39,16 @@ describe("writeDocumentsJob (E7-6)", () => {
     expect(result.letter.map((unit) => unit.id)).toEqual(["recipient", "greeting", "paragraph:1", "sign-off"]);
   });
 });
+
+it("keeps a job application's profile CV and asks AI only for the letter", async () => {
+  const { demoProfile } = await import("@/lib/demo-profile");
+  const calls: string[] = [];
+  provider.current = new MockProvider({ reply: (call) => {
+    calls.push(call.json?.name ?? "");
+    return { recipient: "Example", greeting: "Dear team,", paragraphs: [{ label: "Opening", text: "My application." }], signOff: "Regards," };
+  } });
+  const result = await writeDocumentsJob.run({ applicationType: "JOB", readJobId: "read", posting: "Example", extracted: { title: "Role", company: "Example", role: "Role", location: null, mode: null, salary: null, deadline: null, requirements: [], asksForReferences: false, language: "English" }, match: { items: [] }, tone: "WARM", note: "" }, { id: "test", step: async () => {}, signal: new AbortController().signal });
+  expect(calls).not.toContain("tailored_resume");
+  expect(result.resumeWith).toBe("base-profile@1");
+  expect(result.resume.find((unit) => unit.id === "summary")?.text).toBe(demoProfile().basics.summary);
+});

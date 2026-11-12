@@ -1,4 +1,5 @@
 import "server-only";
+import { applicationTypeSchema } from "@/lib/application-type";
 
 import { z } from "zod";
 
@@ -47,6 +48,7 @@ export const writtenLetterSchema = z.object({
 });
 
 export const writtenDetailsSchema = z.object({
+  applicationType: applicationTypeSchema.optional(),
   company: z.string().max(300),
   role: z.string().max(300),
   title: z.string().max(500).optional(),
@@ -118,7 +120,7 @@ export async function saveWrittenApplication(input: WrittenApplication): Promise
   const tone = settings.defaultTone;
   const english = /^english$/i.test(details.language.trim() || "English");
   const signOff = english || !input.letter.sign_off.trim() ? TONES[tone].signOff : input.letter.sign_off.trim();
-  let resume = resumeUnits(profile, input.resume, documentLabels(details.language));
+  let resume = resumeUnits(profile, details.applicationType === "JOB" ? { summary: profile.basics.summary, roles: [], projects: [], skills: profile.skills.map((skill) => skill.name), education: [] } : input.resume, documentLabels(details.language));
   let letter = letterUnits(input.letter, signOff);
   if (settings.strict) {
     const facts = input.note.trim() ? [input.note.trim()] : [];
@@ -129,6 +131,7 @@ export async function saveWrittenApplication(input: WrittenApplication): Promise
   }
 
   const applicationId = await createApplicationFromDocuments({
+    applicationType: details.applicationType,
     reading: { posting: input.posting, extracted, extractedWith: WRITTEN_IN_CLAUDE, matchedWith: WRITTEN_IN_CLAUDE },
     documents: { resume, resumeWith: WRITTEN_IN_CLAUDE, letter, letterWith: WRITTEN_IN_CLAUDE },
     match,

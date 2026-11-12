@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { SEARCH_FIELDS } from "@/lib/application-search";
 import { preparationRequest } from "./client";
+import { JobFormAnswers } from "./job-form-answers";
 import { RequirementsAssessment } from "./requirements-assessment";
 import { Button } from "@/components/ui/button";
 const columns = ["title", "company", "role", "location", "mode", "salary", "deadline", "postingUrl", "postingText", "language"];
@@ -28,17 +29,19 @@ export function Overview({ applicationId }: { applicationId: string }) {
   const [draft, setDraft] = useState<Record<string, unknown> | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  useEffect(() => { let cancelled = false; fetch(`/api/preparation/application?applicationId=${applicationId}`, { cache: "no-store" }).then(async (response) => { const data = await response.json(); if (!response.ok) throw new Error(data.error); if (!cancelled) { const extracted = { ...data.extracted }; delete extracted.manualMetadata; setSaved({ ...Object.fromEntries([...columns, "sentAt", "createdAt"].map((key) => [key, data[key] ?? ""])), ...Object.fromEntries(extra.map((key) => [key, ["keywords", "requirements"].includes(key) ? [] : ""])), ...extracted, ...Object.fromEntries(columns.map((key) => [key, key === "deadline" ? data[key]?.slice(0, 10) ?? "" : data[key] ?? ""])), native: data.documentMode === "NATIVE", active: data.preparations.some((run: { status: string }) => ["QUEUED", "RUNNING"].includes(run.status)) }); } }).catch((failure) => { if (!cancelled) setError(failure.message); }); return () => { cancelled = true; }; }, [applicationId]);
+  useEffect(() => { let cancelled = false; fetch(`/api/preparation/application?applicationId=${applicationId}`, { cache: "no-store" }).then(async (response) => { const data = await response.json(); if (!response.ok) throw new Error(data.error); if (!cancelled) { const extracted = { ...data.extracted }; delete extracted.manualMetadata; setSaved({ ...Object.fromEntries([...columns, "sentAt", "createdAt"].map((key) => [key, data[key] ?? ""])), ...Object.fromEntries(extra.map((key) => [key, ["keywords", "requirements"].includes(key) ? [] : ""])), ...extracted, ...Object.fromEntries(columns.map((key) => [key, key === "deadline" ? data[key]?.slice(0, 10) ?? "" : data[key] ?? ""])), applicationType: data.applicationType, native: data.documentMode === "NATIVE", active: data.preparations.some((run: { status: string }) => ["QUEUED", "RUNNING"].includes(run.status)) }); } }).catch((failure) => { if (!cancelled) setError(failure.message); }); return () => { cancelled = true; }; }, [applicationId]);
   if (!saved) return <p role={error ? "alert" : "status"} className="p-6">{error || "Loading overview…"}</p>;
   const values = draft ?? saved;
   return <section className="mx-auto grid w-full max-w-3xl gap-4 p-6" aria-label="Job overview">
     <div className="flex justify-between"><h2 className="font-serif text-section">Overview</h2>{!draft && <Button disabled={Boolean(saved.active)} onClick={() => setDraft(structuredClone(saved))}>Edit details</Button>}</div>
+    <p className="text-sm">Application type: {saved.applicationType === "JOB" ? "Job — base CV retained" : "PhD — CV and letter tailored"}</p>
+    {saved.applicationType === "JOB" && <JobFormAnswers applicationId={applicationId} />}
     <RequirementsAssessment applicationId={applicationId} />
     <p className="text-sm text-muted">Changes apply to subsequent generation. Existing documents remain as generated.</p>
     {Boolean(saved.active) && <p>Cancel preparation before editing its inputs.</p>}
     {error && <p role="alert">{error}</p>}
     <form className="grid gap-4" onSubmit={async (event) => { event.preventDefault(); setBusy(true); setError(""); try { await preparationRequest("overview", { applicationId, values: draft }); setSaved(draft); setDraft(null); router.refresh(); } catch (failure) { setError((failure as Error).message); } finally { setBusy(false); } }}>
-      {Object.entries(values).filter(([key]) => !["active", "native", "manualMetadata"].includes(key)).map(([key, value]) => <div key={key} className="grid gap-1 border-b border-line pb-3"><label className="text-sm font-medium">{SEARCH_FIELDS[key as keyof typeof SEARCH_FIELDS] ?? key}</label>{draft && !["sentAt", "createdAt", "warnings", "channel"].includes(key) ? <ValueEditor native={Boolean(saved.native)} label={key} value={value} onChange={(next) => setDraft({ ...draft, [key]: next })} /> : <div className="whitespace-pre-wrap break-words text-sm">{["postingUrl", "applicationUrl"].includes(key) && typeof value === "string" && /^https?:\/\//i.test(value) ? <a href={value} target="_blank" rel="noopener noreferrer" className="underline">{value}</a> : displayValue(value)}</div>}</div>)}
+      {Object.entries(values).filter(([key]) => !["active", "native", "applicationType", "manualMetadata"].includes(key)).map(([key, value]) => <div key={key} className="grid gap-1 border-b border-line pb-3"><label className="text-sm font-medium">{SEARCH_FIELDS[key as keyof typeof SEARCH_FIELDS] ?? key}</label>{draft && !["sentAt", "createdAt", "warnings", "channel"].includes(key) ? <ValueEditor native={Boolean(saved.native)} label={key} value={value} onChange={(next) => setDraft({ ...draft, [key]: next })} /> : <div className="whitespace-pre-wrap break-words text-sm">{["postingUrl", "applicationUrl"].includes(key) && typeof value === "string" && /^https?:\/\//i.test(value) ? <a href={value} target="_blank" rel="noopener noreferrer" className="underline">{value}</a> : displayValue(value)}</div>}</div>)}
       {draft && <div className="flex gap-3"><Button type="submit" disabled={busy}>Save changes</Button><Button type="button" variant="secondary" disabled={busy} onClick={() => { setDraft(null); setError(""); }}>Cancel</Button></div>}
     </form>
   </section>;

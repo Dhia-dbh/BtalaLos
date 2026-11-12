@@ -213,3 +213,12 @@ it("uses refreshed CLI defaults and sends the displayed selection, including an 
   await user.click(screen.getByRole("button", { name: "Prepare application" }));
   expect(preparationRequest).toHaveBeenLastCalledWith("create", expect.objectContaining({ cli: { provider: "codex", model: "override", effort: "max" } }));
 });
+
+it("passes the selected job workflow when creating a LaTeX application", async () => {
+  const user = userEvent.setup();
+  render(<NewLatex configured profiles={initial.profiles} initialPosting="Job posting" />);
+  await user.selectOptions(screen.getByLabelText("Application type"), "JOB");
+  await user.selectOptions(screen.getByLabelText("Application profile"), "phd");
+  await user.click(screen.getByRole("button", { name: "Prepare application" }));
+  expect(preparationRequest).toHaveBeenCalledWith("create", expect.objectContaining({ applicationType: "JOB" }));
+});

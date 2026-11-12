@@ -1,4 +1,5 @@
 import "server-only";
+import type { ApplicationType } from "@/lib/application-type";
 
 import { fullText } from "@/lib/job-search/find";
 import type { FoundPosting } from "@/lib/job-search/search";
@@ -55,12 +56,12 @@ export async function handOffFoundPosting(posting: FoundPosting, kind: Handoff):
 }
 
 /** For a posting pasted into New application: keeps its text for Claude to read, and gives the chat to open. */
-export async function handOffPastedPosting({ text, url }: { text: string; url: string }, now = new Date()): Promise<string> {
+export async function handOffPastedPosting({ text, url, applicationType = "PHD" }: { text: string; url: string; applicationType?: ApplicationType }, now = new Date()): Promise<string> {
   const paste = await prisma.claudePaste.create({
     data: { text, url, expiresAt: new Date(now.getTime() + PASTE_DAYS * 24 * 60 * 60 * 1000) },
     select: { id: true },
   });
-  return claudeChatUrl(promptFor("write", `with paste_id "${paste.id}"`, ""));
+  return claudeChatUrl(promptFor("write", `with paste_id "${paste.id}"`, "") + (applicationType === "JOB" ? " This is a JOB application: keep my base CV unchanged, write only the cover letter, and set details.applicationType to JOB in save_application." : ""));
 }
 
 /** A pasted posting kept for Claude, or null once it's gone or expired. */

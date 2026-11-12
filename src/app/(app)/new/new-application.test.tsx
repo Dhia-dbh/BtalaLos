@@ -320,6 +320,7 @@ describe("creating the application (E7-6)", () => {
     vi.mocked(createApplication).mockResolvedValue({ ok: true, data: "app-1" });
     await create();
     expect(startWritingDocuments).toHaveBeenCalledWith({
+      applicationType: "PHD",
       readJobId: "job-1",
       details: { title: "Designer · Ledgerly", company: "Ledgerly", role: "Designer", location: "", mode: "", salary: "", deadline: "" },
       match: { items: [] },
@@ -470,3 +471,10 @@ describe("keeping the draft (E7-7)", () => {
   });
 });
 
+
+it("preserves native mode when clearing a fresh-application URL", async () => {
+  window.history.replaceState(null, "", "/new?mode=NATIVE&fresh=1");
+  render(<NewApplication {...props} fresh />);
+  expect(router.replace).toHaveBeenCalledWith("/new?mode=NATIVE");
+  window.history.replaceState(null, "", "/");
+});

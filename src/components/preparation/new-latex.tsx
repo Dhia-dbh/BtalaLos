@@ -1,4 +1,5 @@
 "use client";
+import type { ApplicationType } from "@/lib/application-type";
 import { EmailDraftingSelect } from "./email-drafting-select";
 import type { EmailDraftMode } from "@/lib/email-drafting";
 import Link from "next/link";
@@ -29,6 +30,7 @@ export function NewLatex({
   globalEmailDraftMode?: EmailDraftMode;
 }) {
   const router = useRouter();
+  const [applicationType, setApplicationType] = useState<ApplicationType>("PHD");
   const [emailDraftMode, setEmailDraftMode] = useState<EmailDraftMode | null>(null);
   const [cliOverride, setCli] = useState<CliOptions | null>(null);
   const cli = cliOverride ?? initialCli;
@@ -47,6 +49,7 @@ export function NewLatex({
         try {
           const result = await preparationRequest<{ id: string }>("create", {
             posting,
+            applicationType,
             postingUrl,
             profileId,
             emailDraftMode,
@@ -61,6 +64,7 @@ export function NewLatex({
         }
       }}
     >
+      <Select label="Application type" value={applicationType} onChange={(event) => setApplicationType(event.target.value as ApplicationType)}><option value="PHD">PhD — tailor CV and letter</option><option value="JOB">Job — keep CV, write letter</option></Select>
       <Select
         label="Document mode"
         value="LATEX"
@@ -119,8 +123,7 @@ export function NewLatex({
           maxLength={4000}
         />
         <p className="text-sm text-muted">
-          Preparation runs automatically through analysis, one-page CV and cover
-          letter, merged PDF, and email drafting according to your selected policy.
+          {applicationType === "JOB" ? "Preparation keeps your base CV unchanged and writes a cover letter." : "Preparation tailors your CV and cover letter."} A merged PDF and email drafting follow your selected policy.
         </p>
         <div className="flex flex-wrap items-center gap-4">
           <Button

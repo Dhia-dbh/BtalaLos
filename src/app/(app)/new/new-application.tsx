@@ -1,4 +1,5 @@
 "use client";
+import type { ApplicationType } from "@/lib/application-type";
 import { EmailDraftingSelect } from "@/components/preparation/email-drafting-select";
 import type { EmailDraftMode } from "@/lib/email-drafting";
 
@@ -49,6 +50,7 @@ export type Details = {
 
 /** Everything the flow knows so far; nothing reaches the server as an application until the end. */
 export type Draft = {
+  applicationType?: ApplicationType;
   packageProfileId?: string;
   emailDraftMode?: EmailDraftMode | null;
   step: "paste" | "reading" | "review" | "creating";
@@ -97,6 +99,12 @@ const EMPTY_DETAILS: Details = { title: "", company: "", role: "", location: "",
 // One draft per tab, in sessionStorage (E7-7); none while rendering on the server.
 const draftStore = typeof window === "undefined" ? null : createDraftStore<Draft>();
 const noStore = () => () => {};
+
+function newApplicationHref() {
+  const query = new URLSearchParams(window.location.search);
+  for (const key of ["fresh", "posting", "startup"]) query.delete(key);
+  return `/new${query.size ? `?${query}` : ""}`;
+}
 
 const LEAVE_WARNING = "Leave now? I'll stop working on this application, and nothing will be created.";
 
@@ -185,7 +193,7 @@ export function NewApplication({ aiReady, writeInClaude = false, samplePosting, 
   useEffect(() => {
     if (!fresh) return;
     draftStore?.clear();
-    router.replace("/new");
+    router.replace(newApplicationHref());
   }, [fresh, router]);
   // E14-8: a posting from Find jobs replaces the tab's draft, as "+ New
   // application" would, at the paste step, to check before reading it.
@@ -199,7 +207,7 @@ export function NewApplication({ aiReady, writeInClaude = false, samplePosting, 
           ? "Here's the posting from Find jobs. Check it, then read it."
           : "Only the start of this posting came through. Paste the rest from the posting's page, then read it.",
     );
-    router.replace("/new");
+    router.replace(newApplicationHref());
   }, [fromPosting, initial, router]);
   const [starting, setStarting] = useState(false);
   const [fetching, setFetching] = useState(false);
@@ -248,7 +256,7 @@ export function NewApplication({ aiReady, writeInClaude = false, samplePosting, 
     // Opened now, while the click still counts: a tab opened after waiting is blocked as a pop-up.
     const chat = openPendingTab();
     setStarting(true);
-    const result = toastResult(await handOffToClaude({ posting: draft.posting, postingUrl: draft.postingUrl }));
+    const result = toastResult(await handOffToClaude({ posting: draft.posting, postingUrl: draft.postingUrl, ...(draft.applicationType ? { applicationType: draft.applicationType } : {}) }));
     setStarting(false);
     if (!result.ok) return void chat?.close();
     sendPendingTab(chat, result.data.url);
@@ -320,7 +328,7 @@ export function NewApplication({ aiReady, writeInClaude = false, samplePosting, 
     if (!draft.read || !draft.readJobId || starting) return;
     setStarting(true);
     const result = toastResult(
-      await startWritingDocuments({ readJobId: draft.readJobId, details: draft.details, match: draft.read.match, tone: draft.tone, note: draft.note }),
+      await startWritingDocuments({ applicationType: draft.applicationType ?? "PHD", readJobId: draft.readJobId, details: draft.details, match: draft.read.match, tone: draft.tone, note: draft.note }),
     );
     setStarting(false);
     if (!result.ok) return;
@@ -355,6 +363,7 @@ export function NewApplication({ aiReady, writeInClaude = false, samplePosting, 
         description="Paste a job posting. I'll pull out the details, check it against your profile, and draft a tailored resume and cover letter."
       />
       <div className="flex max-w-[816px] flex-col gap-6 px-10 pb-20">
+        {draft.step === "paste" && <Select label="Application type" value={draft.applicationType ?? "PHD"} onChange={(event) => update({ applicationType: event.target.value as ApplicationType })}><option value="PHD">PhD — tailor CV and letter</option><option value="JOB">Job — keep CV, write letter</option></Select>}
         {draft.step === "paste" && <Select label="Document mode" value="NATIVE" onChange={() => router.push(`/new/latex${window.location.search}`)}><option value="NATIVE">Dossier documents</option><option value="LATEX">LaTeX project</option></Select>}
         {draft.step === "paste" && profiles.length > 0 && <Select label="Application package (optional)" value={draft.packageProfileId ?? ""} onChange={(event) => update({ packageProfileId: event.target.value })}><option value="">Individual PDFs</option>{profiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name}</option>)}</Select>}
         {draft.step === "paste" && !writeInClaude && <EmailDraftingSelect value={draft.emailDraftMode ?? null} globalMode={globalEmailDraftMode} onChange={(emailDraftMode) => update({ emailDraftMode })} />}
