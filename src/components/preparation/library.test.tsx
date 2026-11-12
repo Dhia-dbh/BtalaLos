@@ -34,6 +34,7 @@ const initial = {
 };
 beforeEach(() => {
   vi.clearAllMocks();
+  localStorage.clear();
   vi.stubGlobal(
     "fetch",
     vi.fn(async () => Response.json(initial)),
@@ -101,12 +102,13 @@ it("loads CLI models and limits effort choices to the selected model", async () 
         id: "test-model",
         display_name: "Test model",
         reasoning_efforts: ["medium"],
+        default_reasoning_effort: "medium",
       },
     ],
   });
   render(<ProjectSettings initial={initial} initialMode="NATIVE" />);
   await user.click(
-    screen.getByRole("button", { name: "Test CLI and load models" }),
+    screen.getByRole("button", { name: "Load available models" }),
   );
   await waitFor(() =>
     expect(screen.getByLabelText("Model").tagName).toBe("SELECT"),

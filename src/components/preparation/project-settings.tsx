@@ -10,6 +10,7 @@ import { toast } from "@/components/toast";
 import type { DocumentMode, Project } from "@/lib/preparation/types";
 import type { LibraryData } from "./library";
 import { preparationRequest } from "./client";
+import { CliPicker } from "./cli-picker";
 import { RepositoryPicker, type RepositoryFiles } from "./repository-picker";
 
 export function ProjectSettings({
@@ -41,9 +42,6 @@ export function ProjectSettings({
   }, [initial.project.repository]);
   const [mode, setMode] = useState(initialMode);
   const [busy, setBusy] = useState(false);
-  const [models, setModels] = useState<
-    { id: string; display_name: string; reasoning_efforts: string[] }[]
-  >([]);
   const work = async (task: () => Promise<unknown>) => {
     setBusy(true);
     try {
@@ -220,85 +218,11 @@ export function ProjectSettings({
             </option>
           ))}
         </Select>
-        <div className="grid items-end gap-4 sm:grid-cols-2">
-          <Select
-            label="Coding CLI"
-            value={project.provider}
-            onChange={(event) => {
-              setProject({
-                ...project,
-                provider: event.target.value as Project["provider"],
-                model: "",
-              });
-              setModels([]);
-            }}
-          >
-            <option value="codex">Codex</option>
-            <option value="claude">Claude Code</option>
-          </Select>
-          <Button
-            variant="secondary"
-            disabled={busy}
-            onClick={() =>
-              void work(async () => {
-                const result = await preparationRequest<{
-                  models: typeof models;
-                }>("capabilities", { provider: project.provider });
-                setModels(result.models);
-              })
-            }
-          >
-            Test CLI and load models
-          </Button>
-          {models.length ? (
-            <Select
-              label="Model"
-              value={project.model}
-              onChange={(event) =>
-                setProject({ ...project, model: event.target.value })
-              }
-            >
-              <option value="">Select model</option>
-              {models.map((model) => (
-                <option key={model.id} value={model.id}>
-                  {model.display_name}
-                </option>
-              ))}
-            </Select>
-          ) : (
-            <Input
-              label="Model"
-              value={project.model}
-              onChange={(event) =>
-                setProject({ ...project, model: event.target.value })
-              }
-            />
-          )}
-          <Select
-            label="Thinking effort"
-            value={project.effort}
-            onChange={(event) =>
-              setProject({
-                ...project,
-                effort: event.target.value as Project["effort"],
-              })
-            }
-          >
-            {(
-              models.find((model) => model.id === project.model)
-                ?.reasoning_efforts ?? [
-                "minimal",
-                "low",
-                "medium",
-                "high",
-                "xhigh",
-                "max",
-              ]
-            ).map((effort) => (
-              <option key={effort}>{effort}</option>
-            ))}
-          </Select>
-        </div>
+        <CliPicker
+          value={project}
+          onChange={(cli) => setProject({ ...project, ...cli })}
+          disabled={busy}
+        />
         <fieldset className="flex flex-col gap-2">
           <legend className="mb-2 text-sm font-medium">
             Applicant context
