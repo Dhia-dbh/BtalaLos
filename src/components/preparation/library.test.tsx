@@ -68,6 +68,7 @@ it("requires a profile before starting automatic LaTeX preparation and preserves
     <NewLatex
       configured
       profiles={initial.profiles}
+      initialCli={{ ...EMPTY_PROJECT, model: "fixture" }}
       initialPosting="Researcher at Example"
     />,
   );
@@ -216,7 +217,7 @@ it("uses refreshed CLI defaults and sends the displayed selection, including an 
 
 it("passes the selected job workflow when creating a LaTeX application", async () => {
   const user = userEvent.setup();
-  render(<NewLatex configured profiles={initial.profiles} initialPosting="Job posting" />);
+  render(<NewLatex configured profiles={initial.profiles} initialPosting="Job posting" initialCli={{ ...EMPTY_PROJECT, model: "fixture" }} />);
   await user.selectOptions(screen.getByLabelText("Application type"), "JOB");
   await user.selectOptions(screen.getByLabelText("Application profile"), "phd");
   await user.click(screen.getByRole("button", { name: "Prepare application" }));
