@@ -222,7 +222,7 @@ test("prepares a LaTeX application and a native package through the interface", 
     .getByLabel("Editable source files", { exact: true })
     .selectOption(["cv.tex", "letter.tex"]);
   await page
-    .getByRole("button", { name: "Test CLI and load models", exact: true })
+    .getByRole("button", { name: "Load available models", exact: true })
     .click();
   await page
     .getByRole("combobox", { name: "Model", exact: true })
