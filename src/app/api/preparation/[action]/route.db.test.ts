@@ -370,3 +370,26 @@ it("persists an explicit CLI assessment and rejects applications without extract
   const empty = await db.application.create({ data: {} });
   expect((await request("match", { applicationId: empty.id })).status).toBe(422);
 });
+
+it("saves form answers per job application and keeps them through export/import", async () => {
+  const application = await db.application.create({ data: { applicationType: "JOB" } });
+  const answers = [{ id: "q1", question: "Why us?", answer: "Relevant work." }];
+  expect((await request("form-answers", { applicationId: application.id, answers })).status).toBe(200);
+  expect((await db.application.findUniqueOrThrow({ where: { id: application.id } })).formAnswers).toEqual(answers);
+  const phd = await db.application.create({ data: {} });
+  expect((await request("form-answers", { applicationId: phd.id, answers })).status).toBe(422);
+  const { buildExport } = await import("@/lib/data-export");
+  const exported = await buildExport(db);
+  expect(exported.applications.find((entry) => entry.id === application.id)).toMatchObject({ applicationType: "JOB", formAnswers: answers });
+  const { importExport } = await import("@/lib/data-import");
+  await importExport(db, exported);
+  expect(await db.application.findUniqueOrThrow({ where: { id: application.id } })).toMatchObject({ applicationType: "JOB", formAnswers: answers });
+});
+
+it("persists the selected application type before starting preparation", async () => {
+  const profile = await db.applicationProfile.create({ data: { name: "Job", items: [{ role: "cv" }, { role: "letter" }] } });
+  const response = await request("create", { applicationType: "JOB", profileId: profile.id, posting: "Job posting", instructions: "" });
+  expect(response.status).toBe(200);
+  const { id } = await response.json();
+  expect((await db.application.findUniqueOrThrow({ where: { id } })).applicationType).toBe("JOB");
+});

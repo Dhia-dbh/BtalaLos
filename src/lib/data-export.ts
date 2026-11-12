@@ -1,3 +1,4 @@
+import { applicationTypeSchema, formAnswersSchema } from "@/lib/application-type";
 import { emailDraftModeSchema } from "@/lib/email-drafting";
 import "server-only";
 
@@ -187,6 +188,8 @@ const chatMessage = z.object({
 });
 const note = z.object({ id: text, body: text, createdAt: date, updatedAt: date });
 const application = z.object({
+  applicationType: applicationTypeSchema.default("PHD"),
+  formAnswers: formAnswersSchema.default([]),
   documentMode: z.enum(["NATIVE", "LATEX"]).default("NATIVE"),
   packageProfileId: z.string().nullable().default(null),
   emailDraftMode: emailDraftModeSchema.nullable().default(null),
@@ -482,7 +485,7 @@ export async function buildExport(
       settings: settings.filter((setting) => !SECRET_SETTINGS.includes(setting.key) && !INSTALL_SETTINGS.includes(setting.key)),
       ...(apiKey ? { apiKey } : {}),
       ...(Object.keys(jobSourceKeys).length > 0 ? { jobSourceKeys } : {}),
-      applications: applications.map((application) => ({ ...application, emailDraftMode: emailDraftModeSchema.nullable().parse(application.emailDraftMode) })),
+      applications: applications.map((application) => ({ ...application, applicationType: applicationTypeSchema.parse(application.applicationType), formAnswers: formAnswersSchema.parse(application.formAnswers), emailDraftMode: emailDraftModeSchema.nullable().parse(application.emailDraftMode) })),
       postings,
       searches,
       agentCandidates,

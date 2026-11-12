@@ -1,0 +1,26 @@
+import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { expect, it, vi } from "vitest";
+import { JobFormAnswers } from "./job-form-answers";
+import { preparationRequest } from "./client";
+vi.mock("./client", () => ({ preparationRequest: vi.fn() }));
+it("loads saved answers and applies grammar, reword and custom edits only to the selected answer", async () => {
+  const answers = [{ id: "a", question: "Why?", answer: "Original A" }, { id: "b", question: "Experience?", answer: "Original B" }];
+  vi.stubGlobal("fetch", vi.fn(async () => Response.json({ formAnswers: answers })));
+  vi.mocked(preparationRequest).mockImplementation(async (action, input) => action === "rewrite-answer" ? { answer: `${(input as { operation: string }).operation} result` } : { ok: true });
+  const user = userEvent.setup();
+  render(<JobFormAnswers applicationId="job1" />);
+  await screen.findByDisplayValue("Original B");
+  const group = within(screen.getByRole("group", { name: "Question 2" }));
+  await user.click(group.getByRole("button", { name: "Correct grammatically" }));
+  expect(screen.getByLabelText("Answer 2")).toHaveValue("grammar result");
+  expect(screen.getByLabelText("Answer 1")).toHaveValue("Original A");
+  await user.click(group.getByRole("button", { name: "Reword and improve" }));
+  expect(screen.getByLabelText("Answer 2")).toHaveValue("reword result");
+  await user.click(group.getByRole("button", { name: "Custom instruction" }));
+  await user.type(screen.getByLabelText("Instruction for answer 2"), "Make it shorter");
+  await user.click(group.getByRole("button", { name: "Apply instruction" }));
+  await waitFor(() => expect(screen.getByLabelText("Answer 2")).toHaveValue("custom result"));
+  await user.click(screen.getByRole("button", { name: "Save answers" }));
+  expect(preparationRequest).toHaveBeenLastCalledWith("form-answers", { applicationId: "job1", answers: [answers[0], { ...answers[1], answer: "custom result" }] });
+});

@@ -1,5 +1,6 @@
 import { generationTraceId } from "@/lib/generation-telemetry";
 import "server-only";
+import type { ApplicationType } from "@/lib/application-type";
 
 import { AgentCandidateStatus, ApplicationOrigin, type Tone } from "@/generated/prisma/enums";
 import { ActionError } from "@/lib/action";
@@ -53,6 +54,7 @@ export type ApplicationClaim =
   | { kind: "connector"; postingId: string | null };
 
 export type CreateApplicationInput = {
+  applicationType?: ApplicationType;
   reading: ApplicationReading;
   documents: WriteDocumentsResult;
   /** The match as shown, which the documents were written from. */
@@ -68,7 +70,7 @@ export type CreateApplicationInput = {
 const CLAIMED = "application:";
 
 /** Creates the application once; creating again with the same claim returns the one that exists. */
-export async function createApplicationFromDocuments({ reading, documents, match, details, postingUrl, tone, note, claim }: CreateApplicationInput): Promise<string> {
+export async function createApplicationFromDocuments({ reading, documents, match, details, postingUrl, tone, note, claim, applicationType = "PHD" }: CreateApplicationInput): Promise<string> {
   const [settings, profile] = await Promise.all([loadSettings(), loadProfile()]);
   const { extracted, extractedWith, matchedWith } = reading;
   const language = settings.docLanguage ?? extracted.language ?? "English";
@@ -121,6 +123,7 @@ export async function createApplicationFromDocuments({ reading, documents, match
 
     const application = await tx.application.create({
       data: {
+        applicationType,
         // An agent draft stays on the Agent screen until it's approved (#195).
         ...(claim.kind === "agent" ? { origin: ApplicationOrigin.AGENT, agentScore: claim.score, awaitingReview: true } : {}),
         title: details.title || [details.role, details.company].filter(Boolean).join(" · ") || "Untitled application",
@@ -191,7 +194,7 @@ export async function createApplicationFromDocuments({ reading, documents, match
   // trimmed, and the opening message says what was cut. A failure here
   // leaves the resume as written rather than failing the application.
   const limit = maxPages(settings.pageLimit);
-  if (limit) {
+  if (limit && applicationType !== "JOB") {
     try {
       const { trimmed, fits } = await fitResumeToPages(created.id, profile, limit);
       if (trimmed.length > 0 && settings.showDiff) {

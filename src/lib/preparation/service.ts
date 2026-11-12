@@ -1,3 +1,4 @@
+import type { ApplicationType } from "@/lib/application-type";
 import { emailDraftDecision, emailDraftModeSchema, submissionMethodSchema, SUBMISSION_CLASSIFICATION_RULE, type EmailDraftMode } from "@/lib/email-drafting";
 import { recordGenerationCall, type TokenUsage } from "@/lib/generation-telemetry";
 import "server-only";
@@ -43,6 +44,7 @@ type Source = {
   name: string;
 };
 type Snapshot = {
+  applicationType?: ApplicationType;
   emailDraftMode?: EmailDraftMode;
   mode: "NATIVE" | "LATEX";
   project: Project;
@@ -153,6 +155,7 @@ export async function queuePreparation(
   );
   const [otherRelevantInformation, settings] = await Promise.all([loadFactTexts(null), loadSettings()]);
   const snapshot: Snapshot = {
+    applicationType: application.applicationType as ApplicationType,
     emailDraftMode: application.emailDraftMode ? emailDraftModeSchema.parse(application.emailDraftMode) : settings.emailDraftMode,
     otherRelevantInformation,
     prompts: { latexCvPrompt: settings.latexCvPrompt, latexLetterPrompt: settings.latexLetterPrompt, latexEmailPrompt: settings.latexEmailPrompt, routingPrompt: settings.routingPrompt },
@@ -551,9 +554,9 @@ async function runPreparation(
         files = { ...files, ...applied.files };
       };
       await edit(
-        "Tailor CV and letter",
-        snapshot.instructions,
-        snapshot.project.editablePaths,
+        snapshot.applicationType === "JOB" ? "Write letter" : "Tailor CV and letter",
+        snapshot.applicationType === "JOB" ? `Keep the CV unchanged. Write only the cover letter. ${snapshot.instructions}` : snapshot.instructions,
+        snapshot.applicationType === "JOB" ? [snapshot.project.letterPath] : snapshot.project.editablePaths,
       );
       const compile = (role: "cv" | "letter", round: number) =>
         pdfArtifact(`Compile ${role}: round ${round}`, role, () =>
@@ -573,15 +576,17 @@ async function runPreparation(
             ),
           }),
         );
-      cv = await compile("cv", 0);
+      cv = snapshot.applicationType === "JOB"
+        ? await pdfArtifact("Compile unchanged CV", "cv", () => operation("base-cv", { kind: "base-resume", repository: snapshot.project.repository, baseRef: snapshot.commit, entrypoint: snapshot.project.cvPath, engine: snapshot.project.engine }))
+        : await compile("cv", 0);
       letter = await compile("letter", 0);
       for (
         let round = 1;
-        round <= 2 && (cv.pages! > 1 || letter.pages! > 1);
+        round <= 2 && ((snapshot.applicationType !== "JOB" && cv.pages! > 1) || letter.pages! > 1);
         round++
       ) {
         const allowed = [
-          cv.pages! > 1 ? snapshot.project.cvPath : null,
+          snapshot.applicationType !== "JOB" && cv.pages! > 1 ? snapshot.project.cvPath : null,
           letter.pages! > 1 ? snapshot.project.letterPath : null,
         ].filter((file): file is string => file !== null);
         await edit(
@@ -589,11 +594,11 @@ async function runPreparation(
           `Shorten only overflowing content to fit ONE page. CV has ${cv.pages} pages; letter has ${letter.pages} pages. Keep verified facts and layout. ${snapshot.instructions}`,
           allowed,
         );
-        if (cv.pages! > 1) cv = await compile("cv", round);
+        if (snapshot.applicationType !== "JOB" && cv.pages! > 1) cv = await compile("cv", round);
         if (letter.pages! > 1) letter = await compile("letter", round);
       }
       await step("Validate one-page limits", async () => {
-        if (cv.pages !== 1 || letter.pages !== 1)
+        if ((snapshot.applicationType !== "JOB" && cv.pages !== 1) || letter.pages !== 1)
           throw new ActionError(
             "CV or letter still exceeds one page after two shortening rounds. Review the sources and start a fresh revision.",
           );

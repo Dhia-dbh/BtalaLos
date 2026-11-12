@@ -2,6 +2,8 @@ import "server-only";
 
 import { z } from "zod";
 
+import { applicationTypeSchema } from "@/lib/application-type";
+import { resumeUnits } from "@/lib/ai/tasks/tailor-resume";
 import { Tone } from "@/generated/prisma/enums";
 import { getAiProvider } from "@/lib/ai";
 import { loadTaskOptions } from "@/lib/ai/task-options";
@@ -22,6 +24,7 @@ export const writeDocumentsJob = defineJob({
   input: z.object({
     /** The job that read the posting; its result and input are the source of truth. */
     readJobId: z.string().min(1),
+    applicationType: applicationTypeSchema.optional(),
     posting: z.string().min(1),
     /** What was read, with the user's corrections (company, role…) for the prompts. */
     extracted: extractedSchema,
@@ -31,12 +34,14 @@ export const writeDocumentsJob = defineJob({
     note: z.string().max(2000),
   }),
   result: z.object({ resume: unitsSchema, resumeWith: z.string(), letter: unitsSchema, letterWith: z.string() }),
-  async run({ posting, extracted, match, tone, note }, { step, signal }) {
+  async run({ posting, extracted, match, tone, note, applicationType = "PHD" }, { step, signal }) {
     await step(WRITE_DOCUMENTS_STEPS[0]);
     const [provider, options, profile] = await Promise.all([getAiProvider(), loadTaskOptions(), loadProfile()]);
     // "Anything I should know?" is the application's first fact (APP-15).
     const facts = note.trim() ? [note.trim()] : [];
-    const resume = await tailorResume(provider, { profile, extracted, match, facts, posting }, { ...options, signal });
+    const resume = applicationType === "JOB"
+      ? { data: resumeUnits(profile, { summary: profile.basics.summary, roles: [], projects: [], skills: profile.skills.map((skill) => skill.name), education: [] }), promptVersion: "base-profile@1" }
+      : await tailorResume(provider, { profile, extracted, match, facts, posting }, { ...options, signal });
 
     await step(WRITE_DOCUMENTS_STEPS[1]);
     const letter = await writeCoverLetter(provider, { profile, extracted, match, tone, facts, posting }, { ...options, signal });

@@ -388,6 +388,8 @@ enum FunnelStage {
 }
 
 model Application {
+  applicationType     String                @default("PHD")
+  formAnswers         Json                  @default("[]")
   id                  String                @id @default(cuid())
   /// Whether the user made it, or the job agent prepared it (E16).
   origin              ApplicationOrigin     @default(MANUAL)
