@@ -1,5 +1,6 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { userTimeZone } from "@/lib/time-zone";
 import { demoResumeUnits } from "@/lib/demo-profile";
 import { createTestClient, resetDatabase } from "@/test/db";
 
@@ -13,7 +14,7 @@ import { loadProfile } from "./profile-data";
 import { loadTheme, loadThemes } from "./theme-data";
 import { BUILT_IN_THEMES } from "./themes";
 
-vi.mock("@/lib/time-zone", () => ({ userTimeZone: async () => undefined }));
+vi.mock("@/lib/time-zone", () => ({ userTimeZone: vi.fn(async (): Promise<string | undefined> => undefined) }));
 
 const db = vi.hoisted(() => ({ client: undefined as ReturnType<typeof createTestClient> | undefined }));
 vi.mock("@/lib/prisma", async () => {
@@ -33,6 +34,7 @@ const prisma = () => db.client!;
 const now = new Date(2026, 8, 28, 12);
 
 beforeEach(async () => {
+  vi.mocked(userTimeZone).mockResolvedValue(undefined);
   await resetDatabase(prisma());
   await seedBuiltIns(prisma());
   await seedDemo(prisma(), { now });
@@ -87,4 +89,15 @@ describe("theme and profile loaders", () => {
     expect(profile.experience.map((entry) => entry.company)).toEqual(["Northwind Logistics", "Fieldnote", "Studio Brik"]);
     expect(profile.experience[0].skillIds.length).toBeGreaterThan(0);
   });
+});
+
+it("uses the user timezone for creation days and retains them after status changes", async () => {
+  vi.mocked(userTimeZone).mockResolvedValue("Africa/Tunis");
+  const application = await prisma().application.findFirstOrThrow();
+  await prisma().application.update({ where: { id: application.id }, data: { createdAt: new Date("2026-11-11T23:30:00Z"), status: "DRAFT" } });
+  let rows = await loadApplicationRows({ archived: false, sort: DEFAULT_SORT });
+  expect(rows.find((row) => row.id === application.id)?.createdDay).toBe("2026-11-12");
+  await prisma().application.update({ where: { id: application.id }, data: { status: "SENT" } });
+  rows = await loadApplicationRows({ archived: false, sort: DEFAULT_SORT });
+  expect(rows.find((row) => row.id === application.id)).toMatchObject({ status: "SENT", createdDay: "2026-11-12" });
 });

@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { Fragment } from "react";
 import { PackageFolderButton } from "@/components/preparation/folder-button";
 import { useRouter } from "next/navigation";
 
 import { StatusDot } from "@/components/ui/status-dot";
 import type { ApplicationStatus } from "@/generated/prisma/enums";
 import type { ApplicationRow } from "@/lib/applications-data";
-import { NATURAL_ORDER, type Sort, type SortKey } from "@/lib/applications-list";
+import { groupRowsByDay, NATURAL_ORDER, type Sort, type SortKey } from "@/lib/applications-list";
 import { cn } from "@/lib/cn";
 import { STATUSES } from "@/lib/status";
 
@@ -36,12 +37,14 @@ function direction({ key, reversed }: Sort): "ascending" | "descending" {
  */
 export function Table({
   rows,
+  groupByDay = false,
   sort,
   onSort,
   onMove,
 }: {
   /** Already sorted by the server. */
   rows: ApplicationRow[];
+  groupByDay?: boolean;
   sort: Sort;
   onSort: (sort: Sort) => void;
   onMove: (row: ApplicationRow, to: ApplicationStatus) => void;
@@ -79,7 +82,10 @@ export function Table({
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
+          {(groupByDay ? groupRowsByDay(rows) : [{ day: "", rows }]).map((group) => (
+            <Fragment key={group.day}>
+              {group.day && <tr className="bg-track"><th colSpan={8} scope="rowgroup" className="px-5 py-3 text-sm font-medium"><time dateTime={group.day}>{group.day}</time></th></tr>}
+              {group.rows.map((row) => (
             <tr
               key={row.id}
               onClick={(event) => {
@@ -126,6 +132,8 @@ export function Table({
                 <RowMenu row={row} onMove={(to) => onMove(row, to)} />
               </td>
             </tr>
+              ))}
+            </Fragment>
           ))}
         </tbody>
       </table>

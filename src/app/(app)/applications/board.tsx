@@ -14,12 +14,12 @@ import {
 } from "@dnd-kit/core";
 import Link from "next/link";
 import { PackageFolderButton } from "@/components/preparation/folder-button";
-import { useRef, useState, type ReactNode } from "react";
+import { Fragment, useRef, useState, type ReactNode } from "react";
 
 import { StatusDot } from "@/components/ui/status-dot";
 import type { ApplicationStatus } from "@/generated/prisma/enums";
 import type { ApplicationRow } from "@/lib/applications-data";
-import { statusLabel } from "@/lib/applications-list";
+import { groupRowsByDay, statusLabel } from "@/lib/applications-list";
 import { cn } from "@/lib/cn";
 
 import { RowMenu } from "./row-menu";
@@ -32,10 +32,12 @@ import { RowMenu } from "./row-menu";
  */
 export function Board({
   rows,
+  groupByDay = false,
   statuses,
   onMove,
 }: {
   rows: ApplicationRow[];
+  groupByDay?: boolean;
   statuses: ApplicationStatus[];
   onMove: (row: ApplicationRow, to: ApplicationStatus) => void;
 }) {
@@ -87,7 +89,10 @@ export function Board({
             const cards = byNewest.filter((row) => row.status === status);
             return (
               <Column key={status} status={status} count={cards.length}>
-                {cards.map((row) => (
+                {(groupByDay ? groupRowsByDay(cards) : [{ day: "", rows: cards }]).map((group) => (
+                  <Fragment key={group.day}>
+                    {group.day && <li className="px-1 pt-2 text-sm font-medium"><time dateTime={group.day}>{group.day}</time></li>}
+                    {group.rows.map((row) => (
                   <Card
                     key={row.id}
                     row={row}
@@ -97,6 +102,8 @@ export function Board({
                     onOpen={(event) => Date.now() - draggedAt.current < 300 && event.preventDefault()}
                     onMove={(to) => onMove(row, to)}
                   />
+                    ))}
+                  </Fragment>
                 ))}
               </Column>
             );

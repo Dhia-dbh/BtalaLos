@@ -1,3 +1,4 @@
+import { userTimeZone } from "@/lib/time-zone";
 import type { Metadata } from "next";
 
 import { listSummary, resolveListParams, statusesIn } from "@/lib/applications-list";
@@ -30,6 +31,7 @@ export default async function ApplicationsPage({ searchParams }: PageProps<"/app
   return (
     <ApplicationsScreen
       params={params}
+      timeZone={new Intl.DateTimeFormat("en", { timeZone: await userTimeZone() }).resolvedOptions().timeZone}
       rows={found.filter((row) => statusesIn(params.filter).includes(row.status))}
       counts={counts}
       summary={listSummary(current.map((row) => row.status))}

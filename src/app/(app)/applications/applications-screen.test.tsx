@@ -24,6 +24,7 @@ export const row = (id: string, extra: Partial<ApplicationRow> = {}): Applicatio
   match: { hit: 5, total: 7 },
   sent: "20 Sep",
   updated: "2 days ago",
+  createdDay: "2026-09-26",
   updatedAt: Date.UTC(2026, 8, 26),
   ...extra,
 });
@@ -119,4 +120,20 @@ describe("the Applications screen (E9-1)", () => {
     expect(router.replace).toHaveBeenCalledWith("/applications?q=ledg", { scroll: false });
     expect(rememberListView).not.toHaveBeenCalled();
   });
+});
+
+it("groups both views by creation day, retains statuses, and toggles through the URL", async () => {
+  const user = userEvent.setup();
+  const grouped = { ...props, timeZone: "Africa/Tunis", params: { ...params, groupByDay: true }, rows: [row("a", { createdDay: "2026-11-01", status: "DRAFT" }), row("b", { createdDay: "2026-11-02", status: "SENT" })] };
+  const { rerender } = render(<ApplicationsScreen {...grouped} />);
+  expect(screen.getByLabelText("Group by creation day (Africa/Tunis)")).toBeChecked();
+  expect(screen.getByText("2026-11-01")).toBeInTheDocument();
+  expect(screen.getByText("2026-11-02")).toBeInTheDocument();
+  await user.click(screen.getByRole("radio", { name: "Table" }));
+  expect(router.push).toHaveBeenLastCalledWith("/applications?view=table&group=created", { scroll: false });
+  rerender(<ApplicationsScreen {...grouped} params={{ ...grouped.params, view: "table" }} />);
+  expect(screen.getAllByRole("rowgroup")[1].querySelector("time")).toHaveTextContent("2026-11-02");
+  expect(screen.getAllByRole("combobox").map((element) => (element as HTMLSelectElement).value)).toEqual(["SENT", "DRAFT"]);
+  await user.click(screen.getByLabelText("Group by creation day (Africa/Tunis)"));
+  expect(router.push).toHaveBeenLastCalledWith("/applications?view=table", { scroll: false });
 });
