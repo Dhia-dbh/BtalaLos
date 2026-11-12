@@ -266,7 +266,7 @@ export async function sweepStartups(now = new Date()): Promise<{ removed: number
 /**
  * What New application starts from (#222): what's known about the startup,
  * as a posting to read. Addresses are left out, written or hidden: they stay
- * in Dossier and never go to the AI.
+ * in Btalalos and never go to the AI.
  */
 export function startupPostingText(startup: StartupView): string {
   const lines = [

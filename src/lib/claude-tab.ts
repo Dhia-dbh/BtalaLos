@@ -1,4 +1,4 @@
-// A new tab for the claude.ai chat that takes over work Dossier has no AI
+// A new tab for the claude.ai chat that takes over work Btalalos has no AI
 // model for (#221). Browsers only let a page open a tab during the click
 // itself, so it's opened blank at once and sent on once the server says where.
 

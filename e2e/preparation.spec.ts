@@ -272,6 +272,7 @@ test("prepares a LaTeX application and a native package through the interface", 
   await page.emulateMedia({ colorScheme: "light" });
   await page.goto("/new");
   await expect(page).toHaveURL(/\/new\/latex/);
+  await expect(page.getByRole("combobox", { name: "Model", exact: true })).toHaveValue("fixture");
   await page
     .getByLabel("Document mode", { exact: true })
     .selectOption("NATIVE");
@@ -281,6 +282,7 @@ test("prepares a LaTeX application and a native package through the interface", 
   );
   await page.goto("/new");
   await expect(page).toHaveURL(/\/new\/latex/);
+  await expect(page.getByRole("combobox", { name: "Model", exact: true })).toHaveValue("fixture");
   await page
     .getByLabel("Job posting", { exact: true })
     .fill(

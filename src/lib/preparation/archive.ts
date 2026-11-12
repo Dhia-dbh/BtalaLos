@@ -2,12 +2,12 @@ import "server-only";
 import { unzipSync, zipSync, strToU8, type Zippable } from "fflate";
 import { mkdir, readFile, writeFile, unlink } from "node:fs/promises";
 import { ActionError } from "@/lib/action";
-import type { DossierExport } from "@/lib/data-export";
+import type { BtalalosExport } from "@/lib/data-export";
 import { IMPORT_MAX_BYTES } from "@/lib/import-limits";
 import { preparationDirectory, storedPath, verifiedBytes } from "./storage";
 import { checksum } from "./worker";
 
-export async function buildArchive(data: DossierExport): Promise<Buffer> {
+export async function buildArchive(data: BtalalosExport): Promise<Buffer> {
   const files: Zippable = { "data.json": strToU8(JSON.stringify(data)) };
   const assets = [
     ...data.supportingDocuments.flatMap((document) => document.versions),
@@ -51,7 +51,7 @@ export function readArchive(bytes: Uint8Array): {
   return { text: new TextDecoder().decode(files["data.json"]), files };
 }
 export async function restoreArchiveFiles(
-  data: DossierExport,
+  data: BtalalosExport,
   files: Record<string, Uint8Array>,
 ) {
   const assets = [

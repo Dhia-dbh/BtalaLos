@@ -1,6 +1,6 @@
-# Developing Dossier
+# Developing Btalalos
 
-Next.js 16 (App Router) + Prisma 7 + PostgreSQL 18, run with Docker Compose and Yarn 4. App development commands go through the containers. The optional Codex bridge and application worker run on the Linux host or inside WSL2. For installing and running BtalaLos, see the [installation guide](docs/installation.md); for how it's secured, [SECURITY.md](SECURITY.md).
+Next.js 16 (App Router) + Prisma 7 + PostgreSQL 18, run with Docker Compose and Yarn 4. App development commands go through the containers. The optional Codex bridge and application worker run on the Linux host or inside WSL2. For installing and running Btalalos, see the [installation guide](docs/installation.md); for how it's secured, [SECURITY.md](SECURITY.md).
 
 Production preparation can instead use the [worker image](docs/container-worker.md), with only the CLI/desktop companion on the host. Its Compose overlays target `compose.production.yml`; keep the development configuration below separate.
 
@@ -127,7 +127,7 @@ Both get the session from `getSession()` in `src/lib/auth/session.ts` (see [Sign
 
 ## Sign-in
 
-Dossier has one user and no accounts: you sign in with the password that `DOSSIER_PASSWORD` is a hash of. The session is an encrypted token (JWE, keyed from `DOSSIER_SECRET`) in an HttpOnly, SameSite=Lax cookie, so nothing is stored on the server. It lasts until the browser closes, but at most 24 hours; with "Keep me signed in", 30 days.
+Btalalos has one user and no accounts: you sign in with the password that `DOSSIER_PASSWORD` is a hash of. The session is an encrypted token (JWE, keyed from `DOSSIER_SECRET`) in an HttpOnly, SameSite=Lax cookie, so nothing is stored on the server. It lasts until the browser closes, but at most 24 hours; with "Keep me signed in", 30 days.
 
 The hash is argon2id with OWASP's settings (19 MiB, 2 passes, 1 lane) from Node's own `crypto.argon2`, made by `docker/bin/yarn hash-password` (`scripts/hash-password.ts`, which the image bundles as the `hash-password` command). Checking a password against it is in `src/lib/auth/password-hash.ts`, and `src/lib/env.ts` refuses anything that isn't a hash. It's written as `argon2id:m=19456,t=2,p=1:<salt>:<hash>` rather than the usual `$argon2id$v=19$…`, because Next.js and Docker Compose expand `$` in `.env` files, even inside quotes. The settings are part of each hash, so stronger ones can come later without breaking existing hashes.
 
@@ -141,7 +141,7 @@ Failed sign-ins are rate-limited in Postgres: after 5 failures within a minute f
 
 The optional [Codex CLI bridge](docs/codex-cli.md) runs on the host to reuse its ChatGPT login. This is an exception to the container-only development commands: run `node scripts/codex-bridge.mjs` and `node --test scripts/codex-bridge.test.mjs` on the host. The application itself still runs in Docker.
 
-Dossier reads job postings and writes drafts with the model you choose in Settings → AI provider: a local model through Ollama or llama.cpp, LM Studio, any OpenAI-compatible server, Anthropic or Mistral. Until you save a choice there, the `DOSSIER_AI_*` variables decide (see `.env.example`). API keys are stored encrypted with a key derived from `DOSSIER_SECRET`, and never sent back to the browser.
+Btalalos reads job postings and writes drafts with the model you choose in Settings → AI provider: a local model through Ollama or llama.cpp, LM Studio, any OpenAI-compatible server, Anthropic or Mistral. Until you save a choice there, the `DOSSIER_AI_*` variables decide (see `.env.example`). API keys are stored encrypted with a key derived from `DOSSIER_SECRET`, and never sent back to the browser.
 
 Long AI tasks run as background jobs (`src/lib/jobs`): the page follows their named steps as they happen and picks them up again after a reload. A job's input and result hold personal data, so they don't last: a job that works on an application names it (`startJob(…, { applicationId })`) and is deleted with it, and finished jobs are deleted once they're older than **Keep task data for** in Settings → Your data (`src/lib/jobs/retention.ts`). Keep nothing in a job that has to outlast that; Undo on a toast and a page reattaching after a reload are fine. The prompts live in `src/lib/ai/tasks`; in strict mode ("Never invent experience", on by default) a fact guard flags names and numbers that aren't in the profile or the posting.
 

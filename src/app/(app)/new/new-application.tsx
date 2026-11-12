@@ -147,7 +147,7 @@ function useLeaveGuard(active: boolean, onLeave: () => void) {
 export type NewApplicationProps = {
   /** Whether an AI provider is set up; without one, the page points to Settings. */
   aiReady: boolean;
-  /** The Claude connector is on and Dossier has no usable AI model: a Claude chat writes it instead (#221). */
+  /** The Claude connector is on and Btalalos has no usable AI model: a Claude chat writes it instead (#221). */
   writeInClaude?: boolean;
   /** Offered through "Use a sample posting" before the first application. */
   samplePosting: string | null;
@@ -364,7 +364,7 @@ export function NewApplication({ aiReady, writeInClaude = false, samplePosting, 
       />
       <div className="flex max-w-[816px] flex-col gap-6 px-10 pb-20">
         {draft.step === "paste" && <Select label="Application type" value={draft.applicationType ?? "PHD"} onChange={(event) => update({ applicationType: event.target.value as ApplicationType })}><option value="PHD">PhD — tailor CV and letter</option><option value="JOB">Job — keep CV, write letter</option></Select>}
-        {draft.step === "paste" && <Select label="Document mode" value="NATIVE" onChange={() => router.push(`/new/latex${window.location.search}`)}><option value="NATIVE">Dossier documents</option><option value="LATEX">LaTeX project</option></Select>}
+        {draft.step === "paste" && <Select label="Document mode" value="NATIVE" onChange={() => router.push(`/new/latex${window.location.search}`)}><option value="NATIVE">Btalalos documents</option><option value="LATEX">LaTeX project</option></Select>}
         {draft.step === "paste" && profiles.length > 0 && <Select label="Application package (optional)" value={draft.packageProfileId ?? ""} onChange={(event) => update({ packageProfileId: event.target.value })}><option value="">Individual PDFs</option>{profiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name}</option>)}</Select>}
         {draft.step === "paste" && !writeInClaude && <EmailDraftingSelect value={draft.emailDraftMode ?? null} globalMode={globalEmailDraftMode} onChange={(emailDraftMode) => update({ emailDraftMode })} />}
         <Stepper
@@ -378,9 +378,9 @@ export function NewApplication({ aiReady, writeInClaude = false, samplePosting, 
             <>
               {writeInClaude ? (
                 <p role="note" className="rounded-card border border-line-card bg-card px-4 py-3 text-meta text-muted">
-                  Dossier has no AI model of its own, so Claude writes this one: <strong className="text-ink">Write it with Claude</strong> opens a
-                  chat in Claude that uses your Claude plan and the Dossier connector, and saves the resume and cover letter here as a Draft. To
-                  have Dossier write it instead,{" "}
+                  Btalalos has no AI model of its own, so Claude writes this one: <strong className="text-ink">Write it with Claude</strong> opens a
+                  chat in Claude that uses your Claude plan and the Btalalos connector, and saves the resume and cover letter here as a Draft. To
+                  have Btalalos write it instead,{" "}
                   <Link href="/settings?section=ai" className="font-medium text-ink underline underline-offset-2">
                     choose a model in Settings → AI provider
                   </Link>

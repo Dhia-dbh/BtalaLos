@@ -19,13 +19,13 @@ import { appVersion } from "@/lib/version";
 
 export const FETCH_MESSAGES = {
   notWeb: "That link doesn't look like a web address.",
-  privateAddress: "Dossier doesn't fetch addresses on your own network. Paste the posting instead.",
+  privateAddress: "Btalalos doesn't fetch addresses on your own network. Paste the posting instead.",
   unreachable: "The job site couldn't be reached. Without internet access, or if the site blocks it, paste the posting instead.",
   failed: (status: number) => `The job site answered with an error (${status}). Paste the posting instead.`,
   tooBig: "That page is too big to be a job posting. Paste the posting instead.",
   notPage: "That link isn't a web page. Paste the posting instead.",
   unreadable:
-    "There's no posting text on that page that Dossier can read: the site probably builds it in the browser. Paste the posting instead.",
+    "There's no posting text on that page that Btalalos can read: the site probably builds it in the browser. Paste the posting instead.",
 };
 
 const TIMEOUT_MS = 10_000;
@@ -99,7 +99,7 @@ export const guardedLookup: LookupFunction = (hostname, options, callback) => {
 
 type Response = { status: number; headers: http.IncomingHttpHeaders; body: Buffer };
 
-const USER_AGENT = `Mozilla/5.0 (compatible; Dossier/${appVersion}; self-hosted job search)`;
+const USER_AGENT = `Mozilla/5.0 (compatible; Btalalos/${appVersion}; self-hosted job search)`;
 
 /** One request, with the guarded lookup, a time limit and a size limit. */
 function request(url: URL, lookup: LookupFunction, timeoutMs: number, userAgent: string): Promise<Response> {
@@ -168,7 +168,7 @@ export type FetchedPage = { ok: true; html: string; url: string } | { ok: false;
  * addresses only (checked again after every redirect), and limits on time,
  * size and redirects. `status` is the site's answer when it refused. Used
  * for postings, and for a startup's own pages and robots.txt (#222), which
- * pass Dossier's identifying `userAgent`.
+ * pass Btalalos's identifying `userAgent`.
  */
 export async function fetchHtml(
   link: string,

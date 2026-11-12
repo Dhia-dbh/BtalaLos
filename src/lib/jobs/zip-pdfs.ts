@@ -25,8 +25,8 @@ export const downloadsDir = () => path.join(env.DOSSIER_DATA_DIR, "downloads");
 const KEEP_MS = 60 * 60 * 1000;
 
 const pad = (value: number) => String(value).padStart(2, "0");
-/** "dossier-pdfs-2026-09-28.zip" */
-export const zipFileName = (now: Date) => `dossier-pdfs-${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}.zip`;
+/** "btalalos-pdfs-2026-09-28.zip" */
+export const zipFileName = (now: Date) => `btalalos-pdfs-${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}.zip`;
 
 /** A company as a folder name: no characters a file system refuses. */
 function folderName(company: string): string {

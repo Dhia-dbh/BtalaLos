@@ -66,7 +66,7 @@ const SITES: Record<string, Record<string, string>> = {
   },
   "harbourlight.example": { "/careers": "<p>Write to careers@harbourlight.example</p>" },
   "quietco.example": { "/careers": "<p>We do not accept unsolicited applications.</p><p>hello@quietco.example</p>" },
-  "tulipworks.example": { "/robots.txt": "User-agent: Dossier\nDisallow: /", "/careers": "<p>jobs@tulipworks.example</p>" },
+  "tulipworks.example": { "/robots.txt": "User-agent: Btalalos\nDisallow: /", "/careers": "<p>jobs@tulipworks.example</p>" },
 };
 /** The startups' pages the app asked for, with its user agent, so a spec can check it was polite. */
 const siteRequests: { url: string; userAgent: string }[] = [];
@@ -105,7 +105,7 @@ createServer((request, response) => {
   }
   // The update check (DOSSIER_UPDATES_TEST_BASE_URL): no release is out, so
   // what a test stores as the latest release stays as it is.
-  if (url.pathname === "/github/repos/AienTech/dossier/releases/latest") return send(response, 404, { message: "Not Found" });
+  if (url.pathname === "/github/repos/Dhia-dbh/BtalaLos/releases/latest") return send(response, 404, { message: "Not Found" });
 
   if (url.pathname === "/jsearch/search-v2") {
     if (request.headers["x-api-key"] !== JSEARCH_KEY) return send(response, 401, { status: "ERROR", error: { message: "Invalid API key" } });

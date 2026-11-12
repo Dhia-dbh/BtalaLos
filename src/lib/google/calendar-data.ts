@@ -10,7 +10,7 @@ import { listEvents, type CalendarEvent } from "./calendar";
 import { GoogleError } from "./errors";
 
 // What the dashboard's calendar shows (E15-6): the events in the calendar
-// chosen in Settings → Google, with the interviews Dossier added linked to
+// chosen in Settings → Google, with the interviews Btalalos added linked to
 // their application, and the interviews that aren't in Google. Events are
 // read for the days on screen and never kept.
 
@@ -55,7 +55,7 @@ export async function loadCalendar(days: readonly Day[]): Promise<CalendarData> 
     where: { archivedAt: null, nextInterviewAt: { gte: from, lt: to } },
     select: { id: true, company: true, role: true, title: true, nextInterviewAt: true, interviewEventId: true },
   });
-  // Events tied to an application that still exists, by the property Dossier set or the id it kept.
+  // Events tied to an application that still exists, by the property Btalalos set or the id it kept.
   const tagged = [...new Set(events.map((event) => event.applicationId).filter((id): id is string => Boolean(id)))];
   const existing = new Set((await prisma.application.findMany({ where: { id: { in: tagged } }, select: { id: true } })).map(({ id }) => id));
   const byEvent = new Map(interviews.filter((application) => application.interviewEventId).map((application) => [application.interviewEventId!, application.id]));

@@ -226,7 +226,7 @@ export const settingsSchema = z.object({
   googleClientSecretEnc: z.string().nullable().catch(null),
   /** Read replies from Gmail. */
   gmailRead: flag(true),
-  /** Which mail the inbox check reads: only threads Dossier knows and company domains, or every new mail. */
+  /** Which mail the inbox check reads: only threads Btalalos knows and company domains, or every new mail. */
   gmailScope: z.enum(["known", "all"]).catch("known"),
   /** Minutes between inbox checks. */
   gmailInterval: z.coerce.number().int().min(5).max(120).catch(10),

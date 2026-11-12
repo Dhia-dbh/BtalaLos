@@ -7,7 +7,7 @@ import { googleUrl } from "./endpoints";
 import { isGone } from "./errors";
 import { buildMessage, decodeHeader, htmlToText, toBase64Url, type OutgoingMail } from "./mime";
 
-// The parts of the Gmail API Dossier uses (E15-2, E15-3).
+// The parts of the Gmail API Btalalos uses (E15-2, E15-3).
 
 const api = (path: string) => googleUrl("gmail", `/gmail/v1/users/me${path}`);
 
@@ -47,7 +47,7 @@ const messageSchema = z.object({
   payload: partSchema,
 });
 
-/** A Gmail message as Dossier reads it. */
+/** A Gmail message as Btalalos reads it. */
 export type ReadMail = {
   id: string;
   threadId: string;

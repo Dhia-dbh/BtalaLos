@@ -10,7 +10,7 @@ import { writeDocumentsJob } from "@/lib/jobs/write-documents";
 import { loadSettings } from "@/lib/settings-data";
 
 // A draft application asked for from Claude chat (#221, draft_application),
-// written by Dossier's own AI model: read the posting, write the resume and
+// written by Btalalos's own AI model: read the posting, write the resume and
 // cover letter, and create a Draft application, the way New application does
 // it, in one go. Nothing is sent.
 

@@ -54,10 +54,10 @@ describe("POST /api/import (E10-6)", () => {
   });
 
   it("refuses a file that isn't an export", async () => {
-    vi.mocked(parseExport).mockReturnValueOnce({ ok: false, error: "That file isn't a Dossier export." });
+    vi.mocked(parseExport).mockReturnValueOnce({ ok: false, error: "That file isn't a Btalalos export." });
     const response = await post();
     expect(response.status).toBe(400);
-    expect(await response.json()).toEqual({ error: "That file isn't a Dossier export." });
+    expect(await response.json()).toEqual({ error: "That file isn't a Btalalos export." });
     expect(writeBackup).not.toHaveBeenCalled();
   });
 

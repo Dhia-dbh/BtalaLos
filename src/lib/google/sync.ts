@@ -160,7 +160,7 @@ async function runSync(historyId: string | null, ownAddress: string, scope: "kno
     const outgoing = mail.labels.includes("SENT") || from.address === ownAddress.toLowerCase();
     if (mail.labels.some((label) => NOISE_LABELS.includes(label))) continue;
     const match = matchMail({ threadId: mail.threadId, fromName: from.name, fromAddress: from.address, subject: mail.subject }, applications, threads);
-    // Your own mail only counts in a thread Dossier knows; other mail by the setting.
+    // Your own mail only counts in a thread Btalalos knows; other mail by the setting.
     if (!match && (outgoing || scope === "known" || !mail.labels.includes("INBOX"))) continue;
     if (outgoing && match?.by !== "thread") continue;
 

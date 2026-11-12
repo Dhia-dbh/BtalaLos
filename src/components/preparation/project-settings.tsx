@@ -70,7 +70,7 @@ export function ProjectSettings({
             });
           }}
         >
-          <option value="NATIVE">Dossier documents</option>
+          <option value="NATIVE">Btalalos documents</option>
           <option value="LATEX">Existing LaTeX project</option>
         </Select>
         <p className="text-sm text-muted">

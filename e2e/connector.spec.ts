@@ -7,9 +7,9 @@ import { resetData, sql } from "./support";
 
 // The Claude connector (#221): off until it's turned on in Settings; then
 // Claude registers, the user signs in and allows it on the consent page,
-// Claude trades the code for tokens and uses Dossier's tools at /api/mcp,
+// Claude trades the code for tokens and uses Btalalos's tools at /api/mcp,
 // until Disconnect Claude or the switch goes off. The "Claude" here is a
-// request context without Dossier's cookie, and claude.ai's callback is
+// request context without Btalalos's cookie, and claude.ai's callback is
 // answered by the test.
 
 const CALLBACK = "https://claude.ai/api/mcp/auth_callback";
@@ -69,7 +69,7 @@ test("connects Claude through Settings and the consent page, serves its tools, a
   await page.route("https://claude.ai/**", (route) => route.fulfill({ status: 200, contentType: "text/plain", body: "Back in Claude" }));
   const query = new URLSearchParams({ response_type: "code", client_id: clientId, redirect_uri: CALLBACK, code_challenge: challenge, code_challenge_method: "S256", state: "xyz", resource: address });
   await page.goto(`/oauth/authorize?${query}`);
-  await expect(page.getByRole("heading", { name: "Connect Claude to Dossier" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Connect Claude to Btalalos" })).toBeVisible();
   await expect(page.getByText("It can never send an application or an email, or delete anything.", { exact: false })).toBeVisible();
   await expectAccessible(page);
   await page.getByRole("button", { name: "Allow" }).click();

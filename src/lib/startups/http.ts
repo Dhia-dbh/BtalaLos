@@ -8,14 +8,14 @@ import { appVersion } from "@/lib/version";
 
 // Requests for Startups (#222). Everything goes out under one user agent that
 // says what it is and links to the page explaining it, so a site can tell
-// Dossier apart and opt out in robots.txt ("User-agent: Dossier"). In the
+// Btalalos apart and opt out in robots.txt ("User-agent: Btalalos"). In the
 // end-to-end tests every request goes to the fake server instead
 // (DOSSIER_JOBS_TEST_BASE_URL/startups/<host>/<path>).
 
-export const STARTUPS_INFO_URL = "https://github.com/AienTech/dossier/blob/main/PRIVACY.md#startups";
-export const STARTUPS_USER_AGENT = `Mozilla/5.0 (compatible; Dossier/${appVersion}; +${STARTUPS_INFO_URL})`;
+export const STARTUPS_INFO_URL = "https://github.com/Dhia-dbh/BtalaLos/blob/master/PRIVACY.md#startups";
+export const STARTUPS_USER_AGENT = `Mozilla/5.0 (compatible; Btalalos/${appVersion}; +${STARTUPS_INFO_URL})`;
 /** The product token robots.txt rules name. */
-export const ROBOTS_TOKEN = "dossier";
+export const ROBOTS_TOKEN = "btalalos";
 
 const TIMEOUT_MS = 20_000;
 const MAX_BYTES = 5 * 1024 * 1024;

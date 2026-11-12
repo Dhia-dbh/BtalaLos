@@ -20,7 +20,7 @@ import { GoogleError } from "./errors";
 
 export const CALLBACK_PATH = "/api/google/callback";
 
-/** What Dossier asks Google for, by feature. */
+/** What Btalalos asks Google for, by feature. */
 export const SCOPES = {
   identity: ["openid", "email"],
   send: ["https://www.googleapis.com/auth/gmail.send"],
@@ -30,7 +30,7 @@ export const SCOPES = {
 
 export type ScopeGroup = keyof typeof SCOPES;
 
-/** Every scope Dossier can use. */
+/** Every scope Btalalos can use. */
 export const ALL_SCOPES: readonly string[] = Object.values(SCOPES).flat();
 
 /** Whether `granted` (space-separated, as Google returns it) covers a feature. */
@@ -167,11 +167,11 @@ async function postToken(body: Record<string, string>, signal?: AbortSignal): Pr
   const json = (await response.json().catch(() => null)) as { error?: string } | null;
   if (!response.ok) {
     // invalid_grant: the refresh token was revoked, expired or the password changed.
-    if (json?.error === "invalid_grant") throw new GoogleError("revoked", "Google no longer accepts Dossier's access. Connect your Google account again.");
+    if (json?.error === "invalid_grant") throw new GoogleError("revoked", "Google no longer accepts Btalalos's access. Connect your Google account again.");
     throw new GoogleError("rejected", "Google refused the sign-in. Check the client ID and secret in Settings → Google.");
   }
   const parsed = tokenSchema.safeParse(json);
-  if (!parsed.success) throw new GoogleError("unavailable", "Google sent an answer Dossier doesn't understand.");
+  if (!parsed.success) throw new GoogleError("unavailable", "Google sent an answer Btalalos doesn't understand.");
   return parsed.data;
 }
 

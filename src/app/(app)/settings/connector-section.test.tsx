@@ -32,7 +32,7 @@ describe("Settings → Claude connector (#221)", () => {
     await user.click(toggle);
     expect(setConnector).toHaveBeenCalledWith({ on: true });
     expect(screen.getByText(ADDRESS)).toBeInTheDocument();
-    expect(screen.getByText(/claude mcp add --transport http dossier https:\/\/dossier\.example\/api\/mcp/)).toBeInTheDocument();
+    expect(screen.getByText(/claude mcp add --transport http btalalos https:\/\/dossier\.example\/api\/mcp/)).toBeInTheDocument();
     // A public HTTPS address needs no warning.
     expect(screen.queryByRole("note")).not.toBeInTheDocument();
 
@@ -52,7 +52,7 @@ describe("Settings → Claude connector (#221)", () => {
 
   it("says Claude on the web needs a public HTTPS address, which a local one isn't", () => {
     render(<ConnectorSection initial={{ on: true }} address="http://localhost:3000/api/mcp" />);
-    expect(screen.getByRole("note")).toHaveTextContent(/This is a local address\. Claude on the web, Desktop and mobile reaches Dossier from Anthropic's servers/);
+    expect(screen.getByRole("note")).toHaveTextContent(/This is a local address\. Claude on the web, Desktop and mobile reaches Btalalos from Anthropic's servers/);
   });
 
   it("disconnects Claude", async () => {

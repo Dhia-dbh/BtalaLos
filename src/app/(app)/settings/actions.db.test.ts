@@ -281,7 +281,7 @@ describe("the Claude connector (#221)", () => {
 
     // Disconnect Claude: a new time, so every token stops working.
     await new Promise((resolve) => setTimeout(resolve, 5));
-    expect(await disconnectClaude({})).toMatchObject({ ok: true, toast: "Claude is disconnected. Connect it again from Claude to use Dossier there." });
+    expect(await disconnectClaude({})).toMatchObject({ ok: true, toast: "Claude is disconnected. Connect it again from Claude to use Btalalos there." });
     expect((await settings()).connectorEnabledAt).not.toBe(since);
 
     await setConnector({ on: false });

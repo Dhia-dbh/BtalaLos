@@ -49,7 +49,7 @@ export async function scheduleInterview(applicationId: string, start: Date): Pro
 /** What happened in the calendar: nothing while it isn't in use, else the event's link while there is one. */
 export type CalendarSync = { inCalendar: boolean; eventLink: string | null };
 
-/** Whether Dossier keeps interviews in the calendar: connected, allowed, and switched on in Settings → Google. */
+/** Whether Btalalos keeps interviews in the calendar: connected, allowed, and switched on in Settings → Google. */
 async function calendarInUse(): Promise<{ calendarId: string } | null> {
   const [connection, settings] = await Promise.all([googleConnection(), loadSettings()]);
   if (connection.status !== "connected" || !connection.canUseCalendar || !settings.calendarEvents) return null;
@@ -61,7 +61,7 @@ const eventFor = (application: { id: string; company: string; role: string; titl
   return {
     applicationId: application.id,
     summary: `Interview · ${what || "application"}`,
-    description: `Added by Dossier for your application${application.company ? ` to ${application.company}` : ""}.`,
+    description: `Added by Btalalos for your application${application.company ? ` to ${application.company}` : ""}.`,
   };
 };
 
@@ -69,7 +69,7 @@ const eventFor = (application: { id: string; company: string; role: string; titl
  * Brings the calendar in step with the application's next interview: adds
  * the event, moves it (keeping its length), or deletes it when the date is
  * gone. An event deleted in Google is added again. Does nothing while
- * Dossier doesn't keep interviews in the calendar.
+ * Btalalos doesn't keep interviews in the calendar.
  */
 export async function syncInterviewToCalendar(applicationId: string): Promise<CalendarSync> {
   const inUse = await calendarInUse();
@@ -113,7 +113,7 @@ export async function syncInterviewToCalendar(applicationId: string): Promise<Ca
 }
 
 /**
- * Takes changes made in Google back into Dossier: an interview whose event
+ * Takes changes made in Google back into Btalalos: an interview whose event
  * was moved gets its new time, one whose event was deleted loses its date.
  * For all linked applications, or the one given. Returns how many changed.
  */

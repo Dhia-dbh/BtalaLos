@@ -3,7 +3,7 @@ import "server-only";
 import { getSitePage, ROBOTS_TOKEN } from "./http";
 import { parseRobots, robotsAllow, type RobotsRules } from "./robots-rules";
 
-// Whether a startup's site lets Dossier read a page (#222), by its
+// Whether a startup's site lets Btalalos read a page (#222), by its
 // robots.txt (RFC 9309). A missing file allows everything; a site that
 // can't be reached, errs, or refuses the file means "not now", the cautious
 // reading. Answers are kept for a day, as the RFC allows.
@@ -26,7 +26,7 @@ async function rulesFor(origin: string): Promise<RobotsRules> {
   return rules;
 }
 
-/** Whether robots.txt lets Dossier fetch `url`. */
+/** Whether robots.txt lets Btalalos fetch `url`. */
 export async function robotsAllowed(url: string): Promise<boolean> {
   const { origin, pathname, search } = new URL(url);
   return robotsAllow(await rulesFor(origin), `${pathname}${search}`);

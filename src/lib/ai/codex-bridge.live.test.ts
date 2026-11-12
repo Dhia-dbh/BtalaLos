@@ -17,7 +17,7 @@ function provider() {
 }
 
 describe.runIf(enabled)("live: Codex bridge", { timeout: 900_000 }, () => {
-  it("lists the configured model and passes Dossier's connection test", async () => {
+  it("lists the configured model and passes Btalalos's connection test", async () => {
     const ai = provider();
     expect(await ai.listModels()).toContain(model);
     expect(await ai.test()).toMatchObject({ model, latencyMs: expect.any(Number) });

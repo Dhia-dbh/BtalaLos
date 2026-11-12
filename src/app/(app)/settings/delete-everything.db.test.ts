@@ -38,7 +38,11 @@ vi.mock("@/lib/env", () => ({ env: { get DOSSIER_DATA_DIR() { return dataDir.pat
 
 const prisma = () => db.client!;
 const now = new Date(2026, 8, 28, 12);
-const snapshot = async () => JSON.stringify({ ...(await buildExport(prisma(), { now })), exportedAt: null });
+const snapshot = async () => {
+  const data = await buildExport(prisma(), { now });
+  for (const entry of [...data.profile.experience, ...data.profile.projects]) entry.skillIds.sort();
+  return JSON.stringify({ ...data, exportedAt: null });
+};
 
 beforeEach(async () => {
   dataDir.path = await mkdtemp(path.join(tmpdir(), "dossier-delete-"));

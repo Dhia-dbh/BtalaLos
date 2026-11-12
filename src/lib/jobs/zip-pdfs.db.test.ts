@@ -48,7 +48,7 @@ afterAll(async () => {
 describe("zipPdfsJob (E10-5)", () => {
   it("zips every tailored document into a folder per company", async () => {
     const result = await zipPdfsJob.run({}, context);
-    expect(result).toMatchObject({ documents: 5, fileName: expect.stringMatching(/^dossier-pdfs-\d{4}-\d{2}-\d{2}\.zip$/) });
+    expect(result).toMatchObject({ documents: 5, fileName: expect.stringMatching(/^btalalos-pdfs-\d{4}-\d{2}-\d{2}\.zip$/) });
     expect(renderPdf).toHaveBeenCalledWith("/print/resume/a1");
     expect(renderPdf).toHaveBeenCalledWith("/print/letter/a3");
 

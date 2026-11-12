@@ -74,7 +74,7 @@ export function NewLatex({
           router.push(`/new?${query}`);
         }}
       >
-        <option value="NATIVE">Dossier documents</option>
+        <option value="NATIVE">Btalalos documents</option>
         <option value="LATEX">LaTeX project</option>
       </Select>
       <Card className="flex flex-col gap-4">
