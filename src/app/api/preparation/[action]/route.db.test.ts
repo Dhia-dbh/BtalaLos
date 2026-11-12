@@ -364,7 +364,7 @@ it("saves overview columns and structured native overrides without changing docu
 it("persists an explicit CLI assessment and rejects applications without extracted requirements", async () => {
   await request("config", project);
   const application = await db.application.create({ data: { documentMode: "LATEX", extracted: { requirements: ["Rust"] } } });
-  vi.mocked(workerOperation).mockResolvedValueOnce({ matches: [{ requirement: 0, skill: null, language: null }] });
+  vi.mocked(workerOperation).mockResolvedValueOnce({ matches: [{ requirement: 0, skill: null, language: null, kind: "skill", years: null }] });
   expect((await request("match", { applicationId: application.id })).status).toBe(200);
   expect((await db.application.findUniqueOrThrow({ where: { id: application.id } })).match).toMatchObject({ items: [expect.objectContaining({ requirement: "Rust", result: "gap" })] });
   const empty = await db.application.create({ data: {} });
