@@ -9,7 +9,7 @@ import { useSidebarCollapsed } from "./sidebar-frame";
 
 const LABEL = "Star on GitHub";
 
-/** The sidebar's link to Dossier's repository, for credits and support. */
+/** The sidebar's link to Btalalos's repository, for credits and support. */
 export function RepositoryLink() {
   const collapsed = useSidebarCollapsed();
   return (

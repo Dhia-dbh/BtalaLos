@@ -23,7 +23,7 @@ const NARROW = "(max-width: 1023px)";
 
 export type PostingResultsProps = {
   today: string;
-  /** Score opens a Claude chat, which scores through the connector: it's on, and Dossier has no AI model of its own (#221). */
+  /** Score opens a Claude chat, which scores through the connector: it's on, and Btalalos has no AI model of its own (#221). */
   scoreInClaude?: boolean;
 } & (
   | {

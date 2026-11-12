@@ -9,7 +9,7 @@ import { COLOR_SCHEME_COOKIE, parseColorScheme } from "@/lib/ui-preferences";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: { default: "BtalaLos", template: "%s · BtalaLos" },
+  title: { default: "Btalalos", template: "%s · Btalalos" },
   description: "Your job search, on your server.",
 };
 

@@ -12,7 +12,7 @@ export function createNonce(): string {
  * Scripts only with this request's nonce ('strict-dynamic' lets them load the
  * rest); styles may be inline, since React renders style attributes, which a
  * nonce can't cover. Nothing loads from other hosts, and no other site may
- * frame Dossier. `upgrade-insecure-requests` only over HTTPS, so a server on
+ * frame Btalalos. `upgrade-insecure-requests` only over HTTPS, so a server on
  * plain HTTP in a home network keeps working. Development needs eval for
  * React's error overlay.
  */

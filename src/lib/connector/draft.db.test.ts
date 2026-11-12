@@ -17,7 +17,7 @@ vi.mock("@/lib/profile-data", async () => {
   const { demoProfile } = await import("@/lib/demo-profile");
   return { loadProfile: async () => demoProfile() };
 });
-// Dossier's own model reads the posting and writes the documents; here they're done.
+// Btalalos's own model reads the posting and writes the documents; here they're done.
 const extracted = {
   title: "Product Designer · Acme",
   company: "Acme",

@@ -60,7 +60,7 @@ export const CALLBACK_MESSAGES: Record<string, string> = {
 };
 
 /**
- * Settings → Google (E15-1): connect Gmail and Calendar, choose what Dossier
+ * Settings → Google (E15-1): connect Gmail and Calendar, choose what Btalalos
  * reads, and set the working hours that interview times are offered in.
  * Every field saves on its own. Nothing is ever sent without asking.
  */
@@ -114,7 +114,7 @@ export function GoogleSection({
       <p className="text-sm"><a className="underline" href="/settings?section=browser">Choose Gmail API or browser, reading schedule, reply automation, and email filters</a></p>
       <SettingsSectionIntro title="Google">
         Send applications from your Gmail, see employers&apos; replies next to each application, and offer interview times from your
-        calendar. Dossier always asks before it sends anything.
+        calendar. Btalalos always asks before it sends anything.
       </SettingsSectionIntro>
 
       <Card className="flex flex-col gap-4">
@@ -138,7 +138,7 @@ export function GoogleSection({
         ) : (
           <div className="flex flex-col items-start gap-3">
             <p className="text-sm text-muted">
-              You&apos;ll sign in on Google&apos;s own page and choose what Dossier may do. Tokens are stored encrypted on your server and
+              You&apos;ll sign in on Google&apos;s own page and choose what Btalalos may do. Tokens are stored encrypted on your server and
               never leave it, except to talk to Google.
             </p>
             <a href="/api/google/connect" className={buttonClassName("primary", "md", "hover:text-on-primary")}>
@@ -291,7 +291,7 @@ export function GoogleSection({
         open={confirming}
         onOpenChange={setConfirming}
         title="Disconnect Google?"
-        description="Dossier's access is revoked at Google. Mail already in Dossier stays; nothing new comes in until you connect again."
+        description="Btalalos's access is revoked at Google. Mail already in Btalalos stays; nothing new comes in until you connect again."
         confirmLabel="Disconnect"
         onConfirm={() => void disconnect()}
       />

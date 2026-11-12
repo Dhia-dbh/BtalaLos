@@ -122,7 +122,7 @@ export async function isAiConfigured(): Promise<boolean> {
 }
 
 /**
- * Whether Dossier's own AI model can be called: a provider with its model,
+ * Whether Btalalos's own AI model can be called: a provider with its model,
  * and a key for the hosted ones that always need one. Without it, and with
  * the Claude connector on, the AI buttons hand the work to Claude chat
  * (src/lib/connector/handoff.ts, #221).

@@ -20,7 +20,7 @@ describe("UsagePingDialog (#172)", () => {
     const dialog = screen.getByRole("dialog", { name: "Send a daily usage ping?" });
     expect(dialog).toHaveTextContent("your server would send telemetry.example.com a random install ID and the version number");
     expect(dialog).toHaveTextContent("Nothing else: no profile, documents, applications, settings or server address.");
-    expect(dialog).toHaveTextContent("It goes to the Dossier project's maintainer, on the project's own server in Germany.");
+    expect(dialog).toHaveTextContent("It goes to the upstream Dossier project's maintainer, on the project's own server in Germany.");
     expect(dialog).toHaveTextContent("deleted after a year");
     expect(dialog).toHaveTextContent("Settings → About, or with DOSSIER_TELEMETRY");
     expect(screen.getByRole("link", { name: "dossier.app@pm.me" })).toHaveAttribute("href", "mailto:dossier.app@pm.me");

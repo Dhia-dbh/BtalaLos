@@ -26,7 +26,7 @@ describe("GET /api/export (E10-4)", () => {
     const response = await get();
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toBe("application/zip");
-    expect(response.headers.get("content-disposition")).toMatch(/^attachment; filename="dossier-export-\d{4}-\d{2}-\d{2}\.zip"/);
+    expect(response.headers.get("content-disposition")).toMatch(/^attachment; filename="btalalos-export-\d{4}-\d{2}-\d{2}\.zip"/);
     expect(response.headers.get("cache-control")).toBe("private, no-store");
     expect(buildExport).toHaveBeenCalledWith({}, expect.objectContaining({ includeApiKey: false }));
     expect(JSON.parse(readArchive(new Uint8Array(await response.arrayBuffer())).text)).toEqual({ format: "dossier-export", schemaVersion: 6, supportingDocuments: [], artifacts: [] });

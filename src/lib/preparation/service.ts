@@ -275,7 +275,7 @@ export async function recoverPreparations() {
     data: {
       status: "FAILED",
       activeKey: null,
-      error: "Dossier restarted. Review saved files, then retry explicitly.",
+      error: "Btalalos restarted. Review saved files, then retry explicitly.",
       finishedAt: new Date(),
     },
   });

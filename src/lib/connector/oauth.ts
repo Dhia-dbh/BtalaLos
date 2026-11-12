@@ -162,7 +162,7 @@ export async function refresh({ refreshToken, clientId }: { refreshToken: string
   return tokens(clientId, String(claims.res ?? ""), current!);
 }
 
-/** Whether a bearer token lets Claude use Dossier now; the client it was issued to, if so. */
+/** Whether a bearer token lets Claude use Btalalos now; the client it was issued to, if so. */
 export async function verifyAccessToken(token: string | null | undefined): Promise<{ clientId: string } | null> {
   const [claims, current] = await Promise.all([verify("access", token), stamp()]);
   if (!claims || claims.scope !== SCOPE || !stillValid(claims, current)) return null;
@@ -196,6 +196,6 @@ export function protectedResourceMetadata(origin: string) {
     authorization_servers: [origin],
     scopes_supported: [SCOPE],
     bearer_methods_supported: ["header"],
-    resource_name: "Dossier",
+    resource_name: "Btalalos",
   };
 }

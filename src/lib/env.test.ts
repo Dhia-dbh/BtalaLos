@@ -34,7 +34,7 @@ describe("parseEnv", () => {
   });
 
   it("reads whether the usage ping is on", () => {
-    // Unset or empty: not decided, so Dossier asks (#172).
+    // Unset or empty: not decided, so Btalalos asks (#172).
     expect(parseEnv({ ...valid, DOSSIER_TELEMETRY: "" }).DOSSIER_TELEMETRY).toBeUndefined();
     expect(parseEnv(valid).DOSSIER_TELEMETRY).toBeUndefined();
     expect(parseEnv({ ...valid, DOSSIER_TELEMETRY: "ON" }).DOSSIER_TELEMETRY).toBe("on");

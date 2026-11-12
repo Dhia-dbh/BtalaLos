@@ -102,7 +102,7 @@ test("connects Google, sends an application through Gmail, and answers the reply
   expect(reply.text).toContain("My notice period is three months.");
   expect(reply.text).toMatch(/Best regards,\r?\nJane Doe$/);
 
-  // Disconnecting revokes Dossier's access at Google.
+  // Disconnecting revokes Btalalos's access at Google.
   await page.goto("/settings?section=google");
   await page.getByRole("button", { name: "Disconnect" }).click();
   await page.getByRole("alertdialog", { name: "Disconnect Google?" }).getByRole("button", { name: "Disconnect" }).click();

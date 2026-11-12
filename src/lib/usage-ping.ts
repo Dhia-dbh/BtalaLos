@@ -31,7 +31,7 @@ export const USAGE_PING_TEXT_VERSION = 1;
 
 /** Logged once at startup while the ping is on. */
 export const USAGE_PING_NOTICE =
-  `Usage ping: on each day Dossier is used, it sends ${USAGE_PING_HOST} a random install ID and its version number, once, ` +
+  `Usage ping: on each day Btalalos is used, it sends ${USAGE_PING_HOST} a random install ID and its version number, once, ` +
   "to count the installs in use. Nothing else is sent. Turn it off in Settings → About, or set DOSSIER_TELEMETRY=off.";
 
 /** Logged once at startup while nobody has answered yet. */

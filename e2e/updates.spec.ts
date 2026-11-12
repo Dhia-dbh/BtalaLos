@@ -7,7 +7,7 @@ import { resetData, sql } from "./support";
 // this one, the sidebar says so on every page until "Not now", which holds
 // until a newer release still. Settings → About says so too.
 
-const release = (version: string) => ({ version, url: `https://github.com/AienTech/dossier/releases/tag/v${version}` });
+const release = (version: string) => ({ version, url: `https://github.com/Dhia-dbh/BtalaLos/releases/tag/v${version}` });
 
 /** Stores a release as the one the update check found last. */
 async function found({ version, url }: { version: string; url: string }) {
@@ -35,10 +35,10 @@ test.afterAll(() => sql(`DELETE FROM "Setting" WHERE key IN ('latestVersion', 'l
 test("says a newer release is out until Not now, and again for the next one", async ({ page, context, baseURL }) => {
   await found(release("99.0.0"));
   await page.goto("/");
-  const notice = page.getByRole("region", { name: "Dossier 99.0.0 is out" });
+  const notice = page.getByRole("region", { name: "Btalalos 99.0.0 is out" });
   await expect(notice).toBeVisible();
   await expect(notice.getByRole("link", { name: /What's new/ })).toHaveAttribute("href", release("99.0.0").url);
-  await expect(notice.getByRole("link", { name: /How to update/ })).toHaveAttribute("href", "https://github.com/AienTech/dossier/wiki/Upgrading");
+  await expect(notice.getByRole("link", { name: /How to update/ })).toHaveAttribute("href", "https://github.com/Dhia-dbh/BtalaLos/blob/master/README.md#installation");
   await expectAccessibleSidebar(page);
 
   await page.goto("/settings?section=about");
@@ -53,14 +53,14 @@ test("says a newer release is out until Not now, and again for the next one", as
 
   await found(release("99.1.0"));
   await page.goto("/");
-  await expect(page.getByRole("region", { name: "Dossier 99.1.0 is out" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Btalalos 99.1.0 is out" })).toBeVisible();
 
   // With the sidebar collapsed, it's an icon that opens the sidebar on the notice.
   await context.addCookies([{ name: "dossier_sidebar", value: "collapsed", url: baseURL! }]);
   await page.goto("/");
   await expect(page.getByRole("region", { name: /is out$/ })).toBeHidden();
   await expectAccessibleSidebar(page);
-  await page.getByRole("button", { name: "Dossier 99.1.0 is out" }).click();
-  await expect(page.getByRole("region", { name: "Dossier 99.1.0 is out" })).toBeVisible();
+  await page.getByRole("button", { name: "Btalalos 99.1.0 is out" }).click();
+  await expect(page.getByRole("region", { name: "Btalalos 99.1.0 is out" })).toBeVisible();
   await expect(page.getByRole("link", { name: /What's new/ })).toBeFocused();
 });

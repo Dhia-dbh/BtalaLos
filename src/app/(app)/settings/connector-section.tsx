@@ -15,7 +15,7 @@ import { SettingsSectionIntro } from "./settings-screen";
 const LINK = "font-medium text-ink underline underline-offset-2";
 
 /**
- * Settings → Claude connector (#221): Dossier as a connector in Claude, off
+ * Settings → Claude connector (#221): Btalalos as a connector in Claude, off
  * until it's turned on here. Then it shows the address to add in Claude,
  * and Disconnect Claude signs every Claude out.
  */
@@ -36,7 +36,7 @@ export function ConnectorSection({ initial, address }: { initial: { on: boolean 
   return (
     <>
       <SettingsSectionIntro title="Claude connector">
-        Use Dossier from Claude: in chats on claude.ai, in the Desktop and mobile apps, and in Claude&apos;s command-line app. Claude can search for jobs, read your
+        Use Btalalos from Claude: in chats on claude.ai, in the Desktop and mobile apps, and in Claude&apos;s command-line app. Claude can search for jobs, read your
         profile and applications, and save the applications and fit scores it writes, on your own Claude plan. It never sends or deletes anything.
       </SettingsSectionIntro>
 
@@ -45,7 +45,7 @@ export function ConnectorSection({ initial, address }: { initial: { on: boolean 
           label="Let Claude connect"
           description={
             on
-              ? "On. Claude connects at the address below, once you've signed in to Dossier and allowed it."
+              ? "On. Claude connects at the address below, once you've signed in to Btalalos and allowed it."
               : "Off. The connector's addresses aren't open on this server."
           }
           checked={on}
@@ -72,22 +72,22 @@ export function ConnectorSection({ initial, address }: { initial: { on: boolean 
                 In Claude, open <strong>Settings → Connectors</strong> and choose <strong>Add custom connector</strong>.
               </li>
               <li>
-                Name it <strong>Dossier</strong>, paste the address and press <strong>Add</strong>, then <strong>Connect</strong>.
+                Name it <strong>Btalalos</strong>, paste the address and press <strong>Add</strong>, then <strong>Connect</strong>.
               </li>
               <li>
-                Claude opens Dossier: sign in if it asks, check what Claude may do, and press <strong>Allow</strong>.
+                Claude opens Btalalos: sign in if it asks, check what Claude may do, and press <strong>Allow</strong>.
               </li>
             </ol>
             <p className="text-meta text-muted">
-              In Claude&apos;s command-line app: <code className="font-mono text-label">claude mcp add --transport http dossier {address}</code>, then{" "}
+              In Claude&apos;s command-line app: <code className="font-mono text-label">claude mcp add --transport http btalalos {address}</code>, then{" "}
               <code className="font-mono text-label">/mcp</code> to sign in.
             </p>
             {!publicHttps && (
               <p role="note" className="rounded-card bg-warning-surface px-4 py-3 text-meta text-warning">
                 {local ? "This is a local address. " : "This address isn't HTTPS. "}
-                Claude on the web, Desktop and mobile reaches Dossier from Anthropic&apos;s servers, so they need a public HTTPS address (set{" "}
-                <code className="font-mono text-label">DOSSIER_PUBLIC_URL</code> if Dossier is reached at another one). Claude&apos;s command-line app on the
-                computer Dossier runs on can use this one.
+                Claude on the web, Desktop and mobile reaches Btalalos from Anthropic&apos;s servers, so they need a public HTTPS address (set{" "}
+                <code className="font-mono text-label">DOSSIER_PUBLIC_URL</code> if Btalalos is reached at another one). Claude&apos;s command-line app on the
+                computer Btalalos runs on can use this one.
               </p>
             )}
           </Card>
@@ -97,13 +97,13 @@ export function ConnectorSection({ initial, address }: { initial: { on: boolean 
               What Claude reads through the connector goes to Anthropic with your Claude account, as anything in a chat does: your profile
               without its contact details, the postings and applications it works on, and your searches. Private notes and the letter&apos;s
               sender and signature stay out.{" "}
-              <a href="https://github.com/AienTech/dossier/wiki/Connecting-Claude" target="_blank" rel="noopener noreferrer" className={LINK}>
+              <a href="https://github.com/Dhia-dbh/BtalaLos/blob/master/README.md" target="_blank" rel="noopener noreferrer" className={LINK}>
                 Connecting Claude
               </a>{" "}
               has the details.
             </p>
             <p className="text-muted">
-              Without an AI model of Dossier&apos;s own, New application and Score in Find jobs hand the work to a new Claude chat, which saves it
+              Without an AI model of Btalalos&apos;s own, New application and Score in Find jobs hand the work to a new Claude chat, which saves it
               here through the connector.
             </p>
             <div>

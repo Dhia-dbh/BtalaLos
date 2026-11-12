@@ -265,7 +265,7 @@ export const startZippingPdfs = action(z.object({}), async () => {
 export const deleteEverything = action(z.object({ confirm: z.literal("DELETE") }), async () => {
   const unfinished = await prisma.job.findMany({ where: { status: { in: [JobStatus.QUEUED, JobStatus.RUNNING] } }, select: { id: true } });
   for (const job of unfinished) await cancelJob(job.id);
-  // Revokes Dossier's access at Google too (E15-1).
+  // Revokes Btalalos's access at Google too (E15-1).
   await disconnectGoogle().catch(() => {});
 
   await prisma.$transaction(async (tx) => {
@@ -328,6 +328,6 @@ export const setConnector = action(z.object({ on: z.boolean() }), async ({ on })
 export const disconnectClaude = action(z.object({}), async (_input, { toast }) => {
   if (!(await loadSettings()).connectorEnabledAt) throw new ActionError("The Claude connector is off already.");
   await saveSettings({ connectorEnabledAt: new Date().toISOString() });
-  toast("Claude is disconnected. Connect it again from Claude to use Dossier there.");
+  toast("Claude is disconnected. Connect it again from Claude to use Btalalos there.");
   return null;
 });

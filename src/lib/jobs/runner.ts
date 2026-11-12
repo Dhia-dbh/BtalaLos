@@ -14,7 +14,7 @@ import { prisma } from "@/lib/prisma";
 // Long AI tasks run as background jobs (E6-7): the request that starts one
 // returns at once with its id, the work goes on in this process, and the
 // page follows its named steps (/api/jobs/[id]/events). Progress lives in
-// the Job table, so a reloaded page can pick the job up again. Dossier runs
+// the Job table, so a reloaded page can pick the job up again. Btalalos runs
 // as a single instance, so an in-process queue is enough.
 
 export type JobContext = {
@@ -49,7 +49,7 @@ export type JobView<R = unknown> = {
 
 export const JOB_MESSAGES = {
   failed: "Something went wrong while working on this. Try again.",
-  interrupted: "Dossier restarted before this finished. Try again.",
+  interrupted: "Btalalos restarted before this finished. Try again.",
   cancelled: "Cancelled.",
 } as const;
 

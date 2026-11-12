@@ -31,7 +31,7 @@ beforeEach(() => {
   vi.mocked(loadSettings).mockResolvedValue(settingsFromRows([]));
 });
 
-it("keeps the profile preview and its settings in Dossier mode", async () => {
+it("keeps the profile preview and its settings in Btalalos mode", async () => {
   render(await BaseResumePage());
   expect(screen.getByText("Profile resume")).toBeInTheDocument();
   expect(ResumeWorkspace).toHaveBeenCalledWith(expect.objectContaining({

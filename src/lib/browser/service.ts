@@ -330,10 +330,10 @@ export const browserJob = defineJob({
             await hostBrowser("expand", { sessionId: snapshot.sessionId, fieldId: field.id }, context.signal);
           } else if (next.action === "fill") {
             if (/password|one.?time|verification code/i.test(field.type + field.label)) throw new ActionError("Complete authentication manually in the host browser.");
-            if (!/^(APPLICANT|FACTS|DOCUMENTS|USER ANSWERS)\b/i.test(next.source)) throw new ActionError("The proposed answer did not cite applicant evidence. Add the answer explicitly in BtalaLos.");
+            if (!/^(APPLICANT|FACTS|DOCUMENTS|USER ANSWERS)\b/i.test(next.source)) throw new ActionError("The proposed answer did not cite applicant evidence. Add the answer explicitly in Btalalos.");
             const sources = factSources([JSON.stringify(snapshot.applicant), ...snapshot.facts, ...snapshot.artifacts.map((file) => file.text), ...snapshot.answers.map((answer) => answer.answer)]);
             const unverified = unverifiedFacts(next.value, sources);
-            if (unverified.length) throw new ActionError(`Verify this answer for ${field.label}: ${unverified.join(", ")}. Add the correct value in BtalaLos.`);
+            if (unverified.length) throw new ActionError(`Verify this answer for ${field.label}: ${unverified.join(", ")}. Add the correct value in Btalalos.`);
             const result = await hostBrowser<{ actualValue: string }>("fill", { sessionId: snapshot.sessionId, fieldId: field.id, value: next.value }, context.signal);
             Object.assign(field, { proposedValue: next.value, actualValue: result.actualValue, source: next.source, state: next.value ? "filled" : "empty" } satisfies Partial<FieldRecord>);
           } else {

@@ -14,7 +14,7 @@ vi.mock("@/components/toast", () => ({ toast: vi.fn() }));
 
 const updates = { daily: true, available: null };
 const ping: UsagePingView = { host: "telemetry.example.com", choice: "on", source: "app", id: "6f1c0e5a-9b1d-4c3e-8f2a-1d2e3f4a5b6c", production: true };
-const release = { version: "0.2.0", url: "https://github.com/AienTech/dossier/releases/tag/v0.2.0" };
+const release = { version: "0.2.0", url: "https://github.com/Dhia-dbh/BtalaLos/releases/tag/v0.2.0" };
 const facts = [
   { label: "Version", value: "0.1.0" },
   { label: "Database", value: "PostgreSQL · 9.0 MB" },
@@ -38,7 +38,7 @@ describe("About (E10-9)", () => {
     const toggle = screen.getByRole("switch", { name: "Send the daily usage ping" });
     expect(toggle).toHaveAttribute("aria-checked", "true");
     expect(toggle).toHaveAccessibleDescription(
-      "On. Once on each day Dossier is used, the server sends telemetry.example.com this install's ID (6f1c0e5a-9b1d-4c3e-8f2a-1d2e3f4a5b6c) and the version number. Nothing else.",
+      "On. Once on each day Btalalos is used, the server sends telemetry.example.com this install's ID (6f1c0e5a-9b1d-4c3e-8f2a-1d2e3f4a5b6c) and the version number. Nothing else.",
     );
     await user.click(toggle);
     expect(chooseUsagePing).toHaveBeenCalledWith({ send: false });
@@ -74,7 +74,7 @@ describe("About (E10-9)", () => {
     expect(toggle).toHaveAccessibleDescription(/asks GitHub for the latest release, and the sidebar says when a newer one is out/);
     await user.click(toggle);
     expect(updateSettings).toHaveBeenCalledWith({ updateCheck: false });
-    expect(toggle).toHaveAccessibleDescription("Off. Dossier only checks when you press Check for updates.");
+    expect(toggle).toHaveAccessibleDescription("Off. Btalalos only checks when you press Check for updates.");
   });
 
   it("switches back when the change isn't saved", async () => {
@@ -89,7 +89,7 @@ describe("About (E10-9)", () => {
   it("shows a newer version a check already found, with how to update", () => {
     render(<AboutSection facts={facts} usagePing={ping} updates={{ daily: true, available: release }} />);
     expect(screen.getByRole("status")).toHaveTextContent("Version 0.2.0 is available.");
-    expect(screen.getByRole("link", { name: "How to update (opens in a new tab)" })).toHaveAttribute("href", "https://github.com/AienTech/dossier/wiki/Upgrading");
+    expect(screen.getByRole("link", { name: "How to update (opens in a new tab)" })).toHaveAttribute("href", "https://github.com/Dhia-dbh/BtalaLos/blob/master/README.md#installation");
     expect(checkUpdates).not.toHaveBeenCalled();
   });
 

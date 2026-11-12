@@ -33,7 +33,7 @@ const SIGNATURES: Record<string, (bytes: Uint8Array) => boolean> = {
 const ascii = (bytes: Uint8Array, start: number, end: number) => String.fromCharCode(...bytes.slice(start, end));
 
 /**
- * Whether a value is a photo Dossier draws: a JPEG, PNG or WebP data URL
+ * Whether a value is a photo Btalalos draws: a JPEG, PNG or WebP data URL
  * whose bytes really start like one, and not too big. Anything else (a
  * link, an SVG, a damaged import) is ignored.
  */

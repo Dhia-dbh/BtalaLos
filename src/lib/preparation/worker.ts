@@ -11,7 +11,7 @@ function connection() {
   const token = process.env.DOSSIER_WORKER_TOKEN;
   if (!url || !token)
     throw new ActionError(
-      "Configure DOSSIER_WORKER_URL and DOSSIER_WORKER_TOKEN on the Dossier server.",
+      "Configure DOSSIER_WORKER_URL and DOSSIER_WORKER_TOKEN on the Btalalos server.",
     );
   return {
     url,

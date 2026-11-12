@@ -7,14 +7,14 @@ import { googleUrl } from "./endpoints";
 import { isGone } from "./errors";
 import type { Interval } from "./slots";
 
-// The parts of the Calendar API Dossier uses (E15-5): free/busy for times to
+// The parts of the Calendar API Btalalos uses (E15-5): free/busy for times to
 // offer, and events for interviews and the dashboard's calendar.
 
 const api = (path: string) => googleUrl("www", `/calendar/v3${path}`);
 const eventPath = (calendarId: string, eventId?: string) =>
   `/calendars/${encodeURIComponent(calendarId)}/events${eventId ? `/${encodeURIComponent(eventId)}` : ""}`;
 
-/** The private property that ties an event Dossier added to its application. */
+/** The private property that ties an event Btalalos added to its application. */
 const APPLICATION_PROPERTY = "dossierApplication";
 
 /** Busy times in the calendar between `from` and `to`. */
@@ -65,7 +65,7 @@ const eventSchema = z.object({
   extendedProperties: z.object({ private: z.record(z.string(), z.string()).optional() }).optional(),
 });
 
-/** An event as Dossier reads it. All-day events have dates ("2026-10-20", the end one day after the last) instead of times. */
+/** An event as Btalalos reads it. All-day events have dates ("2026-10-20", the end one day after the last) instead of times. */
 export type CalendarEvent = {
   id: string;
   title: string;
@@ -76,7 +76,7 @@ export type CalendarEvent = {
   startDate: string | null;
   endDate: string | null;
   link: string;
-  /** The application of an interview Dossier added. */
+  /** The application of an interview Btalalos added. */
   applicationId: string | null;
 };
 

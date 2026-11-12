@@ -1,12 +1,12 @@
 # Application preparation
 
-BtalaLos adds Git-based LaTeX preparation alongside Dossier's native document editor. Start with the [Linux and Windows installation guide](installation.md) for operating-system prerequisites and host-service networking. Windows users run the worker and tools inside WSL2; native PowerShell execution is not covered.
+Btalalos adds Git-based LaTeX preparation alongside Dossier's native document editor. Start with the [Linux and Windows installation guide](installation.md) for operating-system prerequisites and host-service networking. Windows users run the worker and tools inside WSL2; native PowerShell execution is not covered.
 
 The recommended deployment is now the [containerized worker](container-worker.md): Git, TeX, Python, Poppler, and PyMuPDF run in Docker, while the host companion handles your existing CLI login and folder opening. The following **Host worker** section is the retained all-host alternative. The configuration and workflow sections apply to both deployments; use the container guide's automatically configured worker URL when choosing Docker.
 
 ## Host worker
 
-Dossier stays in Docker. A separate private Node.js worker runs in the Linux environment holding the LaTeX Git repository and the authenticated coding CLI. It uses Git, `latexmk`, the chosen TeX engine, `pdfinfo`, `pdftotext`, Python with PyMuPDF, and optionally `gdbus` for the folder button. Install the TeX packages and fonts your project requires. The selected CLI, Codex or Claude Code, must be installed and signed in with a subscription account under the worker's user; both are not required. Only Codex has been tested with a live account. Node 22 or later runs the host worker; Dossier itself requires Node 24.
+Btalalos stays in Docker. A separate private Node.js worker runs in the Linux environment holding the LaTeX Git repository and the authenticated coding CLI. It uses Git, `latexmk`, the chosen TeX engine, `pdfinfo`, `pdftotext`, Python with PyMuPDF, and optionally `gdbus` for the folder button. Install the TeX packages and fonts your project requires. The selected CLI, Codex or Claude Code, must be installed and signed in with a subscription account under the worker's user; both are not required. Only Codex has been tested with a live account. Node 22 or later runs the host worker; Btalalos itself requires Node 24.
 
 Install the worker's Python dependency in a dedicated environment:
 
@@ -47,7 +47,7 @@ systemctl --user enable --now dossier-application-worker.service
 
 Run one worker per data directory. Its default listener is `127.0.0.1:8788`; `DOSSIER_WORKER_PORT` changes the port. Run it inside the desktop user session for folder opening. The worker checks the selected CLI when requested; a missing Claude installation does not prevent Codex operations.
 
-## Connect Dossier
+## Connect Btalalos
 
 Set these deployment environment variables and recreate the app container:
 
@@ -58,7 +58,7 @@ DOSSIER_WORKER_TOKEN=THE_SAME_LOCAL_TOKEN
 
 The URL above applies to the existing Docker Desktop on Linux setup. For Docker Engine on Linux or inside WSL2, follow the [host-network overlay instructions](installation.md#4-connect-containers-to-loopback-host-services) and use `DOSSIER_WORKER_URL=http://127.0.0.1:8788`. A hostname mapping alone cannot reach the worker's host-loopback listener. Do not expose the worker publicly or mount CLI credentials into the container. The existing Codex OpenAI-compatible bridge remains separate.
 
-Build the Dossier image from this branch. Apply Prisma migrations through the usual startup process. The additive migration keeps every existing application in native mode.
+Build the Btalalos image from this branch. Apply Prisma migrations through the usual startup process. The additive migration keeps every existing application in native mode.
 
 ## Configure and use
 
@@ -66,7 +66,7 @@ Build the Dossier image from this branch. Apply Prisma migrations through the us
 2. Open **Settings → LaTeX project**. Select **Existing LaTeX project** as the default document mode. Click **Browse repositories** to open a folder picker for the worker computer. Open a Git repository root and click **Use this repository**. Select the CV and letter entrypoints and allowed editable files from the `.tex` lists, including nested folders. The picker reads the repository in place; it does not upload or copy it. Set the committed base reference, TeX engine, and final filename. Select the CLI, load its models, and choose a supported thinking effort. Select applicant-context PDFs explicitly. Save the project after validation.
 3. **New application** now opens the LaTeX flow by default. Select a profile and the CLI/model for this run, paste the posting, and start preparation. The posting is saved before preparation starts. Native applications can select a package profile while retaining the existing analysis/editor flow.
 4. Preparation automatically analyzes the posting, creates a `dossier-<application-id>` branch and isolated worktree, tailors authorized source files, compiles both PDFs, merges the package, exports it, and writes a local email draft. The original checkout is not switched or edited. Generated source changes remain in the worktree; no Git commit is created automatically.
-5. Each LaTeX PDF must have exactly one page. Up to two additional content-shortening rounds are allowed. Continued overflow stops preparation before package publication and drafting. Native documents retain Dossier's existing length settings.
+5. PhD applications tailor the CV and letter, each to one page. Job applications retain the base CV unchanged, including its page count, and generate a one-page letter. Up to two additional content-shortening rounds are allowed. Continued overflow stops preparation before package publication and drafting. Native documents retain Btalalos's existing length settings.
 6. Review PDFs, saved sources, diffs, and compiler logs. Use revision instructions for a fresh AI preparation. Direct worktree edits are read when starting a fresh revision; unexpected changes during a run stop the affected step.
 7. Edit or copy the recipient, subject, and body. Download the merged PDF or use the folder button. Gmail sending uses the reviewed package and requires explicit confirmation. Drafting never marks the application as sent.
 
@@ -90,7 +90,7 @@ Preparation runs keep stage timestamps, durations, errors, attempts, and the exa
 
 New exports and nightly backups are ZIP archives containing `data.json` and the saved supporting PDFs, generated PDFs, source snapshots, diffs, and logs. JSON exports from earlier Dossier versions remain importable. Imports validate artifact checksums and safe filenames. The default archive import limit is 200 MiB; individual supporting PDFs are limited to 25 MiB. Configure the reverse proxy to allow these request sizes.
 
-Deleting Dossier records does not remove host Git branches, worktrees, exported folders, or worker receipts. Manage those host files separately, especially if you edited a worktree by hand.
+Deleting Btalalos records does not remove host Git branches, worktrees, exported folders, or worker receipts. Manage those host files separately, especially if you edited a worktree by hand.
 
 Host CLI authentication, worker credentials, and the external Git repository are not included. Back up that repository separately. Restored PDFs can be downloaded immediately. Restored history cannot resume host operations; reconnect the worker and configure the project before preparing again.
 
@@ -107,3 +107,9 @@ yarn build
 Worker and preparation tests use fixture CLIs and temporary Git repositories, real TeX compilation, and an isolated test database. They do not consume coding-agent quota or send email.
 
 See [the validation results](application-preparation-validation.md) for the tested scenarios and remaining deployment checks.
+
+## Application types and form answers
+
+Select PhD or Job when creating an application in either document mode. PhD retains CV and letter tailoring. Job retains the base CV and generates a letter. Both support posting analysis, requirements assessment, PDF packages, and email drafting.
+
+For job applications, open Overview to save application form questions and answers. Each answer offers grammar-only correction, rewording, and a custom instruction. Review the result and select Save answers. The application type and saved answers are included in exports and backups.

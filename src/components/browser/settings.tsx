@@ -61,7 +61,7 @@ export function BrowserSettings({ initial, keySet, email, lastSkipped }: { initi
     </Card>
     <Card className="flex flex-col gap-4">
       <h2 className="font-serif text-section">Exclude emails</h2>
-      <p className="text-meta text-muted">One phrase per line. Any match ignores the message in BtalaLos before AI reading. Matches ignore letter case. Gmail messages are left unchanged.</p>
+      <p className="text-meta text-muted">One phrase per line. Any match ignores the message in Btalalos before AI reading. Matches ignore letter case. Gmail messages are left unchanged.</p>
       {settings.gmailFilters.map((filter, index) => <div key={filter.id} className="flex flex-col gap-3 rounded-panel border border-line p-4">
         <Select label={`Filter ${index + 1}: look in`} value={filter.target} onChange={(event) => setSettings({ ...settings, gmailFilters: settings.gmailFilters.map((entry) => entry.id === filter.id ? { ...entry, target: event.target.value as "subject" | "body" | "both" } : entry) })}><option value="subject">Subject</option><option value="body">Body</option><option value="both">Subject and body</option></Select>
         <Textarea label={`Filter ${index + 1}: words or phrases`} value={filter.phrases.join("\n")} onChange={(event) => setSettings({ ...settings, gmailFilters: settings.gmailFilters.map((entry) => entry.id === filter.id ? { ...entry, phrases: event.target.value.split("\n") } : entry) })} />
@@ -72,7 +72,7 @@ export function BrowserSettings({ initial, keySet, email, lastSkipped }: { initi
     </Card>
     <p role="status" className="text-sm text-muted">{dirty ? "Unsaved automation changes. Save settings to apply them." : "Automation settings saved. Changes apply to new runs."}</p>
     <Button disabled={busy || !dirty} onClick={() => void work(async () => { const next = { ...settings, gmailFilters: settings.gmailFilters.map((filter) => ({ ...filter, phrases: filter.phrases.map((phrase) => phrase.trim()).filter(Boolean) })) }; await browserRequest("settings", { ...next, ...(apiKey ? { apiKey } : {}), clearKey }); setSettings(next); setSaved(JSON.stringify(next)); setApiKey(""); setClearKey(false); toast("Browser and mail settings saved."); })}>{busy ? "Working…" : "Save settings"}</Button>
-    <Card className="flex flex-col gap-4"><h2 className="font-serif text-section">Host browsers</h2><p className="text-sm text-muted">Open the dedicated browser, sign in yourself, then connect Playwright. Gmail must use English. The browser opens on the computer running BtalaLos.</p><BrowserProfile profile="portals" /><BrowserProfile profile="gmail" /></Card>
+    <Card className="flex flex-col gap-4"><h2 className="font-serif text-section">Host browsers</h2><p className="text-sm text-muted">Open the dedicated browser, sign in yourself, then connect Playwright. Gmail must use English. The browser opens on the computer running Btalalos.</p><BrowserProfile profile="portals" /><BrowserProfile profile="gmail" /></Card>
   </div>;
 }
 function BrowserProfile({ profile }: { profile: "gmail" | "portals" }) {

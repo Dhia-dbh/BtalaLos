@@ -10,7 +10,7 @@ afterEach(() => {
 
 function renderLink(initialCollapsed = false) {
   render(
-    <SidebarFrame initialCollapsed={initialCollapsed} brand={<span>Dossier</span>}>
+    <SidebarFrame initialCollapsed={initialCollapsed} brand={<span>Btalalos</span>}>
       <RepositoryLink />
     </SidebarFrame>,
   );
@@ -20,7 +20,7 @@ function renderLink(initialCollapsed = false) {
 describe("RepositoryLink", () => {
   it("opens the repository in a new tab", () => {
     const link = renderLink();
-    expect(link).toHaveAttribute("href", "https://github.com/AienTech/dossier");
+    expect(link).toHaveAttribute("href", "https://github.com/Dhia-dbh/BtalaLos");
     expect(link).toHaveAttribute("target", "_blank");
     expect(link).toHaveAttribute("rel", "noopener noreferrer");
     expect(link).not.toHaveAttribute("title");

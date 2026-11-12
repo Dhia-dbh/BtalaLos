@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="src/app/icon.svg" alt="BtalaLos logo" width="80" height="80">
+  <img src="src/app/icon.svg" alt="Btalalos logo" width="80" height="80">
 </p>
 
-<h1 align="center">BtalaLos</h1>
+<h1 align="center">Btalalos</h1>
 
 <p align="center">
   A self-hosted job application manager with AI-assisted LaTeX documents, ordered PDF packages, and editable email drafts.
@@ -14,11 +14,11 @@
 
 ## Origin and acknowledgments
 
-BtalaLos is an independently maintained fork of **[Dossier](https://github.com/AienTech/dossier)**, created by **Alien / AienTech** and developed with contributions from its community. This fork builds on Dossier **1.9.2**, commit [`5446f4c`](https://github.com/AienTech/dossier/commit/5446f4cb117b0e4b4bbf26c6156c97406b0a4ff2).
+Btalalos is an independently maintained fork of **[Dossier](https://github.com/AienTech/dossier)**, created by **Alien / AienTech** and developed with contributions from its community. This fork builds on Dossier **1.9.2**, commit [`5446f4c`](https://github.com/AienTech/dossier/commit/5446f4cb117b0e4b4bbf26c6156c97406b0a4ff2).
 
 Thank you to the original author and contributors for building Dossier and sharing it under the GNU AGPL. Its application manager, native document editor, interface, AI integrations, and self-hosting infrastructure provide the foundation for this work. Their authors retain copyright in their contributions.
 
-**Dhia Ben Hamouda** maintains the BtalaLos modifications. The new name and logo identify this version; they do not imply authorship of the original project or endorsement by its maintainers. The original Git history is retained. See [NOTICE.md](NOTICE.md) for attribution and [the fork change review](docs/fork-changes.md) for the changes introduced on 29 October 2026.
+**Dhia Ben Hamouda** maintains the Btalalos modifications. The new name and logo identify this version; they do not imply authorship of the original project or endorsement by its maintainers. The original Git history is retained. See [NOTICE.md](NOTICE.md) for attribution and [the fork change review](docs/fork-changes.md) for the changes introduced on 29 October 2026.
 
 ## What this fork adds
 
@@ -73,7 +73,7 @@ The host services require private tokens. CLI login credentials remain on the ho
 
 **Start with the [Linux and Windows installation guide](docs/installation.md).** For LaTeX and PDF packages, the recommended route is the [containerized preparation worker](docs/container-worker.md), which bundles the compilation and Python tools. Only Node.js and the authenticated CLI remain on the host. For desktop distribution options, see [installers and packaging](docs/packaging.md).
 
-Run these commands from a checkout of **BtalaLos**. Build from this source so the image includes the fork's changes:
+Run these commands from a checkout of **Btalalos**. Build from this source so the image includes the fork's changes:
 
 ```sh
 docker build --target production -t btalalos:local .
@@ -99,7 +99,7 @@ docker compose -f compose.production.yml up -d
 
 Open [http://localhost:3000](http://localhost:3000). The production Compose file binds the app to loopback by default. Use an HTTPS reverse proxy for remote access.
 
-`compose.production.yml` still defaults to the upstream Dossier image if `DOSSIER_IMAGE` is omitted. Set the image explicitly as above. Existing `DOSSIER_*` configuration names and service filenames are retained for compatibility.
+`compose.production.yml` defaults to the locally built `btalalos:local` image. Build it from this checkout before starting the production services. Existing `DOSSIER_*` configuration names and service filenames are retained for compatibility.
 
 For the additional host features, follow:
 
@@ -135,11 +135,11 @@ See [recorded preparation validation](docs/application-preparation-validation.md
 
 The inherited [privacy documentation](PRIVACY.md) and [security documentation](SECURITY.md) describe Dossier's original behavior. This fork additionally stores supporting PDFs, generated PDFs, source snapshots, diffs, logs, and preparation requests. Explicitly selected context and document text can be sent to the configured CLI provider. Host repositories, worktrees, exported folders, worker receipts, and CLI authentication are outside the app's backup and deletion lifecycle; manage them separately.
 
-Some application links, update checks, support contacts, and the opt-in usage ping still reference upstream Dossier. They have not all been rebranded. The [fork change review](docs/fork-changes.md#publication-follow-up) identifies these remaining publication tasks. Dossier's maintainers should not be expected to support this fork.
+Application labels, AI instructions, connector identity, source links, and update checks identify Btalalos and this repository. Existing `DOSSIER_*` environment names, cookie names, encryption identifiers, backup prefixes, and export/theme format markers remain compatible with existing installations. The optional usage ping still goes to upstream Dossier; its recipient, privacy link, and deletion contact remain explicitly identified. Dossier's maintainers should not be expected to support this fork.
 
 ## License
 
-BtalaLos is licensed under the **GNU Affero General Public License, version 3 only** (`AGPL-3.0-only`). [LICENSE](LICENSE) contains the full, unchanged AGPLv3 text after the project notice. [NOTICE.md](NOTICE.md) records original authorship and this fork's modifications.
+Btalalos is licensed under the **GNU Affero General Public License, version 3 only** (`AGPL-3.0-only`). [LICENSE](LICENSE) contains the full, unchanged AGPLv3 text after the project notice. [NOTICE.md](NOTICE.md) records original authorship and this fork's modifications.
 
 Copyright in the original Dossier work remains with its authors and contributors. Copyright in modifications by Dhia Ben Hamouda is claimed only for those contributions. Bundled fonts and other third-party components retain their own notices and licenses; see [the font documentation](src/fonts/README.md).
 

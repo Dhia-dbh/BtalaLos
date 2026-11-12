@@ -1,6 +1,6 @@
 import { cn } from "@/lib/cn";
 
-/** BtalaLos mark in the primary colours, matching src/app/icon.svg. Decorative: put the name next to it. */
+/** Btalalos mark in the primary colours, matching src/app/icon.svg. Decorative: put the name next to it. */
 export function BrandMark({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 64 64" aria-hidden="true" className={cn("size-8 shrink-0", className)}>

@@ -79,7 +79,7 @@ const setDate = async (iso: string | null) => {
   return syncInterviewToCalendar("nw");
 };
 
-describe("Dossier to Google", () => {
+describe("Btalalos to Google", () => {
   it("adds the interview, moves it keeping its length, and deletes it with the date", async () => {
     expect(await scheduleInterview("nw", new Date("2026-10-22T11:00:00Z"))).toEqual({ inCalendar: true, eventLink: "https://calendar.google.com/event?eid=ev1" });
     expect(await application()).toMatchObject({ interviewEventId: "ev1", interviewCalendarId: "primary" });
@@ -88,7 +88,7 @@ describe("Dossier to Google", () => {
     expect(added.start).toEqual({ dateTime: "2026-10-22T11:00:00.000Z", timeZone: "Europe/Berlin" });
     expect(added.end.dateTime).toBe("2026-10-22T11:45:00.000Z");
 
-    // Made an hour long in Google, then moved in Dossier: still an hour long.
+    // Made an hour long in Google, then moved in Btalalos: still an hour long.
     added.end.dateTime = "2026-10-22T12:00:00.000Z";
     await setDate("2026-10-23T09:00:00Z");
     expect(events.get("ev1")).toMatchObject({ start: { dateTime: "2026-10-23T09:00:00.000Z" }, end: { dateTime: "2026-10-23T10:00:00.000Z" } });
@@ -126,7 +126,7 @@ describe("Dossier to Google", () => {
   });
 });
 
-describe("Google to Dossier", () => {
+describe("Google to Btalalos", () => {
   it("follows an event moved in Google, and drops the date when it's deleted", async () => {
     await scheduleInterview("nw", new Date("2026-10-22T11:00:00Z"));
     expect(await pullInterviewEvents()).toBe(0);

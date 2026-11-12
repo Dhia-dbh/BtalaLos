@@ -1,4 +1,4 @@
-# Install BtalaLos on Linux or Windows
+# Install Btalalos on Linux or Windows
 
 This guide installs the current source, not the original Dossier image. The web app runs in Docker and opens in your browser. The optional host services add Codex access and LaTeX application preparation.
 
@@ -182,7 +182,7 @@ pdftotext -v
 "$HOME/.local/share/dossier-worker-python/bin/python" -c 'import pymupdf; print(pymupdf.__version__)'
 ```
 
-Keep the LaTeX project in its own Git repository, separate from the BtalaLos checkout. For WSL, clone it under `$HOME/projects` and select its Linux path in Settings. Commit the base CV, letter, and required assets before preparation. Compile the two entrypoints manually with your chosen engine first to identify missing template dependencies. Generated documents must each fit one page.
+Keep the LaTeX project in its own Git repository, separate from the Btalalos checkout. For WSL, clone it under `$HOME/projects` and select its Linux path in Settings. Commit the base CV, letter, and required assets before preparation. Compile the two entrypoints manually with your chosen engine first to identify missing template dependencies. Generated documents must each fit one page.
 
 For the optional folder button on a Linux desktop, install `libglib2.0-bin`, which supplies `gdbus`, and run the worker in that desktop user's session. WSL users should use PDF downloads; installing `gdbus` alone does not implement Windows Explorer integration.
 
@@ -236,13 +236,13 @@ DOSSIER_WORKER_URL=http://127.0.0.1:8788
 DOSSIER_WORKER_TOKEN=PASTE_THE_SAME_WORKER_TOKEN
 ```
 
-The URL above is for the Engine overlay; use the Desktop address from step 4 when appropriate. Start the worker from the BtalaLos root in a separate Ubuntu terminal:
+The URL above is for the Engine overlay; use the Desktop address from step 4 when appropriate. Start the worker from the Btalalos root in a separate Ubuntu terminal:
 
 ```sh
 node --env-file="$HOME/.config/dossier-application-worker.env" scripts/application-worker.mjs
 ```
 
-Leave that terminal open. In another terminal at the BtalaLos root, apply the app configuration:
+Leave that terminal open. In another terminal at the Btalalos root, apply the app configuration:
 
 ```sh
 docker compose config --quiet
@@ -273,7 +273,7 @@ On WSL or a headless Linux server, use **Download** for PDFs. The folder button 
 
 Optional user services are supplied in `scripts/dossier-application-worker.service` and `scripts/dossier-codex-bridge.service`. Follow the service guides after foreground operation works. Their environment files must contain the correct script path and a `PATH` containing Node and the host tools. A user service does not automatically start WSL when Windows starts. Keep WSL running while using the app.
 
-From the BtalaLos root:
+From the Btalalos root:
 
 ```sh
 docker compose ps

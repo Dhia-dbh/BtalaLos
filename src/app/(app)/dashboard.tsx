@@ -202,7 +202,7 @@ function WorthALook({ items, quietDays }: { items: DashboardFigures["attention"]
 function Welcome({ latex }: { latex: boolean }) {
   return (
     <Panel>
-      <h2 className="font-serif text-section">Welcome to Dossier</h2>
+      <h2 className="font-serif text-section">Welcome to Btalalos</h2>
       <p className="text-sm text-muted">
         {latex ? "Configure your existing LaTeX project and an ordered job profile in Settings. Then paste a posting to create an application branch and compile your tailored documents." : "Start with your profile: your roles, skills and education are what every tailored resume and cover letter is built from. Then paste a job posting, and your funnel and next steps will show up here."}
       </p>
