@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useRef, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -13,6 +13,15 @@ type Model = {
   reasoning_efforts: string[];
   default_reasoning_effort: string;
 };
+function subscribe(callback: () => void) {
+  window.addEventListener("storage", callback);
+  window.addEventListener("cli-models", callback);
+  return () => {
+    window.removeEventListener("storage", callback);
+    window.removeEventListener("cli-models", callback);
+  };
+}
+
 export function CliPicker({
   value,
   onChange,
@@ -22,8 +31,15 @@ export function CliPicker({
   onChange: (value: CliOptions) => void;
   disabled?: boolean;
 }) {
-  const [models, setModels] = useState<Model[]>([]),
-    [loading, setLoading] = useState(false);
+  const key = `cli-models:${value.provider}`;
+  const catalog = useSyncExternalStore(
+    subscribe,
+    () => localStorage.getItem(key),
+    () => null,
+  );
+  const models: Model[] = catalog ? JSON.parse(catalog) : [];
+  const selections = useRef<Partial<Record<CliOptions["provider"], CliOptions>>>({});
+  const [loading, setLoading] = useState(false);
   return (
     <fieldset
       disabled={disabled}
@@ -36,12 +52,9 @@ export function CliPicker({
         label="Coding CLI"
         value={value.provider}
         onChange={(event) => {
-          onChange({
-            ...value,
-            provider: event.target.value as CliOptions["provider"],
-            model: "",
-          });
-          setModels([]);
+          selections.current[value.provider] = value;
+          const provider = event.target.value as CliOptions["provider"];
+          onChange(selections.current[provider] ?? { ...value, provider, model: "" });
         }}
       >
         <option value="codex">Codex</option>
@@ -57,7 +70,8 @@ export function CliPicker({
               "capabilities",
               { provider: value.provider },
             );
-            setModels(result.models);
+            localStorage.setItem(key, JSON.stringify(result.models));
+            window.dispatchEvent(new Event("cli-models"));
             toast("CLI connection verified.");
           } catch (error) {
             toast((error as Error).message);
@@ -66,7 +80,7 @@ export function CliPicker({
           }
         }}
       >
-        {loading ? "Checking CLI…" : "Load available models"}
+        {loading ? "Checking CLI…" : models.length ? "Refresh available models" : "Load available models"}
       </Button>
       {models.length ? (
         <Select
@@ -86,6 +100,9 @@ export function CliPicker({
           }}
         >
           <option value="">Select model</option>
+          {value.model && !models.some((model) => model.id === value.model) && (
+            <option value={value.model}>{value.model}</option>
+          )}
           {models.map((model) => (
             <option value={model.id} key={model.id}>
               {model.display_name}
