@@ -359,6 +359,7 @@ export function PreparationPanel({
             </ul>
           </details>
         )}
+        {pack && <ExportFiles applicationId={applicationId} packages={data.artifacts.filter((file) => file.role === "package").sort((a, b) => b.version - a.version)} disabled={active || busy} />}
           </div>
         </details>
       </Card>
@@ -384,7 +385,6 @@ export function PreparationPanel({
           </span>
         </div>
       )}
-      {pack && <ExportFiles applicationId={applicationId} packages={data.artifacts.filter((file) => file.role === "package").sort((a, b) => b.version - a.version)} disabled={active || busy} />}
       {data.artifacts.length > 0 && (
         <Card className="flex flex-col gap-4">
           <Select
