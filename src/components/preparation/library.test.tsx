@@ -68,6 +68,7 @@ it("requires a profile before starting automatic LaTeX preparation and preserves
     <NewLatex
       configured
       profiles={initial.profiles}
+      initialCli={{ ...EMPTY_PROJECT, model: "fixture" }}
       initialPosting="Researcher at Example"
     />,
   );
