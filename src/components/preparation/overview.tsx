@@ -33,7 +33,7 @@ export function Overview({ applicationId }: { applicationId: string }) {
   const values = draft ?? saved;
   return <section className="mx-auto grid w-full max-w-3xl gap-4 p-6" aria-label="Job overview">
     <div className="flex justify-between"><h2 className="font-serif text-section">Overview</h2>{!draft && <Button disabled={Boolean(saved.active)} onClick={() => setDraft(structuredClone(saved))}>Edit details</Button>}</div>
-    <RequirementsAssessment applicationId={applicationId} />
+    <RequirementsAssessment key={JSON.stringify([saved.requirements, saved.postingText])} applicationId={applicationId} />
     <p className="text-sm text-muted">Changes apply to subsequent generation. Existing documents remain as generated.</p>
     {Boolean(saved.active) && <p>Cancel preparation before editing its inputs.</p>}
     {error && <p role="alert">{error}</p>}
