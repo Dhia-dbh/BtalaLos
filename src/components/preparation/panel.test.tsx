@@ -94,6 +94,7 @@ it("shows package readiness, durable downloads, source review and copy buttons w
 it("requests merge-only regeneration separately from AI document preparation", async () => {
   const user = userEvent.setup();
   render(<PreparationPanel applicationId="app1" />);
+  await user.click(await screen.findByText("Preparation controls and progress"));
   await user.click(
     await screen.findByRole("button", { name: "Regenerate merged PDF" }),
   );
@@ -185,6 +186,7 @@ it("keeps polling and actions disabled until usage finalization completes", asyn
 it("saves a per-application email policy override", async () => {
   const user = userEvent.setup();
   render(<PreparationPanel applicationId="app1" latex />);
+  await user.click(await screen.findByText("Preparation controls and progress"));
   await user.selectOptions(await screen.findByLabelText("Automatic email drafting"), "DISABLE");
   expect(preparationRequest).toHaveBeenCalledWith("email-policy", { applicationId: "app1", emailDraftMode: "DISABLE" });
 });
@@ -209,4 +211,20 @@ it("keeps entered values after a rejected save", async () => {
   await user.click(screen.getByRole("button", { name: "Save changes" }));
   expect(await screen.findByRole("alert")).toHaveTextContent("Save failed");
   expect(screen.getByRole("textbox", { name: "externalJobId" })).toHaveValue("W2935");
+});
+
+it("collapses completed preparation controls while keeping the preview available", async () => {
+  const user = userEvent.setup();
+  render(<PreparationPanel applicationId="app1" latex />);
+  const summary = await screen.findByText("Preparation controls and progress");
+  expect(summary.closest("details")).not.toHaveAttribute("open");
+  expect(screen.getByText("Separate and grouped PDFs")).not.toBeVisible();
+  expect(screen.getByTitle("package preview")).toBeVisible();
+  await user.click(summary);
+  expect(summary.closest("details")).toHaveAttribute("open");
+  expect(screen.getByText("Separate and grouped PDFs")).toBeVisible();
+  expect(screen.getByRole("button", { name: "Prepare with AI" })).toBeVisible();
+  await user.click(summary);
+  expect(summary.closest("details")).not.toHaveAttribute("open");
+  expect(screen.getByTitle("package preview")).toBeVisible();
 });
