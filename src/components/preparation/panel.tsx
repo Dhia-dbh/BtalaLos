@@ -186,6 +186,11 @@ export function PreparationPanel({
             {run?.status.toLowerCase().replace("_", " ") ?? "Not prepared"}
           </span>
         </div>
+        <details open={!pack || active || Boolean(run?.error)}>
+          <summary className="cursor-pointer text-sm font-medium">
+            Preparation controls and progress
+          </summary>
+          <div className="mt-4 flex flex-col gap-4">
         <div className="flex flex-wrap items-end gap-3">
           <Select
             label="Application profile"
@@ -354,6 +359,8 @@ export function PreparationPanel({
             </ul>
           </details>
         )}
+          </div>
+        </details>
       </Card>
       {pack && (
         <div className="flex flex-wrap items-center gap-3">

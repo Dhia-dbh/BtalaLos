@@ -222,7 +222,7 @@ test("prepares a LaTeX application and a native package through the interface", 
     .getByLabel("Editable source files", { exact: true })
     .selectOption(["cv.tex", "letter.tex"]);
   await page
-    .getByRole("button", { name: "Test CLI and load models", exact: true })
+    .getByRole("button", { name: "Load available models", exact: true })
     .click();
   await page
     .getByRole("combobox", { name: "Model", exact: true })
@@ -312,6 +312,10 @@ test("prepares a LaTeX application and a native package through the interface", 
   await expect(
     page.getByRole("button", { name: "Copy message" }),
   ).toBeVisible();
+  const controls = page.getByText("Preparation controls and progress", { exact: true });
+  await expect(controls.locator("..")).not.toHaveAttribute("open", "");
+  await expect(page.getByTitle("package preview")).toBeVisible();
+  await controls.click();
   await expect(page.getByRole("progressbar", { name: "Application generation" })).toBeVisible();
   await expect(page.getByText("Generation tasks", { exact: true }).locator("..")).not.toHaveAttribute("open", "");
   await expect(page.getByText("Generation usage details", { exact: true }).locator("..")).not.toHaveAttribute("open", "");
@@ -359,6 +363,7 @@ test("prepares a LaTeX application and a native package through the interface", 
   await expect(
     page.getByText("My revised application subject", { exact: true }),
   ).toBeVisible();
+  if (!(await page.getByRole("button", { name: "Regenerate merged PDF", exact: true }).isVisible())) await controls.click();
   await page
     .getByRole("button", { name: "Regenerate merged PDF", exact: true })
     .click();
@@ -411,6 +416,9 @@ test("prepares a LaTeX application and a native package through the interface", 
     "data-collapsed",
     "true",
   );
+  await expect(controls.locator("..")).not.toHaveAttribute("open", "");
+  await expect(page.getByTitle("package preview")).toBeVisible();
+  await controls.click();
   await expect(
     page.getByRole("button", { name: "Regenerate merged PDF" }),
   ).toBeVisible();
