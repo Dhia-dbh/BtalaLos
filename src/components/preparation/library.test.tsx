@@ -196,3 +196,20 @@ it("browses another repository and populates the TeX selectors", async () => {
     }),
   );
 });
+
+it("uses refreshed CLI defaults and sends the displayed selection, including an explicit override", async () => {
+  const user = userEvent.setup();
+  const { rerender } = render(<NewLatex configured profiles={initial.profiles} initialPosting="Researcher" initialCli={{ ...EMPTY_PROJECT, model: "old" }} />);
+  rerender(<NewLatex configured profiles={initial.profiles} initialPosting="Researcher" initialCli={{ ...EMPTY_PROJECT, model: "new", effort: "high" }} />);
+  expect(screen.getByLabelText("Model")).toHaveValue("new");
+  expect(screen.getByLabelText("Thinking effort")).toHaveValue("high");
+  await user.selectOptions(screen.getByLabelText("Application profile"), "phd");
+  await user.click(screen.getByRole("button", { name: "Prepare application" }));
+  expect(preparationRequest).toHaveBeenCalledWith("create", expect.objectContaining({ cli: { provider: "codex", model: "new", effort: "high" } }));
+  await waitFor(() => expect(screen.getByRole("button", { name: "Prepare application" })).toBeEnabled());
+  await user.clear(screen.getByLabelText("Model"));
+  await user.type(screen.getByLabelText("Model"), "override");
+  await user.selectOptions(screen.getByLabelText("Thinking effort"), "max");
+  await user.click(screen.getByRole("button", { name: "Prepare application" }));
+  expect(preparationRequest).toHaveBeenLastCalledWith("create", expect.objectContaining({ cli: { provider: "codex", model: "override", effort: "max" } }));
+});
