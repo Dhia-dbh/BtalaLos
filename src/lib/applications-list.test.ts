@@ -140,3 +140,11 @@ describe("resolveListParams (E9-4, LST-7)", () => {
     });
   });
 });
+
+it("keeps creation-day grouping in URLs alongside filters, search and sort", async () => {
+  const { groupRowsByDay } = await import("./applications-list");
+  const grouped = groupRowsByDay([{ createdDay: "2026-11-01", id: "a" }, { createdDay: "2026-11-02", id: "c" }, { createdDay: "2026-11-01", id: "b" }]);
+  expect(grouped.map((group) => [group.day, group.rows.map((row) => row.id)])).toEqual([["2026-11-02", ["c"]], ["2026-11-01", ["a", "b"]]]);
+  const href = listHref({ view: "table", filter: "active", q: "Python", sort: { key: "deadline", reversed: true }, archived: false, groupByDay: true });
+  expect(parseListParams(Object.fromEntries(new URL(href, "http://localhost").searchParams))).toMatchObject({ view: "table", filter: "active", q: "Python", groupByDay: true, sort: { key: "deadline", reversed: true } });
+});

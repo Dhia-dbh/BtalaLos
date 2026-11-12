@@ -29,6 +29,7 @@ export type ApplicationRow = {
   updated: string;
   /** For the board, which shows the latest update first. */
   updatedAt: number;
+  createdDay: string;
 };
 
 /** Every application, archived ones only when asked for, sorted for the table; agent drafts once approved (#195). */
@@ -63,6 +64,7 @@ export async function loadApplicationRows({ archived, sort, q = "", fields = [] 
     const match = matchSchema.safeParse(application.match);
     return {
       id: application.id,
+      createdDay: day(application.createdAt),
       company: application.company.trim(),
       role: application.role.trim() || application.title.trim() || "Untitled application",
       location: application.location.trim(),

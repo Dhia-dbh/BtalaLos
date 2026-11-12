@@ -45,7 +45,7 @@ export const NATURAL_ORDER: Record<SortKey, "ascending" | "descending"> = {
 
 export const DEFAULT_SORT: Sort = { key: "updated", reversed: false };
 
-export type ListParams = { view: View; filter: Filter; q: string; sort: Sort; archived: boolean; fields?: FieldFilter[] };
+export type ListParams = { view: View; filter: Filter; q: string; sort: Sort; archived: boolean; fields?: FieldFilter[]; groupByDay?: boolean };
 
 const one = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
 
@@ -61,6 +61,7 @@ export function parseListParams(params: Record<string, string | string[] | undef
     ...(key ? { sort: { key, reversed: rawSort.startsWith("-") } } : {}),
     ...(one(params.archived) === "1" ? { archived: true } : {}),
     ...(one(params.fields) ? { fields: parseFieldFilters(one(params.fields)) } : {}),
+    ...(one(params.group) === "created" ? { groupByDay: true } : {}),
     q: (one(params.q) ?? "").trim().slice(0, 2000),
   };
 }
@@ -82,13 +83,14 @@ export function resolveListParams(
 }
 
 /** The URL for a state; defaults are left out, so the plain page is `/applications`. */
-export function listHref({ view, filter, q, sort, archived, fields }: ListParams): string {
+export function listHref({ view, filter, q, sort, archived, fields, groupByDay }: ListParams): string {
   const params = new URLSearchParams();
   if (view !== "board") params.set("view", view);
   if (filter !== "all") params.set("filter", filter);
   if (q) params.set("q", q);
   if (fields?.length) params.set("fields", JSON.stringify(fields));
   if (sort.key !== DEFAULT_SORT.key || sort.reversed) params.set("sort", sortParam(sort));
+  if (groupByDay) params.set("group", "created");
   if (archived) params.set("archived", "1");
   const query = params.toString();
   return query ? `/applications?${query}` : "/applications";
@@ -165,3 +167,13 @@ export function updatedAgo(date: Date, now = new Date()): string {
 }
 
 export const statusLabel = (status: ApplicationStatus) => statusInfo(status).label;
+
+export function groupRowsByDay<T extends { createdDay: string }>(rows: readonly T[]) {
+  const groups = new Map<string, T[]>();
+  for (const row of rows) {
+    const group = groups.get(row.createdDay) ?? [];
+    group.push(row);
+    groups.set(row.createdDay, group);
+  }
+  return [...groups].sort(([a], [b]) => b.localeCompare(a)).map(([day, rows]) => ({ day, rows }));
+}

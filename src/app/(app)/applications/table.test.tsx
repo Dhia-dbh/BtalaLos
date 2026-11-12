@@ -25,6 +25,7 @@ const row = (id: string, extra: Partial<ApplicationRow> = {}): ApplicationRow =>
   match: { hit: 5, total: 7 },
   sent: "20 Sep",
   updated: "2 days ago",
+  createdDay: "2026-09-26",
   updatedAt: Date.UTC(2026, 8, 26),
   ...extra,
 });

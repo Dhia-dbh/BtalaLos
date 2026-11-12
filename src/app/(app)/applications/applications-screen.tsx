@@ -21,6 +21,7 @@ import { Table } from "./table";
 
 export type ApplicationsScreenProps = {
   params: ListParams;
+  timeZone?: string;
   /** The applications in view: filtered, searched and sorted. */
   rows: ApplicationRow[];
   /** How many each filter holds, before searching. */
@@ -45,7 +46,7 @@ const SEARCH_DELAY_MS = 250;
  * and filters. Every change goes into the URL and the server answers with
  * the matching applications.
  */
-export function ApplicationsScreen({ params, rows, counts, summary, empty, archivedCount }: ApplicationsScreenProps) {
+export function ApplicationsScreen({ params, rows, counts, summary, empty, archivedCount, timeZone }: ApplicationsScreenProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [query, setQuery] = useState(params.q);
@@ -159,17 +160,22 @@ export function ApplicationsScreen({ params, rows, counts, summary, empty, archi
                 <span className="text-xs opacity-65">{archivedCount}</span>
               </button>
             )}
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={Boolean(params.groupByDay)} onChange={(event) => go({ groupByDay: event.target.checked })} />
+              Group by creation day{timeZone ? ` (${timeZone})` : ""}
+            </label>
             <span className="ml-auto text-meta text-muted">{HINTS[params.view]}</span>
           </div>
 
+          {params.groupByDay && <p className="px-10 pb-3 text-meta text-muted">Newest creation day first. Sorting applies within each day.</p>}
           <SearchFilters filters={params.fields ?? []} onChange={(fields) => go({ fields })} />
           <div className={cn("flex min-h-0 flex-1 flex-col motion-safe:transition-opacity", pending && "opacity-60")} aria-busy={pending || undefined}>
             {rows.length === 0 ? (
               <Nothing>{params.q ? `No applications match “${params.q}”.` : "Nothing in this view yet."}</Nothing>
             ) : board ? (
-              <Board rows={shown} statuses={statusesIn(params.filter)} onMove={move} />
+              <Board groupByDay={params.groupByDay} rows={shown} statuses={statusesIn(params.filter)} onMove={move} />
             ) : (
-              <Table rows={shown} sort={params.sort} onSort={(sort) => go({ sort })} onMove={move} />
+              <Table groupByDay={params.groupByDay} rows={shown} sort={params.sort} onSort={(sort) => go({ sort })} onMove={move} />
             )}
           </div>
         </>
