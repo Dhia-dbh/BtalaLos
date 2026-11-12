@@ -18,7 +18,7 @@ it("handles no requirements without asking the model and validates malformed inp
 
 it("checks experience duration rather than treating a years requirement as a covered skill", async () => {
   const { experienceMonths } = await import("@/lib/profile");
-  const years = Math.floor(experienceMonths(profile) / 12) + 1;
+  const years = Math.floor(experienceMonths(profile, new Date()) / 12) + 1;
   const result = await assessRequirements([`${years} years of ${profile.skills[0].name}`], async (schema) => schema.parse({ matches: [{ requirement: 0, skill: profile.skills[0].name, language: null, kind: "years", years }] }));
   expect(result.items[0].result).toBe("gap");
 });
