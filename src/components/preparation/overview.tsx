@@ -36,7 +36,7 @@ export function Overview({ applicationId }: { applicationId: string }) {
     <div className="flex justify-between"><h2 className="font-serif text-section">Overview</h2>{!draft && <Button disabled={Boolean(saved.active)} onClick={() => setDraft(structuredClone(saved))}>Edit details</Button>}</div>
     <p className="text-sm">Application type: {saved.applicationType === "JOB" ? "Job — base CV retained" : "PhD — CV and letter tailored"}</p>
     {saved.applicationType === "JOB" && <JobFormAnswers applicationId={applicationId} />}
-    <RequirementsAssessment applicationId={applicationId} />
+    <RequirementsAssessment key={JSON.stringify([saved.requirements, saved.postingText])} applicationId={applicationId} />
     <p className="text-sm text-muted">Changes apply to subsequent generation. Existing documents remain as generated.</p>
     {Boolean(saved.active) && <p>Cancel preparation before editing its inputs.</p>}
     {error && <p role="alert">{error}</p>}

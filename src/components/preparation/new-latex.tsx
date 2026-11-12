@@ -128,7 +128,7 @@ export function NewLatex({
         <div className="flex flex-wrap items-center gap-4">
           <Button
             type="submit"
-            disabled={busy || !profiles.length || !configured}
+            disabled={busy || !profiles.length || !configured || !cli.model.trim()}
           >
             {busy ? "Starting preparation…" : "Prepare application"}
           </Button>

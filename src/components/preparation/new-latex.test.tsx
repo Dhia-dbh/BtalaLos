@@ -1,0 +1,23 @@
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { expect, it, vi } from "vitest";
+import { EMPTY_PROJECT } from "@/lib/preparation/types";
+import { NewLatex } from "./new-latex";
+import { preparationRequest } from "./client";
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
+vi.mock("./client", () => ({ preparationRequest: vi.fn(async () => ({ id: "app" })) }));
+vi.mock("@/components/toast", () => ({ toast: vi.fn() }));
+it("requires an explicit model after changing provider and submits that selection", async () => {
+  localStorage.clear();
+  const user = userEvent.setup();
+  render(<NewLatex configured profiles={[{ id: "profile", name: "Profile" }]} initialPosting="Research role" initialCli={{ ...EMPTY_PROJECT, model: "fixture" }} />);
+  await user.selectOptions(screen.getByLabelText("Coding CLI"), "claude");
+  const submit = screen.getByRole("button", { name: "Prepare application" });
+  expect(submit).toBeDisabled();
+  expect(preparationRequest).not.toHaveBeenCalled();
+  await user.type(screen.getByLabelText("Model"), "sonnet");
+  await user.selectOptions(screen.getByLabelText("Application profile"), "profile");
+  expect(submit).toBeEnabled();
+  await user.click(submit);
+  expect(preparationRequest).toHaveBeenCalledWith("create", expect.objectContaining({ cli: { provider: "claude", model: "sonnet", effort: "medium" } }));
+});
