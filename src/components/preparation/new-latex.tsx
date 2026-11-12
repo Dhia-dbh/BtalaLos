@@ -30,7 +30,8 @@ export function NewLatex({
 }) {
   const router = useRouter();
   const [emailDraftMode, setEmailDraftMode] = useState<EmailDraftMode | null>(null);
-  const [cli, setCli] = useState<CliOptions>(initialCli);
+  const [cliOverride, setCli] = useState<CliOptions | null>(null);
+  const cli = cliOverride ?? initialCli;
   const [posting, setPosting] = useState(initialPosting),
     [postingUrl, setPostingUrl] = useState(initialUrl),
     [profileId, setProfileId] = useState("");
@@ -50,7 +51,7 @@ export function NewLatex({
             profileId,
             emailDraftMode,
             instructions,
-            ...(cli.model ? { cli } : {}),
+            ...(cli.model ? { cli: { provider: cli.provider, model: cli.model, effort: cli.effort } } : {}),
           });
           router.push(`/applications/${result.id}`);
         } catch (error) {
@@ -106,6 +107,9 @@ export function NewLatex({
           ))}
         </Select>
         <EmailDraftingSelect value={emailDraftMode} globalMode={globalEmailDraftMode} onChange={setEmailDraftMode} disabled={busy} />
+        <p className="text-sm text-muted">
+          Defaults come from Settings → LaTeX project. Changes here apply only to this application.
+        </p>
         <CliPicker value={cli} onChange={setCli} disabled={busy} />
         <Textarea
           label="Tailoring instructions (optional)"
@@ -121,7 +125,7 @@ export function NewLatex({
         <div className="flex flex-wrap items-center gap-4">
           <Button
             type="submit"
-            disabled={busy || !profiles.length || !configured}
+            disabled={busy || !profiles.length || !configured || !cli.model.trim()}
           >
             {busy ? "Starting preparation…" : "Prepare application"}
           </Button>

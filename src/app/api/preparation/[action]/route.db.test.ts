@@ -8,7 +8,7 @@ import { createTestClient, resetDatabase } from "@/test/db";
 import { getSession } from "@/lib/auth/session";
 import { workerOperation } from "@/lib/preparation/worker";
 import { EMPTY_PROJECT } from "@/lib/preparation/types";
-import { loadDocumentMode } from "@/lib/preparation/data";
+import { loadDocumentMode, loadProject } from "@/lib/preparation/data";
 import { saveBytes } from "@/lib/preparation/storage";
 import { GET, POST } from "./route";
 
@@ -126,6 +126,7 @@ it("routes folder browsing and source discovery to the authenticated worker", as
   expect((await request("directories", {})).status).toBe(401);
 });
 it("validates project paths through the worker and stores the selected CLI settings", async () => {
+  const updated = { ...project, model: "updated-model", effort: "high" as const };
   expect((await request("config", project)).status).toBe(200);
   expect(revalidatePath).toHaveBeenCalledWith("/resume");
   expect(workerOperation).toHaveBeenCalledWith(
@@ -141,6 +142,11 @@ it("validates project paths through the worker and stores the selected CLI setti
         .value,
     ),
   ).toEqual(project);
+  expect((await request("config", updated)).status).toBe(200);
+  expect(await loadProject()).toEqual(updated);
+  for (const page of ["/settings", "/new", "/new/latex"])
+    expect(revalidatePath).toHaveBeenCalledWith(page);
+
   expect(
     (await request("config", { ...project, editablePaths: [] })).status,
   ).toBe(422);

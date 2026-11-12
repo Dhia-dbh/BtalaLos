@@ -267,6 +267,9 @@ export const POST = route<RouteContext<"/api/preparation/[action]">>(
           update: { value: JSON.stringify(project) },
         });
         revalidatePath("/resume");
+        revalidatePath("/settings");
+        revalidatePath("/new");
+        revalidatePath("/new/latex");
       } else if (action === "directories") {
         const data = z
           .object({ directory: z.string().min(1).optional() })

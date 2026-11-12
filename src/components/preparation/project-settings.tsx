@@ -218,6 +218,10 @@ export function ProjectSettings({
             </option>
           ))}
         </Select>
+        <p className="text-sm text-muted">
+          These CLI defaults control new LaTeX applications. AI provider settings
+          control native documents and other AI tools. Existing preparations retain their saved settings.
+        </p>
         <CliPicker
           value={project}
           onChange={(cli) => setProject({ ...project, ...cli })}

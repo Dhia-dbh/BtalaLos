@@ -138,7 +138,7 @@ export function AiProviderSection({ initial }: { initial: AiSettingsView }) {
   return (
     <>
       <SettingsSectionIntro title="AI provider">
-        This is what reads job postings and writes your drafts. A local model keeps everything on your machine.
+        This provider reads job postings and writes native document drafts. LaTeX preparation uses the CLI defaults in Settings → LaTeX project. A local model keeps everything on your machine.
       </SettingsSectionIntro>
 
       <RadioGroup.Root
